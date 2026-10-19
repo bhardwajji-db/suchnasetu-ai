@@ -410,3 +410,11 @@ def test_24_confirmation_before_uncertain_details_become_actionable():
     assert len(deadline_items) > 0
     assert deadline_items[0].requires_confirmation is True
     assert "Verify" in deadline_items[0].action or "Confirm" in deadline_items[0].action
+
+
+# 25. Streamlit App Loading Regression Test (Ponytail check)
+def test_25_streamlit_app_loads_without_import_error():
+    from streamlit.testing.v1 import AppTest
+    at = AppTest.from_file("../app.py")
+    at.run()
+    assert not at.exception, f"Streamlit app raised an unexpected exception: {at.exception}"
