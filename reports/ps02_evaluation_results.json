@@ -67,7 +67,7 @@
       {
         "field_name": "contact_details",
         "expected_value": "scholarships@example.invalid",
-        "actual_value": "scholarships@example.invalid (Helpdesk)",
+        "actual_value": "Scholarship Office, Room 204, Academic Block; scholarships@example.invalid",
         "status": "PASS",
         "is_critical": true,
         "notes": null
@@ -99,7 +99,7 @@
       "source_location": "Line 7",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": "The notice clearly states the subject matter is the Merit Scholarship Application."
+      "explanation": null
     },
     "eligibility": {
       "field_name": "eligibility",
@@ -109,7 +109,7 @@
       "source_location": "Line 11",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": "The minimum academic requirement is explicitly stated."
+      "explanation": null
     },
     "deadline": {
       "field_name": "deadline",
@@ -119,7 +119,7 @@
       "source_location": "Line 9",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": "The submission deadline is clearly defined."
+      "explanation": null
     },
     "fee_or_cost": {
       "field_name": "fee_or_cost",
@@ -135,21 +135,21 @@
       "field_name": "required_documents",
       "value": "Previous qualifying examination marksheet, College identity card, Bank account proof.",
       "status": "stated",
-      "evidence_quote": "1. Previous qualifying examination marksheet. 2. College identity card. 3. Bank account proof.",
+      "evidence_quote": "Required documents: 1. Previous qualifying examination marksheet. 2. College identity card. 3. Bank account proof.",
       "source_location": "Found in notice",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": "A list of three specific documents is provided."
+      "explanation": null
     },
     "contact_details": {
       "field_name": "contact_details",
-      "value": "scholarships@example.invalid (Helpdesk)",
+      "value": "Scholarship Office, Room 204, Academic Block; scholarships@example.invalid",
       "status": "stated",
-      "evidence_quote": "Helpdesk: scholarships@example.invalid",
-      "source_location": "Line 20",
+      "evidence_quote": "Submission method: Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.\nHelpdesk: scholarships@example.invalid",
+      "source_location": "Lines 18-20",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": "An email address is provided for helpdesk inquiries."
+      "explanation": null
     },
     "required_actions": {
       "field_name": "required_actions",
@@ -159,7 +159,7 @@
       "source_location": "Line 18",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": "The physical submission location and required action are specified."
+      "explanation": null
     },
     "important_conditions": {
       "field_name": "important_conditions",
@@ -169,25 +169,25 @@
       "source_location": "Line 22",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": "This is a strict condition regarding adherence to the deadline."
+      "explanation": null
     },
     "missing_information": [
-      "Fee or Cost",
+      "Official status of the notice (It is explicitly stated to be synthetic test data).",
       "Application Fee"
     ],
     "uncertain_or_conflicting_details": [
-      "The notice explicitly states: 'This notice is synthetic test data. It is not an official announcement.' This disclaimer indicates the information should not be treated as actionable or official."
+      "The notice explicitly states: 'This notice is synthetic test data. It is not an official announcement.'"
     ],
     "raw_notice_text": "INSTITUTE OF TECHNOLOGY — SYNTHETIC TEST NOTICE\n\nNotice ID: TEST-SCH-2026-001\n\nDate of issue: 20 October 2026\n\nSubject: Merit Scholarship Application\n\nEligible students must submit their merit scholarship applications by 5:00 PM on 30 October 2026.\n\nEligibility: Students who obtained at least 80% marks in their last qualifying examination.\n\nRequired documents:\n1. Previous qualifying examination marksheet.\n2. College identity card.\n3. Bank account proof.\n\nSubmission method: Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.\n\nHelpdesk: scholarships@example.invalid\n\nLate applications will not be accepted.\n\nThis notice is synthetic test data. It is not an official announcement.\n"
   },
   "summary": {
     "about": "This notice is about applying for a Merit Scholarship. It is a chance to get financial help for your studies!",
     "eligible": "You can apply if you scored at least 80% in your last big exam.",
-    "actions": "Please give your application and all your papers to the Scholarship Office. They are located in Room 204, Academic Block.",
-    "documents": "You must bring three things: 1. Your marksheet from your last exam. 2. Your college ID card. 3. Proof that belongs to your bank account.",
-    "deadline": "The last day to submit everything is October 30, 2026. Please make sure you submit it before 5:00 PM.",
-    "help_contact": "If you have questions, please email the helpdesk at scholarships@example.invalid.",
-    "missing": "The notice is missing important details. We do not know what the application fee is, or if there is any cost to apply."
+    "actions": "Please give your application and all your papers to the Scholarship Office. You can find them in Room 204, Academic Block.",
+    "documents": "You need three things: 1. Your marksheet from your last big exam. 2. Your college ID card. 3. Proof of your bank account.",
+    "deadline": "The deadline is 5:00 PM on October 30, 2026. Please do not be late!",
+    "help_contact": "If you have questions, visit the Scholarship Office (Room 204, Academic Block) or email us at scholarships@example.invalid.",
+    "missing": "⚠️ Important: This notice is missing key details. We do not know: 1. If this notice is official (It is marked as test data). 2. How much the application fee is."
   },
   "checklist": {
     "items": [
@@ -199,7 +199,7 @@
         "requires_confirmation": false,
         "is_completed": false,
         "grounded_quote": "Eligibility: Students who obtained at least 80% marks in their last qualifying examination.",
-        "notes": "The minimum academic requirement is explicitly stated."
+        "notes": null
       },
       {
         "step_number": 2,
@@ -208,8 +208,8 @@
         "is_mandatory": true,
         "requires_confirmation": false,
         "is_completed": false,
-        "grounded_quote": "1. Previous qualifying examination marksheet. 2. College identity card. 3. Bank account proof.",
-        "notes": "A list of three specific documents is provided."
+        "grounded_quote": "Required documents: 1. Previous qualifying examination marksheet. 2. College identity card. 3. Bank account proof.",
+        "notes": null
       },
       {
         "step_number": 3,
@@ -233,7 +233,7 @@
       },
       {
         "step_number": 5,
-        "action": "Contact Official Source: Inquire about missing details (Fee or Cost, Application Fee) via scholarships@example.invalid (Helpdesk).",
+        "action": "Contact Official Source: Inquire about missing details (Official status of the notice (It is explicitly stated to be synthetic test data)., Application Fee) via Scholarship Office, Room 204, Academic Block; scholarships@example.invalid.",
         "category": "clarification",
         "is_mandatory": false,
         "requires_confirmation": false,

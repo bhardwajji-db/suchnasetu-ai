@@ -1,84 +1,181 @@
 """
-Reusable Accessible UI Components for Notice2Action AI (Streamlit).
-Designed for high contrast, keyboard accessibility, and clear status visualization.
+Modern Accessible UI Components for Notice2Action AI (Streamlit).
+Designed for high contrast, dark SaaS aesthetic, keyboard accessibility, and clear status visualization.
 """
 
 from __future__ import annotations
 
 import streamlit as st
-from typing import Optional, Callable
+from typing import Optional, List, Dict, Any
 from notice2action.schemas import (
     CertaintyStatus,
     ExtractedFact,
     ChecklistItem,
     PlainLanguageSummary,
     ActionChecklist,
+    StructuredNotice,
 )
 from notice2action.tts import generate_audio_bytes, get_web_speech_js
 
 
-STATUS_COLORS = {
-    CertaintyStatus.STATED: {"bg": "#dcfce7", "text": "#166534", "border": "#86efac", "icon": "✓ Stated"},
-    CertaintyStatus.NOT_STATED: {"bg": "#f1f5f9", "text": "#475569", "border": "#cbd5e1", "icon": "✕ Not Stated"},
-    CertaintyStatus.UNCERTAIN: {"bg": "#fef3c7", "text": "#92400e", "border": "#fcd34d", "icon": "⚠ Needs Confirmation"},
-    CertaintyStatus.CONFLICTING: {"bg": "#ffe4e6", "text": "#9f1239", "border": "#f43f5e", "icon": "⚡ Conflicting"},
-    CertaintyStatus.UNREADABLE: {"bg": "#f3f4f6", "text": "#374151", "border": "#9ca3af", "icon": "❓ Unreadable"},
+STATUS_STYLES = {
+    CertaintyStatus.STATED: {
+        "bg": "rgba(16, 185, 129, 0.15)",
+        "text": "#34D399",
+        "border": "rgba(16, 185, 129, 0.35)",
+        "label": "✓ Stated",
+    },
+    CertaintyStatus.NOT_STATED: {
+        "bg": "rgba(148, 163, 184, 0.12)",
+        "text": "#94A3B8",
+        "border": "rgba(148, 163, 184, 0.25)",
+        "label": "✕ Not Stated",
+    },
+    CertaintyStatus.UNCERTAIN: {
+        "bg": "rgba(245, 158, 11, 0.15)",
+        "text": "#FBBF24",
+        "border": "rgba(245, 158, 11, 0.35)",
+        "label": "⚠ Needs Confirmation",
+    },
+    CertaintyStatus.CONFLICTING: {
+        "bg": "rgba(239, 68, 68, 0.15)",
+        "text": "#F87171",
+        "border": "rgba(239, 68, 68, 0.35)",
+        "label": "⚡ Conflicting",
+    },
+    CertaintyStatus.UNREADABLE: {
+        "bg": "rgba(100, 116, 139, 0.2)",
+        "text": "#CBD5E1",
+        "border": "rgba(100, 116, 139, 0.35)",
+        "label": "❓ Unreadable",
+    },
 }
 
 
 def render_status_badge(status: CertaintyStatus) -> str:
-    """Returns HTML for an accessible, color-coded status badge."""
-    info = STATUS_COLORS.get(status, STATUS_COLORS[CertaintyStatus.UNCERTAIN])
+    """Returns HTML for a dark SaaS, high-contrast status badge."""
+    info = STATUS_STYLES.get(status, STATUS_STYLES[CertaintyStatus.UNCERTAIN])
     return (
         f"<span style='"
-        f"background-color: {info['bg']}; "
+        f"background: {info['bg']}; "
         f"color: {info['text']}; "
         f"border: 1px solid {info['border']}; "
-        f"padding: 3px 8px; "
+        f"padding: 3px 9px; "
         f"border-radius: 9999px; "
         f"font-size: 11px; "
         f"font-weight: 700; "
-        f"font-family: monospace;'>"
-        f"{info['icon']}"
+        f"font-family: monospace; "
+        f"display: inline-flex; "
+        f"align-items: center; "
+        f"letter-spacing: 0.02em;'>"
+        f"{info['label']}"
         f"</span>"
     )
 
 
+def render_platform_header(status: str = "ok", model_name: str = "gemma4:latest"):
+    """Renders the executive top header with brand identity and live AI status pill."""
+    if status == "ok":
+        pill_class = "status-pill"
+        dot_color = "#10B981"
+        status_text = f"Local {model_name} Active"
+    elif status == "warning":
+        pill_class = "status-pill warning"
+        dot_color = "#F59E0B"
+        status_text = "System Warning: Check Preflight"
+    else:
+        pill_class = "status-pill error"
+        dot_color = "#EF4444"
+        status_text = "Ollama / Model Unavailable"
+
+    header_html = f"""
+    <div class="platform-header">
+        <div>
+            <div class="brand-title">
+                <span style="color: #3B82F6;">Notice2Action</span>
+                <span style="color: #94A3B8; font-weight: 400;">AI</span>
+                <span style="font-size: 0.65rem; background: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); padding: 2px 7px; border-radius: 4px; font-weight: 700; font-family: monospace; vertical-align: middle;">PS02</span>
+            </div>
+            <div class="brand-subtitle">
+                Notice-to-Action Accessibility Assistant &bull; HackDay@Meerut &bull; Best Use of Gemma 4
+            </div>
+        </div>
+        <div>
+            <div class="{pill_class}">
+                <div style="width: 7px; height: 7px; background-color: {dot_color}; border-radius: 50%; box-shadow: 0 0 8px {dot_color};"></div>
+                <span>{status_text}</span>
+            </div>
+        </div>
+    </div>
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
+
+
+def render_notice_overview(sn: StructuredNotice):
+    """Renders the top-level metric overview grid for quick scanning."""
+    purpose_val = sn.purpose.value[:50] + ("..." if len(sn.purpose.value) > 50 else "")
+    deadline_val = sn.deadline.value[:35] + ("..." if len(sn.deadline.value) > 35 else "")
+    elig_val = sn.eligibility.value[:40] + ("..." if len(sn.eligibility.value) > 40 else "")
+
+    missing_cnt = len(sn.missing_information)
+    grounding_status = f"{missing_cnt} Missing Field(s)" if missing_cnt > 0 else "100% Grounded"
+    grounding_color = "#F59E0B" if missing_cnt > 0 else "#10B981"
+
+    overview_html = f"""
+    <div class="overview-grid">
+        <div class="overview-metric">
+            <div class="metric-title">Notice Purpose</div>
+            <div class="metric-value">{purpose_val}</div>
+        </div>
+        <div class="overview-metric">
+            <div class="metric-title">Critical Deadline</div>
+            <div class="metric-value metric-highlight">{deadline_val}</div>
+        </div>
+        <div class="overview-metric">
+            <div class="metric-title">Eligibility Criteria</div>
+            <div class="metric-value">{elig_val}</div>
+        </div>
+        <div class="overview-metric">
+            <div class="metric-title">Grounding Status</div>
+            <div class="metric-value" style="color: {grounding_color};">{grounding_status}</div>
+        </div>
+    </div>
+    """
+    st.markdown(overview_html, unsafe_allow_html=True)
+
+
 def render_fact_card(fact: ExtractedFact, key_prefix: str = "fact"):
-    """Renders a single structured fact card with evidence quotation and confirmation controls."""
+    """Renders an elevated dark fact card with quotation citation and confirmation controls."""
     badge_html = render_status_badge(fact.status)
     display_title = fact.field_name.replace("_", " ").title()
 
-    with st.container(border=True):
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.markdown(
-                f"<div style='font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 4px;'>"
-                f"{display_title} &nbsp; {badge_html}"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
-        with col2:
-            if fact.user_confirmed:
-                st.markdown("<span style='color: #16a34a; font-weight: 600; font-size: 12px;'>✓ Confirmed by User</span>", unsafe_allow_html=True)
+    card_header = f"""
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+        <span style="font-size: 0.8rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">{display_title}</span>
+        {badge_html}
+    </div>
+    """
 
-        st.markdown(f"**Value:** {fact.value}")
+    with st.container(border=True):
+        st.markdown(card_header, unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size: 1rem; font-weight: 600; color: #F8FAFC; line-height: 1.5;'>{fact.value}</div>", unsafe_allow_html=True)
 
         if fact.evidence_quote:
-            loc_str = f" ({fact.source_location})" if fact.source_location else ""
-            st.markdown(
-                f"<div style='border-left: 3px solid #3b82f6; padding-left: 10px; margin-top: 6px; color: #475569; font-style: italic; font-size: 13px;'>"
-                f"\"{fact.evidence_quote}\"{loc_str}"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
+            loc_str = f"<span class='source-line'>Source: {fact.source_location}</span>" if fact.source_location else ""
+            quote_html = f"""
+            <div class="evidence-quote">
+                &ldquo;{fact.evidence_quote}&rdquo;
+                {loc_str}
+            </div>
+            """
+            st.markdown(quote_html, unsafe_allow_html=True)
 
         if fact.explanation:
             st.caption(f"ℹ️ {fact.explanation}")
 
         # Confirmation Gate for uncertain details
         if fact.requires_confirmation and not fact.user_confirmed:
-            st.warning("⚠️ This detail was identified as tentative, incomplete, or needing verification.", icon="⚠️")
+            st.warning("⚠️ This detail was identified as tentative or requiring verification.", icon="⚠️")
             c1, c2 = st.columns([1, 2])
             with c1:
                 if st.button("Confirm detail as accurate", key=f"{key_prefix}_confirm_{fact.field_name}"):
@@ -88,20 +185,40 @@ def render_fact_card(fact: ExtractedFact, key_prefix: str = "fact"):
 
 
 def render_summary_section(summary: PlainLanguageSummary, lang: str = "en"):
-    """Renders the 7 plain-language summary answers."""
-    st.subheader("📋 Plain-Language Summary", divider="blue")
+    """Renders the 7 plain-language summary answers in clean dark cards."""
+    st.markdown("#### 📋 Plain-Language Summary", help="Concise answers to the 7 core questions")
 
     c1, c2 = st.columns(2)
     with c1:
-        st.markdown(f"**📌 What is this notice about?**\n\n{summary.about}")
-        st.markdown(f"**👥 Who is eligible?**\n\n{summary.eligible}")
-        st.markdown(f"**🎯 What must the reader do?**\n\n{summary.actions}")
-        st.markdown(f"**📁 Required documents:**\n\n{summary.documents}")
+        with st.container(border=True):
+            st.markdown("<span class='card-label'>📌 What is this notice about?</span>", unsafe_allow_html=True)
+            st.markdown(f"<div class='card-value'>{summary.about}</div>", unsafe_allow_html=True)
+
+        with st.container(border=True):
+            st.markdown("<span class='card-label'>👥 Who is eligible?</span>", unsafe_allow_html=True)
+            st.markdown(f"<div class='card-value'>{summary.eligible}</div>", unsafe_allow_html=True)
+
+        with st.container(border=True):
+            st.markdown("<span class='card-label'>🎯 What must the reader do?</span>", unsafe_allow_html=True)
+            st.markdown(f"<div class='card-value'>{summary.actions}</div>", unsafe_allow_html=True)
+
+        with st.container(border=True):
+            st.markdown("<span class='card-label'>📁 Required documents:</span>", unsafe_allow_html=True)
+            st.markdown(f"<div class='card-value'>{summary.documents}</div>", unsafe_allow_html=True)
 
     with c2:
-        st.markdown(f"**⏳ Deadline:**\n\n{summary.deadline}")
-        st.markdown(f"**📞 Where to get help / Contact:**\n\n{summary.help_contact}")
-        st.markdown(f"**❓ Missing critical information:**\n\n{summary.missing}")
+        with st.container(border=True):
+            st.markdown("<span class='card-label'>⏳ Deadline:</span>", unsafe_allow_html=True)
+            st.markdown(f"<div class='card-value' style='color: #38BDF8;'>{summary.deadline}</div>", unsafe_allow_html=True)
+
+        with st.container(border=True):
+            st.markdown("<span class='card-label'>📞 Contact & Helpdesk:</span>", unsafe_allow_html=True)
+            st.markdown(f"<div class='card-value'>{summary.help_contact}</div>", unsafe_allow_html=True)
+
+        with st.container(border=True):
+            st.markdown("<span class='card-label'>❓ Missing Information:</span>", unsafe_allow_html=True)
+            missing_color = "#FBBF24" if "missing" in summary.missing.lower() else "#94A3B8"
+            st.markdown(f"<div class='card-value' style='color: {missing_color};'>{summary.missing}</div>", unsafe_allow_html=True)
 
     # Read Aloud Audio
     full_summary_text = (
@@ -115,46 +232,73 @@ def render_summary_section(summary: PlainLanguageSummary, lang: str = "en"):
     )
     st.markdown("---")
     st.markdown("##### 🔊 Audio Accessibility (Read Aloud)")
-    col_audio, col_btn = st.columns([2, 1])
-    with col_audio:
-        audio_bytes = generate_audio_bytes(full_summary_text, lang="hi" if lang == "hi" else "en")
-        if audio_bytes:
-            st.audio(audio_bytes, format="audio/mp3")
-        else:
-            lang_code = "hi-IN" if lang == "hi" else "en-US"
-            st.markdown(get_web_speech_js(full_summary_text, lang_code), unsafe_allow_html=True)
+
+    audio_key = f"audio_{lang}_{hash(full_summary_text)}"
+    if audio_key not in st.session_state:
+        st.session_state[audio_key] = generate_audio_bytes(full_summary_text, lang="hi" if lang == "hi" else "en")
+
+    audio_bytes = st.session_state.get(audio_key)
+    if audio_bytes:
+        st.audio(audio_bytes, format="audio/mp3")
+    else:
+        lang_code = "hi-IN" if lang == "hi" else "en-US"
+        st.markdown(get_web_speech_js(full_summary_text, lang_code), unsafe_allow_html=True)
 
 
 def render_checklist_section(checklist: ActionChecklist):
-    """Renders the ordered, interactive action checklist."""
-    st.subheader("✅ Action Checklist", divider="green")
+    """Renders the ordered, interactive action checklist in dark SaaS styling."""
+    st.markdown("#### ✅ Grounded Action Checklist", help="Sequenced action steps verified against notice text")
 
     if not checklist.items:
         st.info("No actionable items were identified for this notice.")
         return
 
     for item in checklist.items:
-        col_check, col_desc = st.columns([0.08, 0.92])
-        with col_check:
-            is_checked = st.checkbox(
-                f"Step {item.step_number}",
-                value=item.is_completed,
-                key=f"check_item_{item.step_number}",
-                label_visibility="collapsed",
-            )
-            item.is_completed = is_checked
+        with st.container(border=True):
+            col_check, col_desc = st.columns([0.08, 0.92])
+            with col_check:
+                is_checked = st.checkbox(
+                    f"Step {item.step_number}",
+                    value=item.is_completed,
+                    key=f"check_item_{item.step_number}",
+                    label_visibility="collapsed",
+                )
+                item.is_completed = is_checked
 
-        with col_desc:
-            cat_badge = f"<span style='background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold;'>{item.category.upper()}</span>"
-            mand_badge = "<span style='background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold;'>MANDATORY</span>" if item.is_mandatory else "<span style='background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 11px;'>ADVISORY</span>"
+            with col_desc:
+                cat_badge = f"<span class='badge-tag badge-category'>{item.category}</span>"
+                mand_badge = "<span class='badge-tag badge-mandatory'>MANDATORY</span>" if item.is_mandatory else "<span class='badge-tag badge-advisory'>ADVISORY</span>"
 
-            action_text = f"<s>{item.action}</s>" if is_checked else f"**Step {item.step_number}:** {item.action}"
+                action_style = "text-decoration: line-through; color: #64748B;" if is_checked else "color: #F8FAFC; font-weight: 600;"
+                st.markdown(
+                    f"<div style='display: flex; align-items: center; justify-content: space-between;'>"
+                    f"<span style='{action_style} font-size: 0.95rem;'>Step {item.step_number}: {item.action}</span>"
+                    f"<div>{cat_badge} {mand_badge}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
 
-            st.markdown(f"{action_text} &nbsp; {cat_badge} {mand_badge}", unsafe_allow_html=True)
+                if item.requires_confirmation:
+                    st.caption("⚠️ *Requires confirmation before acting on tentative notice detail.*")
+                if item.grounded_quote:
+                    st.caption(f"Evidence quote: \"{item.grounded_quote}\"")
+                if item.notes:
+                    st.caption(f"Note: {item.notes}")
 
-            if item.requires_confirmation:
-                st.caption("⚠️ *Requires confirmation before acting on tentative notice detail.*")
-            if item.grounded_quote:
-                st.caption(f"Evidence quote: \"{item.grounded_quote}\"")
-            if item.notes:
-                st.caption(f"Note: {item.notes}")
+
+def render_qa_item(item):
+    """Renders a single grounded Q&A card."""
+    with st.container(border=True):
+        st.markdown(
+            f"<div class='qa-question'>"
+            f"<span style='color: #38BDF8;'>Q:</span> {item.question}"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+        if item.is_supported:
+            st.markdown(f"<div class='qa-answer'><strong style='color: #10B981;'>A:</strong> {item.answer}</div>", unsafe_allow_html=True)
+            if item.evidence_quote:
+                st.markdown(f"<div class='qa-evidence'>&ldquo;{item.evidence_quote}&rdquo;</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div class='qa-answer'><strong style='color: #F87171;'>A:</strong> {item.answer}</div>", unsafe_allow_html=True)
+            st.markdown("<span style='color: #F87171; font-size: 11px; font-weight: bold; background: rgba(239, 68, 68, 0.15); padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);'>⚠️ Information not stated in the supplied notice</span>", unsafe_allow_html=True)
