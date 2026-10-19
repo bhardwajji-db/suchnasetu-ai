@@ -81,6 +81,28 @@ def parse_fact_dict(field_name: str, data: Optional[Dict[str, Any]]) -> Extracte
     )
 
 
+def _normalize_str_list(items: Any) -> List[str]:
+    """Ensures missing_information and uncertain_details are lists of strings."""
+    if not isinstance(items, list):
+        return []
+    res: List[str] = []
+    for it in items:
+        if isinstance(it, str):
+            clean = it.strip()
+            if clean:
+                res.append(clean)
+        elif isinstance(it, dict):
+            val = it.get("fact") or it.get("value") or it.get("description") or str(it)
+            clean = str(val).strip()
+            if clean:
+                res.append(clean)
+        elif it is not None:
+            clean = str(it).strip()
+            if clean:
+                res.append(clean)
+    return res
+
+
 class NoticeAnalyzer:
     """Orchestrates structured notice analysis using Gemma 4 and grounding checks."""
 
@@ -109,8 +131,8 @@ class NoticeAnalyzer:
             contact_details=parse_fact_dict("contact_details", raw_json.get("contact_details")),
             required_actions=parse_fact_dict("required_actions", raw_json.get("required_actions")),
             important_conditions=parse_fact_dict("important_conditions", raw_json.get("important_conditions")),
-            missing_information=raw_json.get("missing_information", []),
-            uncertain_or_conflicting_details=raw_json.get("uncertain_or_conflicting_details", []),
+            missing_information=_normalize_str_list(raw_json.get("missing_information", [])),
+            uncertain_or_conflicting_details=_normalize_str_list(raw_json.get("uncertain_or_conflicting_details", [])),
             raw_notice_text=notice_text,
         )
 
