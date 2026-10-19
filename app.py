@@ -137,6 +137,16 @@ with st.sidebar:
     st.markdown("##### 🧪 Quick-Load Sample Notices")
     fixtures_dir = config.synthetic_fixtures_dir
 
+    if st.button("🎯 Test Notice: TEST-SCH-2026-001", type="primary"):
+        p = fixtures_dir / "synthetic_scholarship_notice.txt"
+        if p.is_file():
+            st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
+            st.session_state.uploaded_image = None
+            st.session_state.structured_notice = None
+            st.session_state.followup_history = []
+            st.success("Loaded Synthetic Test Notice!")
+            st.rerun()
+
     if st.button("📄 Sample 1: Scholarship Notice (Full)"):
         p = fixtures_dir / "sample_scholarship_notice.txt"
         if p.is_file():

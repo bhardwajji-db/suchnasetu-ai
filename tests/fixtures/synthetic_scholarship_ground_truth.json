@@ -1,0 +1,23 @@
+{
+  "notice_id": "TEST-SCH-2026-001",
+  "issue_date": "2026-10-20",
+  "purpose": "Merit scholarship application",
+  "eligibility_threshold": "at least 80%",
+  "eligibility_percentage": 80,
+  "deadline_date": "2026-10-30",
+  "deadline_time": "5:00 PM",
+  "deadline_iso": "2026-10-30T17:00:00",
+  "required_documents": [
+    "Previous qualifying examination marksheet",
+    "College identity card",
+    "Bank account proof"
+  ],
+  "submission_method": "Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block",
+  "submission_location": "Scholarship Office, Room 204, Academic Block",
+  "helpdesk_contact": "scholarships@example.invalid",
+  "late_applications_policy": "not accepted",
+  "late_applications_allowed": false,
+  "application_fee": "Not stated in the notice.",
+  "is_synthetic": true,
+  "is_official_announcement": false
+}
