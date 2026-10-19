@@ -4,11 +4,16 @@ Notice-to-Action Accessibility Assistant powered by Gemma 4.
 Hacktoberfest 2026 HackDay@Meerut × E-Cell IIMT University.
 """
 
-from __future__ import annotations
+import sys
+from pathlib import Path
+
+# Ensure src/ is on python module path
+SRC_DIR = Path(__file__).resolve().parent / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 import streamlit as st
 from PIL import Image
-from pathlib import Path
 import time
 
 from notice2action.config import config, run_preflight_diagnostics

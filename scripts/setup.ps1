@@ -41,9 +41,11 @@ $PythonVenv = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
 $uv = Get-Command uv -ErrorAction SilentlyContinue
 if ($uv) {
     uv pip install --python $PythonVenv -r requirements.txt
+    uv pip install --python $PythonVenv -e .
 } else {
     & $PythonVenv -m pip install --upgrade pip
     & $PythonVenv -m pip install -r requirements.txt
+    & $PythonVenv -m pip install -e .
 }
 
 # 4. Copy .env if not exists
