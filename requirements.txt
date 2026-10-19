@@ -1,0 +1,12 @@
+# Notice2Action AI Core Dependencies
+streamlit>=1.35.0
+pydantic>=2.7.0
+pytesseract>=0.3.10
+pillow>=10.0.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+gTTS>=2.5.0
+
+# Testing & QA
+pytest>=8.0.0
+pytest-cov>=5.0.0
