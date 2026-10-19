@@ -117,15 +117,22 @@ class OllamaClient:
             "model": self.model,
             "messages": messages,
             "stream": False,
+            "keep_alive": "30m",
             "options": {
                 "temperature": temperature,
+                "num_predict": 2048,
+                "num_ctx": 3072,
             },
         }
         if json_mode:
             payload["format"] = "json"
 
+        # Separate quick connection check (10s) from generation read timeout
+        connect_timeout = 10.0
+        read_timeout = float(self.timeout)
+
         try:
-            resp = requests.post(endpoint, json=payload, timeout=self.timeout)
+            resp = requests.post(endpoint, json=payload, timeout=(connect_timeout, read_timeout))
             if resp.status_code == 404:
                 raise OllamaModelError(
                     f"Model '{self.model}' not found in Ollama. Pull it with: 'ollama run {self.model}'"
@@ -140,6 +147,15 @@ class OllamaClient:
             content = message.get("content", "")
             return content
 
+        except requests.exceptions.ConnectTimeout as e:
+            raise OllamaConnectionError(
+                f"Connection to Ollama at {self.base_url} timed out after {connect_timeout}s. Ensure Ollama is running."
+            ) from e
+        except requests.exceptions.ReadTimeout as e:
+            raise OllamaTimeoutError(
+                f"Gemma 4 inference timed out after {int(read_timeout)} seconds. "
+                "The model weights may be loading from disk into VRAM/RAM."
+            ) from e
         except requests.exceptions.ConnectionError as e:
             raise OllamaConnectionError(
                 f"Failed to connect to Ollama server at {self.base_url}. Is Ollama running?"

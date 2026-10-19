@@ -1,6 +1,7 @@
 """
 Centralized Theme Tokens and CSS for Notice2Action AI.
 Provides a modern, high-contrast dark SaaS aesthetic inspired by Linear, Raycast, and Vercel.
+Optimized for 1366x768 and multi-column document intelligence workspaces.
 """
 
 THEME_CSS = """
@@ -18,52 +19,54 @@ code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace !important;
 }
 
-/* ---------------- Layout & Spacing ---------------- */
+/* ---------------- Layout & Compact Spacing (1366x768 optimized) ---------------- */
 .main .block-container {
-    padding-top: 1.5rem;
-    padding-bottom: 3rem;
-    max-width: 1200px;
+    padding-top: 0.75rem !important;
+    padding-bottom: 2rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    max-width: 1240px;
 }
 
-/* ---------------- Header & Badges ---------------- */
+/* ---------------- Platform Header ---------------- */
 .platform-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.25rem 1.5rem;
+    padding: 0.85rem 1.25rem;
     background: linear-gradient(180deg, #161E2E 0%, #111827 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    margin-bottom: 1.75rem;
-    box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.4);
+    border-radius: 12px;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4);
 }
 
 .brand-title {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 800;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
     color: #FFFFFF;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.5rem;
     margin: 0;
 }
 
 .brand-subtitle {
-    font-size: 0.875rem;
+    font-size: 0.78rem;
     color: #94A3B8;
-    margin-top: 0.25rem;
+    margin-top: 0.15rem;
 }
 
 .status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.35rem 0.75rem;
+    gap: 0.45rem;
+    padding: 0.3rem 0.65rem;
     background: rgba(16, 185, 129, 0.1);
     border: 1px solid rgba(16, 185, 129, 0.25);
     border-radius: 9999px;
-    font-size: 0.75rem;
+    font-size: 0.725rem;
     font-weight: 600;
     color: #34D399;
 }
@@ -81,8 +84,8 @@ code, pre, .font-mono {
 }
 
 .pulse-dot {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     background-color: #10B981;
     border-radius: 50%;
     box-shadow: 0 0 8px #10B981;
@@ -92,70 +95,78 @@ code, pre, .font-mono {
 .dark-card {
     background: #161E2E;
     border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 12px;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-    transition: all 0.2s ease-in-out;
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.75rem;
+    transition: all 0.15s ease-in-out;
 }
 
 .dark-card:hover {
-    border-color: rgba(59, 130, 246, 0.4);
-    box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.5);
+    border-color: rgba(59, 130, 246, 0.35);
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
 }
 
 .card-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
     color: #64748B;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.35rem;
+    display: block;
 }
 
 .card-value {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: #F8FAFC;
-    line-height: 1.5;
+    line-height: 1.45;
 }
 
 .evidence-quote {
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(15, 23, 42, 0.65);
     border-left: 3px solid #3B82F6;
-    padding: 0.6rem 0.85rem;
-    margin-top: 0.75rem;
-    border-radius: 0 8px 8px 0;
-    font-size: 0.825rem;
+    padding: 0.5rem 0.75rem;
+    margin-top: 0.55rem;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.8rem;
     color: #94A3B8;
     font-style: italic;
     font-family: 'JetBrains Mono', monospace;
+    line-height: 1.4;
 }
 
 .source-line {
-    font-size: 0.725rem;
+    font-size: 0.7rem;
     color: #60A5FA;
     font-weight: 600;
-    margin-top: 0.35rem;
+    margin-top: 0.25rem;
     display: block;
 }
 
 /* ---------------- Overview Banner ---------------- */
 .overview-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+@media (max-width: 900px) {
+    .overview-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 .overview-metric {
     background: linear-gradient(180deg, #1E293B 0%, #161E2E 100%);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
 }
 
 .metric-title {
-    font-size: 0.725rem;
+    font-size: 0.68rem;
     font-weight: 700;
     color: #94A3B8;
     text-transform: uppercase;
@@ -163,10 +174,13 @@ code, pre, .font-mono {
 }
 
 .metric-value {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: #FFFFFF;
-    margin-top: 0.3rem;
+    margin-top: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .metric-highlight {
@@ -175,19 +189,20 @@ code, pre, .font-mono {
 
 /* ---------------- Tabs Styling ---------------- */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
+    gap: 6px;
     background-color: #111827;
-    padding: 6px;
-    border-radius: 12px;
+    padding: 4px;
+    border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 1rem;
 }
 
 .stTabs [data-baseweb="tab"] {
-    border-radius: 8px;
-    padding: 8px 16px;
+    border-radius: 7px;
+    padding: 6px 14px;
     color: #94A3B8;
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: 0.825rem;
     border: none !important;
     background-color: transparent;
     transition: all 0.15s ease;
@@ -201,31 +216,31 @@ code, pre, .font-mono {
 .stTabs [aria-selected="true"] {
     background-color: #1E293B !important;
     color: #FFFFFF !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 /* ---------------- Action Checklist ---------------- */
 .checklist-card {
     background: #161E2E;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 10px;
-    padding: 0.9rem 1.1rem;
-    margin-bottom: 0.65rem;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.65rem;
     transition: border 0.15s ease;
 }
 
 .checklist-card:hover {
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: rgba(59, 130, 246, 0.3);
 }
 
 .badge-tag {
     display: inline-block;
-    padding: 0.2rem 0.5rem;
-    border-radius: 6px;
-    font-size: 0.7rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -252,22 +267,23 @@ code, pre, .font-mono {
 
 /* ---------------- Buttons & Inputs ---------------- */
 .stButton>button {
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     font-weight: 600 !important;
     letter-spacing: 0.01em !important;
-    transition: all 0.2s ease !important;
-    padding: 0.55rem 1.25rem !important;
+    transition: all 0.15s ease !important;
+    padding: 0.45rem 1.1rem !important;
+    font-size: 0.85rem !important;
 }
 
 .stButton>button[kind="primary"] {
     background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
     border: 1px solid #3B82F6 !important;
-    box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.35) !important;
+    box-shadow: 0 3px 12px 0 rgba(37, 99, 235, 0.35) !important;
 }
 
 .stButton>button[kind="primary"]:hover {
     background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%) !important;
-    box-shadow: 0 6px 20px 0 rgba(37, 99, 235, 0.5) !important;
+    box-shadow: 0 4px 16px 0 rgba(37, 99, 235, 0.5) !important;
     transform: translateY(-1px);
 }
 
@@ -286,35 +302,36 @@ code, pre, .font-mono {
 .qa-card {
     background: #161E2E;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 1.2rem;
-    margin-bottom: 1rem;
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.75rem;
 }
 
 .qa-question {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
     color: #FFFFFF;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
 }
 
 .qa-answer {
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     color: #CBD5E1;
-    line-height: 1.5;
+    line-height: 1.45;
 }
 
 .qa-evidence {
-    margin-top: 0.5rem;
-    padding: 0.4rem 0.75rem;
+    margin-top: 0.45rem;
+    padding: 0.35rem 0.65rem;
     background: rgba(15, 23, 42, 0.7);
     border-left: 2px solid #10B981;
-    font-size: 0.8rem;
+    font-size: 0.775rem;
     color: #6EE7B7;
     font-style: italic;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 /* ---------------- Sidebar Styling ---------------- */
@@ -324,14 +341,22 @@ code, pre, .font-mono {
 }
 
 [data-testid="stSidebar"] .block-container {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
+    padding-top: 1.25rem !important;
+    padding-bottom: 1.5rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
 }
 
 .sidebar-brand {
-    padding-bottom: 1rem;
+    padding-bottom: 0.75rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+/* Compact alerts */
+.stAlert {
+    padding: 0.6rem 0.9rem !important;
+    border-radius: 8px !important;
 }
 </style>
 """

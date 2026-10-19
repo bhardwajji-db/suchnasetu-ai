@@ -144,6 +144,58 @@ def render_notice_overview(sn: StructuredNotice):
     st.markdown(overview_html, unsafe_allow_html=True)
 
 
+def render_analysis_banner(elapsed_seconds: float, model_name: str = "gemma4:latest", field_count: int = 8):
+    """Renders a verified analysis summary banner with real timing and status."""
+    banner_html = f"""
+    <div style="
+        background: linear-gradient(90deg, rgba(16, 185, 129, 0.12) 0%, rgba(59, 130, 246, 0.1) 100%);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: 8px;
+        padding: 0.6rem 0.95rem;
+        margin-bottom: 0.85rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.825rem;
+    ">
+        <div style="display: flex; align-items: center; gap: 0.5rem; color: #34D399; font-weight: 600;">
+            <span>✓</span>
+            <span>Gemma 4 Semantic Analysis Complete</span>
+            <span style="color: #94A3B8; font-weight: 400;">&bull; {field_count} Grounded Fields Verified</span>
+        </div>
+        <div style="font-family: monospace; color: #94A3B8; font-size: 0.775rem;">
+            Latency: <strong style="color: #F8FAFC;">{elapsed_seconds:.2f}s</strong> &bull; Engine: {model_name}
+        </div>
+    </div>
+    """
+    st.markdown(banner_html, unsafe_allow_html=True)
+
+
+def render_recovery_box(error_msg: str, remedy: Optional[str] = None):
+    """Renders a structured recovery guidance card when inference encounters an issue."""
+    remedy_html = f"<div style='margin-top: 0.35rem; color: #F8FAFC; font-size: 0.8rem;'><strong>Action:</strong> {remedy}</div>" if remedy else ""
+    recovery_html = f"""
+    <div style="
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        border-radius: 8px;
+        padding: 0.85rem 1.1rem;
+        margin-top: 0.75rem;
+        margin-bottom: 1rem;
+    ">
+        <div style="font-weight: 700; color: #F87171; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>⚠ Inference Recovery Protocol</span>
+        </div>
+        <div style="color: #CBD5E1; font-size: 0.825rem; margin-top: 0.35rem;">
+            {error_msg}
+        </div>
+        {remedy_html}
+    </div>
+    """
+    st.markdown(recovery_html, unsafe_allow_html=True)
+
+
+
 def render_fact_card(fact: ExtractedFact, key_prefix: str = "fact"):
     """Renders an elevated dark fact card with quotation citation and confirmation controls."""
     badge_html = render_status_badge(fact.status)

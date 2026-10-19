@@ -11,6 +11,8 @@ from notice2action.ui.components import (
     render_checklist_section,
     render_qa_item,
     render_status_badge,
+    render_analysis_banner,
+    render_recovery_box,
 )
 
 __all__ = [
@@ -22,4 +24,6 @@ __all__ = [
     "render_checklist_section",
     "render_qa_item",
     "render_status_badge",
+    "render_analysis_banner",
+    "render_recovery_box",
 ]

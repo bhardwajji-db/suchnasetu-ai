@@ -37,6 +37,8 @@ from notice2action.ui.styles import THEME_CSS
 from notice2action.ui.components import (
     render_platform_header,
     render_notice_overview,
+    render_analysis_banner,
+    render_recovery_box,
     render_fact_card,
     render_summary_section,
     render_checklist_section,
@@ -77,6 +79,10 @@ def init_session_state():
         st.session_state.followup_history = []
     if "selected_lang" not in st.session_state:
         st.session_state.selected_lang = "en"
+    if "analysis_duration" not in st.session_state:
+        st.session_state.analysis_duration = None
+    if "analysis_error" not in st.session_state:
+        st.session_state.analysis_error = None
 
 
 init_session_state()
@@ -86,14 +92,14 @@ with st.sidebar:
     st.markdown(
         """
         <div class="sidebar-brand">
-            <div style="font-size: 1.25rem; font-weight: 800; color: #FFFFFF; display: flex; align-items: center; gap: 0.5rem;">
-                <span>📢 Notice2Action</span>
-                <span style="font-size: 0.65rem; background: #3B82F6; color: white; padding: 2px 7px; border-radius: 4px; font-weight: 700; font-family: monospace;">PS02</span>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; display: flex; align-items: center; gap: 0.45rem;">
+                <span>Notice2Action</span>
+                <span style="font-size: 0.65rem; background: #3B82F6; color: white; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-family: monospace;">PS02</span>
             </div>
-            <div style="font-size: 0.78rem; color: #94A3B8; margin-top: 4px;">
+            <div style="font-size: 0.75rem; color: #94A3B8; margin-top: 3px;">
                 Notice-to-Action Accessibility Assistant
             </div>
-            <div style="font-size: 0.72rem; color: #64748B; margin-top: 2px;">
+            <div style="font-size: 0.7rem; color: #64748B; margin-top: 2px;">
                 HackDay@Meerut × E-Cell IIMTU | Gemma 4
             </div>
         </div>
@@ -102,18 +108,18 @@ with st.sidebar:
     )
 
     # Diagnostics Drawer
-    st.markdown("##### ⚡ System Health")
+    st.markdown("##### ⚡ Service Status")
     diag = run_preflight_diagnostics()
     if diag.overall_status == "ok":
-        st.success(f"System Ready • Local {config.ollama_model}", icon="✅")
+        st.success(f"System Ready • {config.ollama_model}", icon="✅")
     elif diag.overall_status == "warning":
-        st.warning("System Warning • Check Preflight", icon="⚠️")
+        st.warning("Warning • Check Preflight", icon="⚠️")
     else:
-        st.error("System Error • Ollama Offline", icon="❌")
+        st.error("Error • Ollama Offline", icon="❌")
 
     with st.expander("🔍 Diagnostics Ledger"):
         for item in diag.items:
-            icon = "✅" if item.status == "ok" else ("⚠️" if item.status == "warning" else "❌")
+            icon = "✓" if item.status == "ok" else ("⚠" if item.status == "warning" else "✕")
             st.markdown(f"**{icon} {item.name}**")
             st.caption(item.details)
             if item.remedy:
@@ -131,6 +137,7 @@ with st.sidebar:
             st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
             st.session_state.uploaded_image = None
             st.session_state.structured_notice = None
+            st.session_state.analysis_error = None
             st.session_state.followup_history = []
             st.rerun()
 
@@ -142,6 +149,7 @@ with st.sidebar:
                 st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
                 st.session_state.uploaded_image = None
                 st.session_state.structured_notice = None
+                st.session_state.analysis_error = None
                 st.session_state.followup_history = []
                 st.rerun()
     with c_s2:
@@ -151,6 +159,7 @@ with st.sidebar:
                 st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
                 st.session_state.uploaded_image = None
                 st.session_state.structured_notice = None
+                st.session_state.analysis_error = None
                 st.session_state.followup_history = []
                 st.session_state.selected_lang = "hi"
                 st.rerun()
@@ -163,6 +172,7 @@ with st.sidebar:
                 st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
                 st.session_state.uploaded_image = None
                 st.session_state.structured_notice = None
+                st.session_state.analysis_error = None
                 st.session_state.followup_history = []
                 st.rerun()
     with c_s4:
@@ -172,6 +182,7 @@ with st.sidebar:
                 st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
                 st.session_state.uploaded_image = None
                 st.session_state.structured_notice = None
+                st.session_state.analysis_error = None
                 st.session_state.followup_history = []
                 st.rerun()
 
@@ -186,7 +197,7 @@ with st.sidebar:
     st.session_state.selected_lang = "hi" if "Hindi" in lang_choice else "en"
 
     st.markdown("---")
-    if st.button("🔄 Reset / Clear Session", use_container_width=True):
+    if st.button("🔄 Reset Session", use_container_width=True):
         st.session_state.raw_notice_text = ""
         st.session_state.uploaded_image = None
         st.session_state.structured_notice = None
@@ -194,6 +205,8 @@ with st.sidebar:
         st.session_state.summary_hi = None
         st.session_state.checklist_en = None
         st.session_state.checklist_hi = None
+        st.session_state.analysis_duration = None
+        st.session_state.analysis_error = None
         st.session_state.followup_history = []
         st.rerun()
 
@@ -212,9 +225,9 @@ tab_input, tab_structured, tab_summary, tab_followup = st.tabs([
 with tab_input:
     st.markdown(
         """
-        <div style="margin-bottom: 1.25rem;">
-            <div style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF;">1. Supply Notice Document</div>
-            <div style="font-size: 0.85rem; color: #94A3B8;">Upload a photo, scan, or digital notice, or paste raw text into the workspace below.</div>
+        <div style="margin-bottom: 0.85rem;">
+            <div style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF;">1. Supply Notice Document</div>
+            <div style="font-size: 0.8rem; color: #94A3B8;">Upload a photo, scan, or digital notice, or paste raw text into the workspace below.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -223,7 +236,7 @@ with tab_input:
     col_img, col_paste = st.columns([1, 1], gap="medium")
 
     with col_img:
-        st.markdown("<span class='card-label'>📁 Upload Notice File</span>", unsafe_allow_html=True)
+        st.markdown("<span class='card-label'>📁 Upload Notice Document</span>", unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
             "Upload Notice Document",
             type=["png", "jpg", "jpeg", "webp", "txt"],
@@ -236,6 +249,13 @@ with tab_input:
             if ingest_res.error:
                 st.error(f"Upload Error: {ingest_res.error}")
             else:
+                size_kb = len(bytes_data) / 1024
+                st.markdown(
+                    f"<div style='font-size: 0.75rem; color: #34D399; font-family: monospace; margin-top: 0.25rem;'>"
+                    f"✓ Selected: {uploaded_file.name} ({size_kb:.1f} KB)"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
                 if ingest_res.source_type == "image":
                     st.session_state.uploaded_image = ingest_res.image
                     st.image(ingest_res.image, caption="Uploaded Notice Preview", use_container_width=True)
@@ -268,7 +288,7 @@ with tab_input:
         st.markdown("<span class='card-label'>✍️ Paste Raw Text</span>", unsafe_allow_html=True)
         pasted = st.text_area(
             "Paste Notice Text",
-            height=240,
+            height=200,
             placeholder="Paste text of the circular, announcement, or poster here...",
             label_visibility="collapsed",
         )
@@ -280,18 +300,18 @@ with tab_input:
                 st.session_state.raw_notice_text = ingest_res.raw_text
                 st.session_state.uploaded_image = None
                 st.session_state.structured_notice = None
+                st.session_state.analysis_error = None
                 st.success("Pasted notice loaded into session!")
                 st.rerun()
 
-    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
-    st.markdown("#### 📝 Extracted Notice Content (Review & Edit)")
-    st.caption("Inspect and correct any OCR errors below before initiating Gemma 4 semantic analysis.")
+    st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<span class='card-label'>📝 Review & Edit Extracted Notice Content</span>", unsafe_allow_html=True)
 
     char_count = len(st.session_state.raw_notice_text)
     line_count = len(st.session_state.raw_notice_text.splitlines()) if st.session_state.raw_notice_text else 0
 
     st.markdown(
-        f"<div style='font-size: 0.75rem; color: #64748B; font-family: monospace; margin-bottom: 0.35rem;'>"
+        f"<div style='font-size: 0.725rem; color: #64748B; font-family: monospace; margin-bottom: 0.25rem;'>"
         f"BUFFER: {char_count} characters &bull; {line_count} lines"
         f"</div>",
         unsafe_allow_html=True,
@@ -300,16 +320,33 @@ with tab_input:
     edited_text = st.text_area(
         "Notice Content for Analysis",
         value=st.session_state.raw_notice_text,
-        height=200,
+        height=180,
         label_visibility="collapsed",
         help="This text serves as the ground truth for all evidence quotes and fact verification.",
     )
     if edited_text != st.session_state.raw_notice_text:
         st.session_state.raw_notice_text = edited_text
 
-    col_btn1, col_btn2 = st.columns([1, 2])
+    col_btn1, col_btn2 = st.columns([1.2, 1])
     with col_btn1:
         analyze_btn = st.button("🚀 Analyze Notice with Gemma 4", type="primary", use_container_width=True)
+    with col_btn2:
+        if st.button("⚡ Load Demo Notice (TEST-SCH-2026-001)", use_container_width=True):
+            p = fixtures_dir / "synthetic_scholarship_notice.txt"
+            if p.is_file():
+                st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
+                st.session_state.uploaded_image = None
+                st.session_state.structured_notice = None
+                st.session_state.analysis_error = None
+                st.session_state.followup_history = []
+                st.rerun()
+
+    # Recovery box if previous analysis failed
+    if st.session_state.analysis_error:
+        render_recovery_box(
+            st.session_state.analysis_error,
+            remedy="Ensure Ollama is running ('ollama serve') and model 'gemma4:latest' is pulled. You can click 'Analyze Notice with Gemma 4' to retry."
+        )
 
     if analyze_btn:
         if not st.session_state.raw_notice_text.strip():
@@ -317,27 +354,31 @@ with tab_input:
         else:
             with st.status("Analyzing notice with local Gemma 4...", expanded=True) as status_box:
                 start_t = time.time()
-                st.write("🔍 **Phase 1/3:** Ingesting & normalizing document text...")
-                time.sleep(0.1)
+                st.write("🔍 **Phase 1/3:** Validating notice content and security boundaries...")
+                time.sleep(0.05)
 
                 analyzer = NoticeAnalyzer()
                 try:
-                    st.write("🤖 **Phase 2/3:** Extracting 8 grounded key fields with strict evidence citation...")
+                    st.write("🤖 **Phase 2/3:** Extracting 8 grounded key fields with Gemma 4...")
                     structured = analyzer.analyze_notice(st.session_state.raw_notice_text)
                     st.session_state.structured_notice = structured
 
                     st.write("📋 **Phase 3/3:** Synthesizing plain-language summary & action checklist...")
-                    st.session_state.summary_en = generate_accessible_summary(structured, analyzer.client)
+                    st.session_state.summary_en = generate_deterministic_summary(structured)
                     st.session_state.checklist_en = generate_action_checklist(structured)
 
-                    # Multilingual translation
-                    st.session_state.summary_hi = translate_summary_to_hindi(st.session_state.summary_en, analyzer.client)
-                    st.session_state.checklist_hi = translate_checklist_to_hindi(st.session_state.checklist_en, analyzer.client)
+                    # Deterministic multilingual translation with entity audit
+                    st.session_state.summary_hi = translate_summary_to_hindi(st.session_state.summary_en, client=None)
+                    st.session_state.checklist_hi = translate_checklist_to_hindi(st.session_state.checklist_en, client=None)
 
                     elapsed = time.time() - start_t
+                    st.session_state.analysis_duration = elapsed
+                    st.session_state.analysis_error = None
+
                     status_box.update(label=f"✅ Analysis complete in {elapsed:.2f}s! Proceed to Tab 2 or Tab 3.", state="complete", expanded=False)
                     st.rerun()
                 except Exception as e:
+                    st.session_state.analysis_error = str(e)
                     status_box.update(label="❌ Analysis Failed", state="error", expanded=True)
                     st.error(f"Analysis failed: {e}")
 
@@ -346,9 +387,9 @@ with tab_input:
 with tab_structured:
     st.markdown(
         """
-        <div style="margin-bottom: 1.25rem;">
-            <div style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF;">2. Grounded Fact Breakdown</div>
-            <div style="font-size: 0.85rem; color: #94A3B8;">Structured extraction of 8 key notice fields. Every fact cites an exact verbatim quotation.</div>
+        <div style="margin-bottom: 0.85rem;">
+            <div style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF;">2. Grounded Fact Breakdown</div>
+            <div style="font-size: 0.8rem; color: #94A3B8;">Structured extraction of 8 key notice fields. Every fact cites an exact verbatim quotation.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -357,10 +398,10 @@ with tab_structured:
     if st.session_state.structured_notice is None:
         st.markdown(
             """
-            <div class="dark-card" style="text-align: center; padding: 2.5rem 1rem;">
-                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
-                <div style="font-size: 1.1rem; font-weight: 700; color: #FFFFFF;">No Notice Analyzed Yet</div>
-                <div style="font-size: 0.85rem; color: #94A3B8; margin-top: 0.25rem;">
+            <div class="dark-card" style="text-align: center; padding: 2rem 1rem;">
+                <div style="font-size: 1.5rem; margin-bottom: 0.35rem;">🔍</div>
+                <div style="font-size: 1rem; font-weight: 700; color: #FFFFFF;">No Notice Analyzed Yet</div>
+                <div style="font-size: 0.8rem; color: #94A3B8; margin-top: 0.2rem;">
                     Upload or paste a notice in Tab 1, or click <strong>⚡ Quick-Load Samples</strong> in the sidebar.
                 </div>
             </div>
@@ -371,11 +412,14 @@ with tab_structured:
         sn: StructuredNotice = st.session_state.structured_notice
 
         # High-level overview banner
+        if st.session_state.analysis_duration:
+            render_analysis_banner(st.session_state.analysis_duration, config.ollama_model, 8)
+
         render_notice_overview(sn)
 
         # Alert banner for missing or uncertain information
         if sn.missing_information:
-            st.warning(f"⚠️ **Missing Critical Information Identified:** {', '.join(sn.missing_information)}", icon="⚠️")
+            st.warning(f"⚠️ **Missing Information Identified:** {', '.join(sn.missing_information)}", icon="⚠️")
         if sn.uncertain_or_conflicting_details:
             st.info(f"ℹ️ **Uncertain / Tentative Details Flagged:** {', '.join(sn.uncertain_or_conflicting_details)}", icon="ℹ️")
 
@@ -397,9 +441,9 @@ with tab_structured:
 with tab_summary:
     st.markdown(
         """
-        <div style="margin-bottom: 1.25rem;">
-            <div style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF;">3. Summary & Action Checklist</div>
-            <div style="font-size: 0.85rem; color: #94A3B8;">Plain-language synthesis answering 7 core questions, with an ordered execution checklist.</div>
+        <div style="margin-bottom: 0.85rem;">
+            <div style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF;">3. Summary & Action Checklist</div>
+            <div style="font-size: 0.8rem; color: #94A3B8;">Plain-language synthesis answering 7 core questions, with an ordered execution checklist.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -408,10 +452,10 @@ with tab_summary:
     if st.session_state.structured_notice is None:
         st.markdown(
             """
-            <div class="dark-card" style="text-align: center; padding: 2.5rem 1rem;">
-                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
-                <div style="font-size: 1.1rem; font-weight: 700; color: #FFFFFF;">Summary Unavailable</div>
-                <div style="font-size: 0.85rem; color: #94A3B8; margin-top: 0.25rem;">
+            <div class="dark-card" style="text-align: center; padding: 2rem 1rem;">
+                <div style="font-size: 1.5rem; margin-bottom: 0.35rem;">📋</div>
+                <div style="font-size: 1rem; font-weight: 700; color: #FFFFFF;">Summary Unavailable</div>
+                <div style="font-size: 0.8rem; color: #94A3B8; margin-top: 0.2rem;">
                     Analyze a notice in Tab 1 to generate the plain-language summary and interactive checklist.
                 </div>
             </div>
@@ -426,7 +470,7 @@ with tab_summary:
         if cur_summary:
             render_summary_section(cur_summary, lang=st.session_state.selected_lang)
 
-        st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
 
         # Display Checklist
         cur_checklist = st.session_state.checklist_hi if is_hindi else st.session_state.checklist_en
@@ -471,9 +515,9 @@ with tab_summary:
 with tab_followup:
     st.markdown(
         """
-        <div style="margin-bottom: 1.25rem;">
-            <div style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF;">4. Follow-Up Q&A Assistant</div>
-            <div style="font-size: 0.85rem; color: #94A3B8;">Ask clarification questions about this notice. Answers are strictly grounded in notice text without fabrication.</div>
+        <div style="margin-bottom: 0.85rem;">
+            <div style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF;">4. Follow-Up Q&A Assistant</div>
+            <div style="font-size: 0.8rem; color: #94A3B8;">Ask clarification questions about this notice. Answers are strictly grounded in notice text without fabrication.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -482,10 +526,10 @@ with tab_followup:
     if not st.session_state.raw_notice_text.strip():
         st.markdown(
             """
-            <div class="dark-card" style="text-align: center; padding: 2.5rem 1rem;">
-                <div style="font-size: 2rem; margin-bottom: 0.5rem;">💬</div>
-                <div style="font-size: 1.1rem; font-weight: 700; color: #FFFFFF;">No Notice Loaded</div>
-                <div style="font-size: 0.85rem; color: #94A3B8; margin-top: 0.25rem;">
+            <div class="dark-card" style="text-align: center; padding: 2rem 1rem;">
+                <div style="font-size: 1.5rem; margin-bottom: 0.35rem;">💬</div>
+                <div style="font-size: 1rem; font-weight: 700; color: #FFFFFF;">No Notice Loaded</div>
+                <div style="font-size: 0.8rem; color: #94A3B8; margin-top: 0.2rem;">
                     Load or analyze a notice first to enable grounded interactive Q&A.
                 </div>
             </div>
@@ -525,7 +569,7 @@ with tab_followup:
 
         # Render History
         if st.session_state.followup_history:
-            st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
             st.markdown("#### 💬 Conversation History")
             for item in st.session_state.followup_history:
                 render_qa_item(item)

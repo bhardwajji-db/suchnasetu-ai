@@ -46,7 +46,7 @@ def _find_tesseract_cmd() -> Optional[str]:
 class AppConfig:
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
     ollama_model: str = os.getenv("OLLAMA_MODEL", "gemma4:latest")
-    ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60"))
+    ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
     tesseract_cmd: Optional[str] = _find_tesseract_cmd()
     max_upload_size_mb: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
     max_image_dimension: int = int(os.getenv("MAX_IMAGE_DIMENSION", "4096"))
