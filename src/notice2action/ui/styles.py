@@ -20,17 +20,23 @@ THEME_CSS = """
 /* ---------------- Root & Typography ---------------- */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-html, body, [class*="css"] {
+html, body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     color: #F2F6FF;
     background-color: #06101F;
+    overflow-x: hidden !important;
+    max-width: 100vw;
+}
+
+[class*="css"] {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace !important;
 }
 
-/* ---------------- Main Layout Spacing (1366x768 optimized) ---------------- */
+/* ---------------- Main Layout Spacing (1366x768 / 1920x1080 responsive) ---------------- */
 .main .block-container,
 [data-testid="stMainBlockContainer"],
 div[data-testid="stAppViewContainer"] section.main > div.block-container {
@@ -38,7 +44,7 @@ div[data-testid="stAppViewContainer"] section.main > div.block-container {
     padding-bottom: 2rem !important;
     padding-left: 1.25rem !important;
     padding-right: 1.25rem !important;
-    max-width: 1280px !important;
+    max-width: 1320px !important;
     background-color: #06101F !important;
 }
 
@@ -296,12 +302,6 @@ div[data-testid="stAppViewContainer"] section.main > div.block-container {
     margin-bottom: 0.85rem;
 }
 
-@media (max-width: 900px) {
-    .overview-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
 .overview-metric {
     background: #0E2342;
     border: 1px solid #1D3D67;
@@ -331,36 +331,53 @@ div[data-testid="stAppViewContainer"] section.main > div.block-container {
     color: #38BDF8;
 }
 
-/* ---------------- Tabs Styling ---------------- */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 4px;
-    background-color: #0E2342;
-    padding: 4px;
-    border-radius: 10px;
-    border: 1px solid #1D3D67;
-    margin-bottom: 0.85rem;
+/* ---------------- Tabs Styling (Supports modern Streamlit 1.66 React Aria & BaseWeb) ---------------- */
+[data-testid="stTabs"] [role="tablist"],
+.stTabs [data-baseweb="tab-list"],
+.stTabs [role="tablist"] {
+    display: flex !important;
+    gap: 6px !important;
+    background-color: #0E2342 !important;
+    padding: 5px !important;
+    border-radius: 10px !important;
+    border: 1px solid #1D3D67 !important;
+    margin-bottom: 0.85rem !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
 }
 
-.stTabs [data-baseweb="tab"] {
-    border-radius: 7px;
-    padding: 6px 14px;
-    color: #9EB5D8;
-    font-weight: 600;
-    font-size: 0.825rem;
-    border: none !important;
-    background-color: transparent;
-    transition: all 0.15s ease;
+[data-testid="stTabs"] [role="tab"],
+[data-testid="stTab"],
+.stTabs [data-baseweb="tab"],
+.stTabs [role="tab"] {
+    border-radius: 7px !important;
+    padding: 7px 16px !important;
+    color: #9EB5D8 !important;
+    font-weight: 600 !important;
+    font-size: 0.825rem !important;
+    border: 1px solid transparent !important;
+    background-color: transparent !important;
+    transition: all 0.15s ease !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
 }
 
-.stTabs [data-baseweb="tab"]:hover {
-    color: #F2F6FF;
-    background-color: rgba(255, 255, 255, 0.05);
+[data-testid="stTabs"] [role="tab"]:hover,
+[data-testid="stTab"]:hover,
+.stTabs [data-baseweb="tab"]:hover,
+.stTabs [role="tab"]:hover {
+    color: #F2F6FF !important;
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(29, 61, 103, 0.5) !important;
 }
 
+[data-testid="stTabs"] [role="tab"][aria-selected="true"],
+[data-testid="stTab"][aria-selected="true"],
 .stTabs [aria-selected="true"] {
     background-color: #0875FF !important;
     color: #FFFFFF !important;
-    box-shadow: 0 2px 8px rgba(8, 117, 255, 0.35);
+    box-shadow: 0 2px 10px rgba(8, 117, 255, 0.4) !important;
+    border-color: #0875FF !important;
 }
 
 /* ---------------- Action Buttons ---------------- */
@@ -423,18 +440,18 @@ div[data-baseweb="textarea"]:focus-within {
     box-shadow: 0 0 0 1px #0875FF !important;
 }
 
-/* ---------------- Sidebar Styling (#06172F, Compact ~260px) ---------------- */
+/* ---------------- Sidebar Styling (#071A33, Compact 265px) ---------------- */
 section[data-testid="stSidebar"],
 [data-testid="stSidebar"] {
     min-width: 250px !important;
-    max-width: 265px !important;
-    width: 260px !important;
+    max-width: 275px !important;
+    width: 265px !important;
     background-color: #071A33 !important;
     border-right: 1px solid #1D3D67 !important;
 }
 
 section[data-testid="stSidebar"] > div {
-    width: 260px !important;
+    width: 100% !important;
 }
 
 [data-testid="stSidebar"] .block-container,
@@ -451,56 +468,58 @@ section[data-testid="stSidebar"] > div {
     margin-bottom: 0.85rem;
 }
 
-.sidebar-nav-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.45rem 0.65rem;
-    border-radius: 7px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #9EB5D8;
-    margin-bottom: 0.25rem;
-    transition: all 0.15s ease;
-}
-
-.sidebar-nav-item:hover, .sidebar-nav-item.active {
-    background: #102746;
-    color: #F2F6FF;
-    border-left: 3px solid #0875FF;
-}
-
-/* Sidebar Interactive Nav Buttons */
-[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+/* Sidebar Specific Navigation Buttons */
+[class*="st-key-sidebar_nav_"] button {
     text-align: left !important;
     justify-content: flex-start !important;
-    font-size: 0.8rem !important;
+    font-size: 0.825rem !important;
     font-weight: 600 !important;
-    padding: 0.45rem 0.65rem !important;
-    border-radius: 7px !important;
-    margin-bottom: 0.2rem !important;
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 8px !important;
+    margin-bottom: 0.25rem !important;
     display: flex !important;
     align-items: center !important;
+    width: 100% !important;
 }
 
-[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="primary"] {
+[class*="st-key-sidebar_nav_"] button[kind="primary"] {
     background: #102746 !important;
     color: #F2F6FF !important;
     border: 1px solid #0875FF !important;
     border-left: 4px solid #0875FF !important;
-    box-shadow: 0 2px 8px rgba(8, 117, 255, 0.25) !important;
+    box-shadow: 0 2px 10px rgba(8, 117, 255, 0.3) !important;
 }
 
-[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="secondary"] {
+[class*="st-key-sidebar_nav_"] button[kind="secondary"] {
     background: transparent !important;
     color: #9EB5D8 !important;
-    border: 1px solid rgba(29, 61, 103, 0.3) !important;
+    border: 1px solid rgba(29, 61, 103, 0.4) !important;
 }
 
-[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="secondary"]:hover {
+[class*="st-key-sidebar_nav_"] button[kind="secondary"]:hover {
     background: #0E2342 !important;
     color: #F2F6FF !important;
+    border-color: #1D3D67 !important;
+}
+
+/* Sidebar Non-Navigation Action Buttons (Demo, Samples, Reset) */
+[data-testid="stSidebar"] div[data-testid="stButton"]:not([class*="st-key-sidebar_nav_"]) > button {
+    text-align: center !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    padding: 0.45rem 0.75rem !important;
+    background: #0E2342 !important;
     border: 1px solid #1D3D67 !important;
+    color: #9EB5D8 !important;
+    width: 100% !important;
+}
+
+[data-testid="stSidebar"] div[data-testid="stButton"]:not([class*="st-key-sidebar_nav_"]) > button:hover {
+    background: #15325C !important;
+    border-color: #0875FF !important;
+    color: #F2F6FF !important;
 }
 
 /* Status Banner */
@@ -537,6 +556,51 @@ section[data-testid="stSidebar"] > div {
 .stAlert {
     padding: 0.55rem 0.85rem !important;
     border-radius: 8px !important;
+}
+
+/* ---------------- Responsive Layout Media Queries ---------------- */
+@media (max-width: 900px) {
+    .overview-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .platform-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+    .header-status-group {
+        flex-wrap: wrap !important;
+        width: 100% !important;
+    }
+    .intro-panel {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+    .workflow-stepper {
+        width: 100% !important;
+        flex-wrap: wrap !important;
+    }
+    .overview-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .overview-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .main .block-container,
+    [data-testid="stMainBlockContainer"] {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    .brand-title {
+        font-size: 1.05rem !important;
+    }
 }
 </style>
 """

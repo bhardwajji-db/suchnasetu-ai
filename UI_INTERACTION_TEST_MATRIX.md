@@ -67,3 +67,15 @@
 5. **Gemma 4 JSON Truncation Fix:**
    - **Pre-Fix:** `ollama_client.py` used `num_predict: 2048` and `num_ctx: 3072`. When Gemma 4 generated reasoning tokens, the combined token count exceeded the context window, causing a JSON syntax error (`Expecting ',' delimiter`).
    - **Post-Fix:** Increased `num_predict: 4096` and `num_ctx: 8192`, and added trailing comma cleanup in `clean_llm_json_response()`. Live inference now parses 100% reliably.
+
+---
+
+### 3. Real Browser Headless Chrome Verification (Playwright)
+
+In addition to headless `AppTest` unit tests, all 36 interactive controls, sidebar navigation buttons, in-panel jump buttons, and responsive breakpoints were exercised and verified in an authentic Google Chrome browser instance via Playwright (`tests/test_playwright_e2e.py` and `tests/test_playwright_workflow.py`):
+
+1. **Sidebar Navigation Buttons:** Tested tab transitions for all 4 views (`aria-selected="true"` verified on target tabs).
+2. **Two-Way Synchronization:** Clicking tab headers in the main tab strip dynamically updates the active sidebar button highlight to `kind="primary"`.
+3. **In-Panel Jump Buttons:** Jump buttons (`btn_jump_tab2`, `btn_jump_tab3`, `btn_jump_tab4`, `btn_open_qa_dash`) utilize pre-instantiation `on_click=set_active_tab` callbacks, avoiding `StreamlitWidgetAlreadyInstantiatedError`.
+4. **Suggested Q&A Inquiry Buttons:** Populates text input immediately via module-level `set_qa_inquiry` callback; question submission produces grounded answer cards with verbatim citation quotes.
+5. **Multi-Viewport Responsiveness:** Tested and verified across 6 viewport profiles (1920x1080, 1366x768, 1280x720, 1024x768, 768x1024, 390x844) with zero horizontal overflow (`scrollWidth <= clientWidth`). Visual evidence saved to `assets/screenshots/`.

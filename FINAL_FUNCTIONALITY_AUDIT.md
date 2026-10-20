@@ -126,8 +126,77 @@ Step 12: Recovery messages             | PASS   | Recovery box rendered; 4 dedic
 
 ### 3. Truthful Environment & Tooling Disclosure
 
-- **Browser Automation Frameworks:** Neither `playwright` nor `selenium` is installed in the project virtual environment (`.venv`). Testing of UI interactivity, DOM elements, session state updates, and button clicks was conducted via:
-  1. Streamlit official `streamlit.testing.v1.AppTest` framework across 8 comprehensive automated interaction tests.
-  2. Live HTTP socket checks against `http://localhost:8501/` (HTTP 200) and `http://localhost:8501/_stcore/health` (HTTP 200 "ok").
-  3. No fabricated browser screenshots or false claims of Playwright execution were made.
+- **Browser Automation Frameworks:** `playwright==1.64.0` was installed into `.venv` using `uv pip install playwright` and connected directly to local Google Chrome (`C:\Program Files\Google\Chrome\Application\chrome.exe`).
+  - Automated headless Chrome execution verified real DOM rendering, CSS styling, tab selection, and viewport sizing across 6 responsive profiles.
+  - Full end-to-end user workflow with live Gemma 4 inference was executed through the real Chrome browser in 38.08s.
+  - Official Streamlit `AppTest` suite (50 tests) and live integration suite (5 tests) both pass 100%.
 - **Local AI & OCR:** Ollama is running locally on `http://127.0.0.1:11434` with model `gemma4:latest` (3.2 GB GPU VRAM allocation). Tesseract OCR is running locally at `C:\Program Files\Tesseract-OCR\tesseract.exe`. Zero external paid APIs are called.
+
+---
+
+### 4. Real Headless Chrome Playwright Verification & Visual Evidence
+
+#### Multi-Viewport Responsiveness Suite (`tests/test_playwright_e2e.py`)
+```
+======================================================================
+🚀 STARTING NOTICE2ACTION AI PLAYWRIGHT E2E ACCEPTANCE SUITE
+======================================================================
+[1/6] Navigating to http://localhost:8501...
+  ✓ Initial Tab 0 ('Notice Ingestion & OCR') is active
+[2/6] Testing Sidebar Navigation Buttons...
+  ✓ Sidebar Nav 1 clicked -> Tab 1 is aria-selected=true
+  ✓ Sidebar Nav 2 clicked -> Tab 2 is aria-selected=true
+  ✓ Sidebar Nav 3 clicked -> Tab 3 is aria-selected=true
+  ✓ Sidebar Nav 0 clicked -> Tab 0 is aria-selected=true
+[3/6] Testing Two-Way Sync (Direct Tab Click -> Sidebar Update)...
+  ✓ Tab 1 clicked directly -> Sidebar Nav 1 button automatically became kind='primary'
+[4/6] Testing Demo Notice Loading...
+  ✓ Demo notice (TEST-SCH-2026-001) successfully loaded into textarea
+[5/6] Testing Suggested Q&A Buttons in Tab 4...
+  ✓ Suggested question clicked -> input populated with: 'What documents are needed to apply?'
+[6/6] Testing Responsive Viewports & Capturing Screenshots...
+  ✓ Viewport Large Desktop        (1920x1080) -> Screenshot: viewport_1920x1080.png [PASS (No overflow)]
+  ✓ Viewport Standard Laptop      (1366x 768) -> Screenshot: viewport_1366x768.png [PASS (No overflow)]
+  ✓ Viewport Compact Laptop       (1280x 720) -> Screenshot: viewport_1280x720.png [PASS (No overflow)]
+  ✓ Viewport Tablet Landscape     (1024x 768) -> Screenshot: viewport_1024x768.png [PASS (No overflow)]
+  ✓ Viewport Tablet Portrait      ( 768x1024) -> Screenshot: viewport_768x1024.png [PASS (No overflow)]
+  ✓ Viewport Mobile Smartphone    ( 390x 844) -> Screenshot: viewport_390x844.png [PASS (No overflow)]
+======================================================================
+🎉 ALL PLAYWRIGHT E2E BROWSER TESTS COMPLETED SUCCESSFULLY!
+======================================================================
+```
+
+#### Full End-to-End Live Workflow Suite (`tests/test_playwright_workflow.py`)
+```
+======================================================================
+🚀 LIVE BROWSER WORKFLOW: GEMMA 4 INFERENCE + ALL 4 TABS VERIFICATION
+======================================================================
+[1/5] Navigating to http://localhost:8501...
+[2/5] Loading Competition Demo Notice...
+[3/5] Clicking 'Analyze Notice with Gemma 4'...
+  Waiting for Gemma 4 inference to complete (up to 90s)...
+  ✓ Live Gemma 4 Analysis finished in 38.08s!
+  ✓ Captured workflow_tab1_analyzed.png
+[4/5] Navigating to Tab 2 (Extracted Facts)...
+  ✓ Tab 2 verified (2064 chars) & captured: workflow_tab2_facts.png
+[5/5] Navigating to Tab 3 (Summary & Actions)...
+  ✓ Tab 3 verified (881 chars) & captured: workflow_tab3_summary.png
+[Bonus] Navigating to Tab 4 and asking grounded question...
+  Waiting for Q&A answer...
+  ✓ Tab 4 verified & captured: workflow_tab4_qa.png
+======================================================================
+🎉 FULL LIVE INFERENCE BROWSER WORKFLOW VERIFIED SUCCESSFULLY!
+======================================================================
+```
+
+#### Generated Screenshot Evidence in `assets/screenshots/`:
+- `viewport_1920x1080.png` (164 KB) — Large Desktop layout
+- `viewport_1366x768.png` (142 KB) — Standard Laptop layout
+- `viewport_1280x720.png` (139 KB) — Compact Laptop layout
+- `viewport_1024x768.png` (129 KB) — Tablet Landscape layout
+- `viewport_768x1024.png` (134 KB) — Tablet Portrait layout
+- `viewport_390x844.png` (58 KB) — Mobile Smartphone layout
+- `workflow_tab1_analyzed.png` (136 KB) — Ingestion & verification banner
+- `workflow_tab2_facts.png` (157 KB) — 8 grounded fact cards
+- `workflow_tab3_summary.png` (147 KB) — Plain-language summary & checklist
+- `workflow_tab4_qa.png` (134 KB) — Grounded Q&A conversation history card

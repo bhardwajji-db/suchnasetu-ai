@@ -63,6 +63,24 @@ st.set_page_config(
 st.markdown(THEME_CSS, unsafe_allow_html=True)
 
 
+TAB_NAMES = [
+    "📥 Notice Ingestion & OCR",
+    "🔍 Grounded Fact Breakdown",
+    "📋 Summary & Action Checklist",
+    "💬 Follow-Up Q&A",
+]
+
+
+def set_active_tab(target_idx: int):
+    """Sets the active dashboard tab index."""
+    st.session_state.active_tab_index = target_idx
+
+
+def set_qa_inquiry(question_text: str):
+    """Sets the active Q&A input question buffer."""
+    st.session_state.qa_input_text_box = question_text
+
+
 def init_session_state():
     """Initializes session state to ensure clean data isolation."""
     if "raw_notice_text" not in st.session_state:
@@ -129,9 +147,14 @@ with st.sidebar:
     cur_idx = st.session_state.get("active_tab_index", 0)
     for idx, label in nav_tabs:
         btn_type = "primary" if cur_idx == idx else "secondary"
-        if st.button(label, key=f"sidebar_nav_{idx}", type=btn_type, use_container_width=True):
-            st.session_state.active_tab_index = idx
-            st.rerun()
+        st.button(
+            label,
+            key=f"sidebar_nav_{idx}",
+            type=btn_type,
+            use_container_width=True,
+            on_click=set_active_tab,
+            args=(idx,),
+        )
 
     st.markdown("<div style='margin-bottom: 0.65rem;'></div>", unsafe_allow_html=True)
 
@@ -243,36 +266,24 @@ step_val = 3 if st.session_state.structured_notice else (2 if st.session_state.r
 render_intro_workflow_panel(current_step=step_val)
 
 
-def switch_active_tab_client_side(target_index: int):
-    """Client-side JavaScript to click and activate the corresponding Streamlit tab."""
-    js = f"""
-    <script>
-    (function() {{
-        function doSelect() {{
-            try {{
-                const doc = window.parent.document;
-                const tabs = doc.querySelectorAll('button[data-baseweb="tab"]');
-                if (tabs && tabs.length > {target_index}) {{
-                    tabs[{target_index}].click();
-                }}
-            }} catch(e) {{}}
-        }}
-        setTimeout(doSelect, 40);
-        setTimeout(doSelect, 220);
-    }})();
-    </script>
-    """
-    components.html(js, height=0, width=0)
+cur_tab_idx = st.session_state.get("active_tab_index", 0)
+if cur_tab_idx < 0 or cur_tab_idx >= len(TAB_NAMES):
+    cur_tab_idx = 0
 
 
-switch_active_tab_client_side(st.session_state.active_tab_index)
+def on_main_tabs_change():
+    """Callback when a tab is directly clicked in the main dashboard tab strip."""
+    sel = st.session_state.get(f"main_dashboard_tabs_{cur_tab_idx}")
+    if sel in TAB_NAMES:
+        st.session_state.active_tab_index = TAB_NAMES.index(sel)
 
-tab_input, tab_structured, tab_summary, tab_followup = st.tabs([
-    "📥 Notice Ingestion & OCR",
-    "🔍 Grounded Fact Breakdown",
-    "📋 Summary & Action Checklist",
-    "💬 Follow-Up Q&A",
-])
+
+tab_input, tab_structured, tab_summary, tab_followup = st.tabs(
+    TAB_NAMES,
+    key=f"main_dashboard_tabs_{cur_tab_idx}",
+    default=TAB_NAMES[cur_tab_idx],
+    on_change=on_main_tabs_change,
+)
 
 # ----------------- TAB 1: INGESTION & OCR -----------------
 with tab_input:
@@ -434,17 +445,32 @@ with tab_input:
         )
         col_jump1, col_jump2, col_jump3 = st.columns(3)
         with col_jump1:
-            if st.button("🔍 View Grounded Facts (Tab 2)", type="secondary", use_container_width=True, key="btn_jump_tab2"):
-                st.session_state.active_tab_index = 1
-                st.rerun()
+            st.button(
+                "🔍 View Grounded Facts (Tab 2)",
+                type="secondary",
+                use_container_width=True,
+                key="btn_jump_tab2",
+                on_click=set_active_tab,
+                args=(1,),
+            )
         with col_jump2:
-            if st.button("📋 View Summary & Checklist (Tab 3)", type="secondary", use_container_width=True, key="btn_jump_tab3"):
-                st.session_state.active_tab_index = 2
-                st.rerun()
+            st.button(
+                "📋 View Summary & Checklist (Tab 3)",
+                type="secondary",
+                use_container_width=True,
+                key="btn_jump_tab3",
+                on_click=set_active_tab,
+                args=(2,),
+            )
         with col_jump3:
-            if st.button("💬 Ask Follow-Up Q&A (Tab 4)", type="secondary", use_container_width=True, key="btn_jump_tab4"):
-                st.session_state.active_tab_index = 3
-                st.rerun()
+            st.button(
+                "💬 Ask Follow-Up Q&A (Tab 4)",
+                type="secondary",
+                use_container_width=True,
+                key="btn_jump_tab4",
+                on_click=set_active_tab,
+                args=(3,),
+            )
 
     # Recovery box if previous analysis failed
     if st.session_state.analysis_error:
@@ -521,9 +547,13 @@ with tab_input:
             if st.session_state.checklist_en:
                 render_checklist_widget(st.session_state.checklist_en, key_prefix="dash_widget")
             render_qa_shortcut()
-            if st.button("💬 Open Follow-Up Q&A Assistant", use_container_width=True, key="btn_open_qa_dash"):
-                st.session_state.active_tab_index = 3
-                st.rerun()
+            st.button(
+                "💬 Open Follow-Up Q&A Assistant",
+                use_container_width=True,
+                key="btn_open_qa_dash",
+                on_click=set_active_tab,
+                args=(3,),
+            )
 
             # Export structured data options
             st.download_button(
@@ -709,18 +739,34 @@ with tab_followup:
         # Pre-set quick questions
         st.markdown("<span class='card-label'>💡 Suggested Inquiries</span>", unsafe_allow_html=True)
         c1, c2, c3, c4 = st.columns(4)
-        if c1.button("📋 Required Documents?", use_container_width=True, key="qa_sug_docs"):
-            st.session_state.qa_input_text_box = "What documents are needed to apply?"
-            st.rerun()
-        if c2.button("👥 Eligibility Criteria?", use_container_width=True, key="qa_sug_elig"):
-            st.session_state.qa_input_text_box = "Who is eligible for this opportunity?"
-            st.rerun()
-        if c3.button("⏳ Late Submissions?", use_container_width=True, key="qa_sug_late"):
-            st.session_state.qa_input_text_box = "Can I submit the application late?"
-            st.rerun()
-        if c4.button("📅 Exact Deadline?", use_container_width=True, key="qa_sug_dl"):
-            st.session_state.qa_input_text_box = "What is the final deadline to submit?"
-            st.rerun()
+        c1.button(
+            "📋 Required Documents?",
+            use_container_width=True,
+            key="qa_sug_docs",
+            on_click=set_qa_inquiry,
+            args=("What documents are needed to apply?",),
+        )
+        c2.button(
+            "👥 Eligibility Criteria?",
+            use_container_width=True,
+            key="qa_sug_elig",
+            on_click=set_qa_inquiry,
+            args=("Who is eligible for this opportunity?",),
+        )
+        c3.button(
+            "⏳ Late Submissions?",
+            use_container_width=True,
+            key="qa_sug_late",
+            on_click=set_qa_inquiry,
+            args=("Can I submit the application late?",),
+        )
+        c4.button(
+            "📅 Exact Deadline?",
+            use_container_width=True,
+            key="qa_sug_dl",
+            on_click=set_qa_inquiry,
+            args=("What is the final deadline to submit?",),
+        )
 
         user_q = st.text_input(
             "Enter your question:",
@@ -740,7 +786,7 @@ with tab_followup:
                     st.rerun()
 
         if ask_btn:
-            target_question = st.session_state.get("qa_input_text_box", "").strip()
+            target_question = (user_q or st.session_state.get("qa_input_text_box", "")).strip()
             if target_question:
                 with st.spinner("Finding grounded answer in notice text..."):
                     assistant = FollowUpAssistant()

@@ -64,3 +64,24 @@
 - **Files Changed:** `app.py`.
 - **Fix Implemented:** Added "📅 Add Deadline to Calendar (.ics)" download button in Tab 3 directly alongside Markdown.
 - **Verification:** `tests/test_ui_controls_comprehensive.py::test_ui_control_04_ics_and_markdown_exports` passed.
+
+### BUG-010: Sidebar Tab Switching Failing in Real Headless Chrome
+- **Reproduction:** While Python AppTest passed, clicking sidebar navigation buttons in a real browser did not switch tabs. Modern Streamlit 1.66 renders tabs using React Aria (`<div data-testid="stTab" role="tab">`), not BaseWeb `<button>`. Sandboxed iframes block `window.parent.document` access under browser same-origin policies.
+- **Root Cause:** Relying on DOM querySelector scripts across iframe boundaries in modern Streamlit.
+- **Files Changed:** `app.py`, `src/notice2action/ui/styles.py`.
+- **Fix Implemented:** Utilized native Streamlit 1.66 dynamic tab container keys: `st.tabs(TAB_NAMES, key=f"main_dashboard_tabs_{cur_tab_idx}", default=TAB_NAMES[cur_tab_idx], on_change=on_main_tabs_change)`. Paired with safe pre-instantiation `on_click=set_active_tab, args=(idx,)` callbacks.
+- **Verification:** Automated Playwright headless Chrome suite (`tests/test_playwright_e2e.py`) verified real tab switching and bidirectional active state synchronization across all 4 views.
+
+### BUG-011: `StreamlitWidgetAlreadyInstantiatedError` on In-Panel Tab Jump Buttons
+- **Reproduction:** Clicking "🔍 View Grounded Facts (Tab 2)" or "📋 View Summary & Checklist (Tab 3)" inside Tab 1 threw `StreamlitWidgetAlreadyInstantiatedError` because the button code tried to mutate `st.session_state.active_tab_name` after the tab widget had already rendered.
+- **Root Cause:** Attempting to modify session state keys of already-instantiated widgets in the middle of script execution.
+- **Files Changed:** `app.py`.
+- **Fix Implemented:** Replaced inline body assignment with `on_click=set_active_tab, args=(target_idx,)` callbacks, which run cleanly before any widget is created during the rerun.
+- **Verification:** Verified in real Chrome via `tests/test_playwright_workflow.py`; jump buttons switch tabs instantaneously with zero errors.
+
+### BUG-012: Pre-Set Suggested Q&A Buttons State Overwrite
+- **Reproduction:** Clicking "📋 Required Documents?" or other inquiry presets in Tab 4 did not persist question text into the input field for submission.
+- **Root Cause:** Streamlit widget lifecycle priority overrode session state when modified inside a block without a registered callback.
+- **Files Changed:** `app.py`.
+- **Fix Implemented:** Defined module-level `set_qa_inquiry(question_text)` callback passed to `on_click` on each suggested button. Updated submission logic to evaluate `(user_q or st.session_state.get('qa_input_text_box', '')).strip()`.
+- **Verification:** Verified in real Chrome via Playwright; question populates and submits immediately, producing grounded conversation answer cards with verbatim citations.

@@ -40,6 +40,7 @@ $ItemsToCopy = @(
     "pyproject.toml",
     "requirements.txt",
     "README.md",
+    "UI_LAYOUT_AUDIT.md",
     "UI_INTERACTION_TEST_MATRIX.md",
     "FINAL_FUNCTIONALITY_AUDIT.md",
     "FINAL_TEST_RESULTS.md",
