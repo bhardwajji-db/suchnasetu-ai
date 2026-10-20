@@ -41,14 +41,15 @@ This acceptance audit independently verified that:
 ========================================================================================
 Layer / Suite                          Tests Run    Passed    Failed    Pass Rate    Time
 ----------------------------------------------------------------------------------------
-Backend Pytest Suite                          74        74         0       100.0%    115s
-Frontend Vitest Suite                         14        14         0       100.0%    5.59s
-Playwright Real Chrome Viewports (6)           6         6         0       100.0%    18.2s
-Playwright E2E User Journey (Gemma 4)          1         1         0       100.0%    63.5s
+Backend Unit & Pipeline (Pytest)              67        67         0       100.0%    27.45s
+Backend Live Gemma 4 & OCR Integration         5         5         0       100.0%   178.25s
+Frontend Vitest Suites (10 files)             16        16         0       100.0%     5.23s
+Playwright Real Chrome Viewports (6)           6         6         0       100.0%    16.5s
+Playwright E2E User Journey (Gemma 4)          1         1         0       100.0%    62.6s
 AI Ground-Truth Evaluation (8 Dimensions)      8         8         0       100.0%    62.4s
-Production Build (tsc -b && vite build)        1         1         0       100.0%    1.16s
+Production Build (tsc -b && vite build)        1         1         0       100.0%     1.21s
 ----------------------------------------------------------------------------------------
-TOTAL CUMULATIVE CHECKS                      104       104         0       100.0%    ~4.4m
+TOTAL CUMULATIVE CHECKS                      104       104         0       100.0%    ~5.8m
 ========================================================================================
 ```
 

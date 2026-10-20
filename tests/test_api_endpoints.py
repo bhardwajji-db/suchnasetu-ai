@@ -257,3 +257,35 @@ def test_api_export_ics(client):
     assert "text/calendar" in response.headers["content-type"]
     assert "BEGIN:VCALENDAR" in response.text
     assert "Submit Scholarship Form" in response.text
+
+
+def test_api_confirm_endpoint(client):
+    mock_notice = _mock_structured_notice()
+    payload = {
+        "field_name": "deadline",
+        "confirmed_value": "15 November 2026",
+        "structured_notice": mock_notice.model_dump(),
+        "reading_level": "standard",
+    }
+    response = client.post("/api/confirm", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    sn = data["structured_notice"]
+    assert sn["deadline"]["user_confirmed"] is True
+    assert sn["deadline"]["confirmed_value"] == "15 November 2026"
+    assert sn["deadline"]["requires_confirmation"] is False
+    assert "15 November 2026" in data["summary_en"]["deadline"]
+
+
+def test_api_reading_level_endpoint(client):
+    mock_notice = _mock_structured_notice()
+    payload = {
+        "structured_notice": mock_notice.model_dump(),
+        "reading_level": "simple",
+    }
+    response = client.post("/api/summary/reading-level", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["reading_level"] == "simple"
+    assert "Due date:" in data["summary_en"]["deadline"]
+

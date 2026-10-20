@@ -18,6 +18,7 @@ export interface ExtractedFact {
   source_location?: string | null;
   requires_confirmation: boolean;
   user_confirmed: boolean;
+  confirmed_value?: string | null;
   explanation?: string | null;
 }
 
@@ -117,4 +118,18 @@ export interface AnalyzeResponse {
   checklist_hi: ActionChecklist;
   fingerprint: string;
   duration_seconds: number;
+}
+
+export interface ConfirmFactResponse {
+  structured_notice: StructuredNotice;
+  summary_en: PlainLanguageSummary;
+  summary_hi: PlainLanguageSummary;
+  checklist_en: ActionChecklist;
+  checklist_hi: ActionChecklist;
+}
+
+export interface ReadingLevelResponse {
+  summary_en: PlainLanguageSummary;
+  summary_hi: PlainLanguageSummary;
+  reading_level: string;
 }

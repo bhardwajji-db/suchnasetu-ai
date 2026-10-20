@@ -94,6 +94,7 @@ class OCRResponse(BaseModel):
 class AnalyzeRequest(BaseModel):
     notice_text: str = Field(..., description="Notice text to analyze")
     target_language: str = Field(default="en", description="'en' or 'hi'")
+    reading_level: str = Field(default="standard", description="'simple', 'standard', 'detailed'")
 
 
 class AnalyzeResponse(BaseModel):
@@ -104,6 +105,32 @@ class AnalyzeResponse(BaseModel):
     checklist_hi: ActionChecklist
     fingerprint: str
     duration_seconds: float
+
+
+class ConfirmFactRequest(BaseModel):
+    field_name: str = Field(..., description="Fact attribute being confirmed (e.g. 'deadline')")
+    confirmed_value: str = Field(..., description="User confirmed or corrected value")
+    structured_notice: StructuredNotice = Field(..., description="Active structured notice")
+    reading_level: str = Field(default="standard", description="'simple', 'standard', 'detailed'")
+
+
+class ConfirmFactResponse(BaseModel):
+    structured_notice: StructuredNotice
+    summary_en: PlainLanguageSummary
+    summary_hi: PlainLanguageSummary
+    checklist_en: ActionChecklist
+    checklist_hi: ActionChecklist
+
+
+class ReadingLevelRequest(BaseModel):
+    structured_notice: StructuredNotice
+    reading_level: str = Field(default="standard", description="'simple', 'standard', 'detailed'")
+
+
+class ReadingLevelResponse(BaseModel):
+    summary_en: PlainLanguageSummary
+    summary_hi: PlainLanguageSummary
+    reading_level: str
 
 
 class FollowUpRequest(BaseModel):
@@ -155,6 +182,24 @@ def get_health() -> Dict[str, Any]:
 def list_samples() -> List[Dict[str, str]]:
     """Lists available synthetic demo fixtures and sample notices."""
     return [
+        {
+            "id": "demo_scholarship_ambiguous.txt",
+            "title": "🎓 Demo A: Scholarship (Ambiguous Deadline)",
+            "type": "text",
+            "language": "en",
+        },
+        {
+            "id": "demo_campus_placement.txt",
+            "title": "💼 Demo B: Campus Placement (CGPA & NOC)",
+            "type": "text",
+            "language": "en",
+        },
+        {
+            "id": "demo_municipal_water_advisory.txt",
+            "title": "🚰 Demo C: Municipal Water Advisory (Zero-Hallucination)",
+            "type": "text",
+            "language": "en",
+        },
         {
             "id": "synthetic_scholarship_notice.txt",
             "title": "🎯 Competition Demo (TEST-SCH-2026-001)",
@@ -317,7 +362,7 @@ def analyze_endpoint(payload: AnalyzeRequest):
         structured = analyzer.analyze_notice(text)
 
         # Phase 5: Summaries & Checklists
-        summary_en = generate_deterministic_summary(structured)
+        summary_en = generate_deterministic_summary(structured, reading_level=payload.reading_level)
         checklist_en = generate_action_checklist(structured)
 
         # Bilingual translations
@@ -341,6 +386,56 @@ def analyze_endpoint(payload: AnalyzeRequest):
             status_code=500,
             detail=f"Analysis pipeline error: {e}. Please ensure Ollama is running with model '{config.ollama_model}'.",
         )
+
+
+@app.post("/api/confirm", response_model=ConfirmFactResponse)
+def confirm_fact_endpoint(payload: ConfirmFactRequest):
+    """Updates an uncertain fact with user confirmation/correction and refreshes dependent summaries and checklists."""
+    field_name = payload.field_name.strip()
+    valid_fields = [
+        "purpose", "eligibility", "deadline", "fee_or_cost",
+        "required_documents", "contact_details", "required_actions", "important_conditions"
+    ]
+    if field_name not in valid_fields:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid field_name '{field_name}'. Allowed: {', '.join(valid_fields)}"
+        )
+
+    sn = payload.structured_notice
+    fact = getattr(sn, field_name)
+    fact.user_confirmed = True
+    fact.confirmed_value = payload.confirmed_value.strip()
+    fact.requires_confirmation = False
+
+    # Refresh dependent summary & checklist
+    summary_en = generate_deterministic_summary(sn, reading_level=payload.reading_level)
+    checklist_en = generate_action_checklist(sn)
+    summary_hi = translate_summary_to_hindi(summary_en, client=None)
+    checklist_hi = translate_checklist_to_hindi(checklist_en, client=None)
+
+    return ConfirmFactResponse(
+        structured_notice=sn,
+        summary_en=summary_en,
+        summary_hi=summary_hi,
+        checklist_en=checklist_en,
+        checklist_hi=checklist_hi,
+    )
+
+
+@app.post("/api/summary/reading-level", response_model=ReadingLevelResponse)
+def reading_level_endpoint(payload: ReadingLevelRequest):
+    """Generates plain language summary tailored to the requested reading level."""
+    lvl = payload.reading_level.lower().strip()
+    if lvl not in ["simple", "standard", "detailed"]:
+        lvl = "standard"
+    summary_en = generate_deterministic_summary(payload.structured_notice, reading_level=lvl)
+    summary_hi = translate_summary_to_hindi(summary_en, client=None)
+    return ReadingLevelResponse(
+        summary_en=summary_en,
+        summary_hi=summary_hi,
+        reading_level=lvl,
+    )
 
 
 @app.post("/api/followup", response_model=FollowUpAnswer)

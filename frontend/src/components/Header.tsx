@@ -1,9 +1,9 @@
 import React from 'react';
 import { useNotice } from '../context/NoticeContext';
-import { Cpu, Globe, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { Cpu, Globe, CheckCircle2, AlertTriangle, XCircle, Eye } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { systemHealth, selectedLang, setSelectedLang } = useNotice();
+  const { systemHealth, selectedLang, setSelectedLang, openOriginalNoticeModal, rawNoticeText } = useNotice();
 
   const getStatusBadge = () => {
     if (!systemHealth) {
@@ -58,6 +58,18 @@ export const Header: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Original Notice Document Viewer Button */}
+        <button
+          type="button"
+          onClick={openOriginalNoticeModal}
+          disabled={!rawNoticeText}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-slate-300 hover:text-white bg-[#111A33] border border-[#1D2D4E] hover:border-slate-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          title="View Original Ground-Truth Notice Document"
+        >
+          <Eye className="w-3.5 h-3.5 text-blue-400" />
+          <span className="hidden sm:inline">Original Notice</span>
+        </button>
+
         {/* On-device badge */}
         <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-300 bg-[#111A33] border border-[#1D2D4E]">
           <Cpu className="w-3.5 h-3.5 text-blue-400" />

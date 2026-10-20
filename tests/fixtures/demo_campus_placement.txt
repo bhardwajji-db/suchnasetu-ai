@@ -1,0 +1,36 @@
+================================================================================
+SYNTHETIC DEMO NOTICE B — CAMPUS RECRUITMENT DRIVE 2026
+================================================================================
+DEPARTMENT OF TRAINING AND PLACEMENT
+NATIONAL INSTITUTE OF TECHNOLOGY (SYNTHETIC CAMPUS)
+P.O. Engineering College, Tech Park Road, PIN-560001
+
+Reference: TPO/RECRUITMENT/2026/APEX-042
+Date: 18 October 2026
+
+CIRCULAR: ON-CAMPUS RECRUITMENT DRIVE — APEX CLOUD NETWORKS LTD.
+
+All eligible final-year B.Tech students are hereby informed that Apex Cloud Networks Ltd. will be conducting an on-campus placement drive for the position of Associate Software Development Engineer (Annual CTC: 14.5 LPA).
+
+1. ELIGIBILITY CRITERIA:
+- Eligible Branches: B.Tech in Computer Science & Engineering (CSE), Information Technology (IT), and Electronics & Communication (ECE).
+- Minimum Cumulative Grade Point Average (CGPA): 7.50 and above throughout.
+- Active Backlogs: No active backlogs or standing arrears permitted at the time of drive.
+- Minimum 70% marks in Class 10 and Class 12 board examinations.
+
+2. MANDATORY DOCUMENTS REQUIRED FOR THE DRIVE:
+i. Two printed hard copies of updated two-page Professional Resume.
+ii. Signed No Objection Certificate (NOC) and Attendance Clearance from the respective Department Head (HOD).
+iii. Institute Identity Card and Government-issued Photo ID (Aadhaar or Voter ID).
+iv. Transcripts and Grade Cards from Semester 1 to Semester 6.
+
+3. RECRUITMENT SCHEDULE & INTERVIEW VENUE:
+- Online Registration Cutoff: 1 November 2026 by 5:00 PM on Institute TPO Portal (tpo.synthetic-nit.example.edu).
+- Round 1 (Online Coding Assessment): 5 November 2026, 09:30 AM to 11:30 AM at Central Computing Center (Labs 1 to 4).
+- Round 2 (Technical Interviews) & Round 3 (HR & Leadership): 6 November 2026 from 09:00 AM onwards at Main Auditorium Seminar Hall 2.
+
+4. OFFICIAL TPO CONTACT:
+Prof. R. K. Sharma, Head — Training & Placement
+Office: Administrative Block, Ground Floor, Room T-102
+Email: placements@synthetic-nit.example.edu | Phone: +91-98765-43210
+================================================================================

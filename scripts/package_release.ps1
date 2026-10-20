@@ -57,6 +57,11 @@ $ItemsToCopy = @(
     "FINAL_UI_VERIFICATION.md",
     "FINAL_SECURITY_PRIVACY_AUDIT.md",
     "FINAL_COMPLETION_REPORT.md",
+    "ARCHITECTURE.md",
+    "API.md",
+    "REQUIREMENTS_CHECKLIST.md",
+    "IMPLEMENTATION_TRACKER.md",
+    "IMPLEMENTATION_CHANGELOG.md",
     "frontend",
     ".env.example",
     ".gitignore"

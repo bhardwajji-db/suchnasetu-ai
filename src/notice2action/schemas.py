@@ -46,6 +46,10 @@ class ExtractedFact(BaseModel):
         default=False,
         description="True once the user explicitly verifies this detail"
     )
+    confirmed_value: Optional[str] = Field(
+        default=None,
+        description="User-confirmed or corrected value, preserving original extracted value"
+    )
     explanation: Optional[str] = Field(
         default=None,
         description="Explanation of why this detail is uncertain, conflicting, or missing"

@@ -25,6 +25,16 @@ interface NoticeContextType {
   checklistHi: ActionChecklist | null;
   selectedLang: 'en' | 'hi';
   setSelectedLang: (lang: 'en' | 'hi') => void;
+  readingLevel: 'simple' | 'standard' | 'detailed';
+  setReadingLevel: (level: 'simple' | 'standard' | 'detailed') => void;
+  changeReadingLevel: (level: 'simple' | 'standard' | 'detailed') => Promise<void>;
+  isOriginalNoticeOpen: boolean;
+  openOriginalNoticeModal: () => void;
+  closeOriginalNoticeModal: () => void;
+  confirmingFact: { fieldName: string; displayName: string; fact: any } | null;
+  openConfirmationModal: (fieldName: string, displayName: string, fact: any) => void;
+  closeConfirmationModal: () => void;
+  saveConfirmation: (fieldName: string, confirmedValue: string) => Promise<void>;
   analyzedFingerprint: string | null;
   isNoticeStale: boolean;
   isAnalyzing: boolean;
@@ -63,6 +73,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [checklistHi, setChecklistHi] = useState<ActionChecklist | null>(null);
 
   const [selectedLang, setSelectedLang] = useState<'en' | 'hi'>('en');
+  const [readingLevel, setReadingLevel] = useState<'simple' | 'standard' | 'detailed'>('standard');
+  const [isOriginalNoticeOpen, setIsOriginalNoticeOpen] = useState<boolean>(false);
+  const [confirmingFact, setConfirmingFact] = useState<{ fieldName: string; displayName: string; fact: any } | null>(null);
   const [analyzedFingerprint, setAnalyzedFingerprint] = useState<string | null>(null);
   const [currentFingerprint, setCurrentFingerprint] = useState<string>('');
 
@@ -140,6 +153,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setAnalysisDuration(null);
     setAnalysisError(null);
     setFollowUpHistory([]);
+    setIsOriginalNoticeOpen(false);
+    setConfirmingFact(null);
+    setReadingLevel('standard');
   };
 
   const resetSession = () => {
@@ -196,7 +212,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, 1200);
 
     try {
-      const res = await apiClient.analyzeNotice(rawNoticeText, selectedLang);
+      const res = await apiClient.analyzeNotice(rawNoticeText, selectedLang, readingLevel);
       setStructuredNotice(res.structured_notice);
       setSummaryEn(res.summary_en);
       setSummaryHi(res.summary_hi);
@@ -213,14 +229,54 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const openOriginalNoticeModal = useCallback(() => setIsOriginalNoticeOpen(true), []);
+  const closeOriginalNoticeModal = useCallback(() => setIsOriginalNoticeOpen(false), []);
+
+  const openConfirmationModal = useCallback((fieldName: string, displayName: string, fact: any) => {
+    setConfirmingFact({ fieldName, displayName, fact });
+  }, []);
+
+  const closeConfirmationModal = useCallback(() => setConfirmingFact(null), []);
+
+  const saveConfirmation = useCallback(async (fieldName: string, confirmedValue: string) => {
+    if (!structuredNotice) return;
+    try {
+      const res = await apiClient.confirmFact(fieldName, confirmedValue, structuredNotice, readingLevel);
+      setStructuredNotice(res.structured_notice);
+      setSummaryEn(res.summary_en);
+      setSummaryHi(res.summary_hi);
+      setChecklistEn(res.checklist_en);
+      setChecklistHi(res.checklist_hi);
+    } catch {
+      // Local fallback
+      const updated = { ...structuredNotice };
+      const fact = (updated as any)[fieldName];
+      if (fact) {
+        fact.user_confirmed = true;
+        fact.confirmed_value = confirmedValue;
+        fact.requires_confirmation = false;
+        setStructuredNotice(updated);
+      }
+    }
+  }, [structuredNotice, readingLevel]);
+
+  const changeReadingLevel = useCallback(async (level: 'simple' | 'standard' | 'detailed') => {
+    setReadingLevel(level);
+    if (!structuredNotice) return;
+    try {
+      const res = await apiClient.getReadingLevelSummary(structuredNotice, level);
+      setSummaryEn(res.summary_en);
+      setSummaryHi(res.summary_hi);
+    } catch (e) {
+      console.error('Failed to change reading level', e);
+    }
+  }, [structuredNotice]);
+
   const confirmUncertainFact = (fieldName: string) => {
     if (!structuredNotice) return;
-    const updated = { ...structuredNotice };
-    const fact = (updated as any)[fieldName];
+    const fact = (structuredNotice as any)[fieldName];
     if (fact) {
-      fact.user_confirmed = true;
-      fact.requires_confirmation = false;
-      setStructuredNotice(updated);
+      openConfirmationModal(fieldName, fieldName.replace('_', ' ').toUpperCase(), fact);
     }
   };
 
@@ -276,6 +332,16 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         checklistHi,
         selectedLang,
         setSelectedLang,
+        readingLevel,
+        setReadingLevel,
+        changeReadingLevel,
+        isOriginalNoticeOpen,
+        openOriginalNoticeModal,
+        closeOriginalNoticeModal,
+        confirmingFact,
+        openConfirmationModal,
+        closeConfirmationModal,
+        saveConfirmation,
         analyzedFingerprint,
         isNoticeStale,
         isAnalyzing,

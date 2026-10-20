@@ -18,19 +18,31 @@ def generate_action_checklist(notice: StructuredNotice) -> ActionChecklist:
     """
     Constructs an ordered action checklist from verified structured notice facts.
     Enforces that actions depending on uncertain details require confirmation first.
+    Respects user-confirmed values where provided.
     """
+    def get_effective_val(fact):
+        if getattr(fact, "user_confirmed", False) and getattr(fact, "confirmed_value", None):
+            return fact.confirmed_value
+        return fact.value
+
+    def is_still_unconfirmed(fact):
+        if getattr(fact, "user_confirmed", False):
+            return False
+        return fact.requires_confirmation
+
     items: List[ChecklistItem] = []
     step = 1
 
     # Step 1: Eligibility check
-    if notice.eligibility.status == CertaintyStatus.STATED:
+    elig_val = get_effective_val(notice.eligibility)
+    if notice.eligibility.status == CertaintyStatus.STATED or notice.eligibility.user_confirmed:
         items.append(
             ChecklistItem(
                 step_number=step,
-                action=f"Verify Eligibility: Confirm you meet the criteria ({notice.eligibility.value}).",
+                action=f"Verify Eligibility: Confirm you meet the criteria ({elig_val}).",
                 category="eligibility",
                 is_mandatory=True,
-                requires_confirmation=notice.eligibility.requires_confirmation,
+                requires_confirmation=is_still_unconfirmed(notice.eligibility),
                 grounded_quote=notice.eligibility.evidence_quote,
                 notes=notice.eligibility.explanation,
             )
@@ -40,7 +52,7 @@ def generate_action_checklist(notice: StructuredNotice) -> ActionChecklist:
         items.append(
             ChecklistItem(
                 step_number=step,
-                action=f"Confirm Eligibility Criteria: The criteria appear ambiguous or contradictory ({notice.eligibility.value}). Verify with the official contact before proceeding.",
+                action=f"Confirm Eligibility Criteria: The criteria appear ambiguous or contradictory ({elig_val}). Verify with the official contact before proceeding.",
                 category="eligibility",
                 is_mandatory=True,
                 requires_confirmation=True,
@@ -51,14 +63,15 @@ def generate_action_checklist(notice: StructuredNotice) -> ActionChecklist:
         step += 1
 
     # Step 2: Document preparation
-    if notice.required_documents.status == CertaintyStatus.STATED:
+    doc_val = get_effective_val(notice.required_documents)
+    if notice.required_documents.status == CertaintyStatus.STATED or notice.required_documents.user_confirmed:
         items.append(
             ChecklistItem(
                 step_number=step,
-                action=f"Gather Required Documents: Collect the required items ({notice.required_documents.value}).",
+                action=f"Gather Required Documents: Collect the required items ({doc_val}).",
                 category="documents",
                 is_mandatory=True,
-                requires_confirmation=notice.required_documents.requires_confirmation,
+                requires_confirmation=is_still_unconfirmed(notice.required_documents),
                 grounded_quote=notice.required_documents.evidence_quote,
                 notes=notice.required_documents.explanation,
             )
@@ -68,7 +81,7 @@ def generate_action_checklist(notice: StructuredNotice) -> ActionChecklist:
         items.append(
             ChecklistItem(
                 step_number=step,
-                action=f"Clarify Document List: The notice mentions tentative documents ({notice.required_documents.value}). Confirm exact format and list.",
+                action=f"Clarify Document List: The notice mentions tentative documents ({doc_val}). Confirm exact format and list.",
                 category="documents",
                 is_mandatory=True,
                 requires_confirmation=True,
@@ -79,28 +92,30 @@ def generate_action_checklist(notice: StructuredNotice) -> ActionChecklist:
         step += 1
 
     # Step 3: Application process / Actions
-    if notice.required_actions.status == CertaintyStatus.STATED:
+    act_val = get_effective_val(notice.required_actions)
+    if notice.required_actions.status == CertaintyStatus.STATED or notice.required_actions.user_confirmed:
         items.append(
             ChecklistItem(
                 step_number=step,
-                action=f"Complete Application: Follow the stated procedure ({notice.required_actions.value}).",
+                action=f"Complete Application: Follow the stated procedure ({act_val}).",
                 category="application",
                 is_mandatory=True,
-                requires_confirmation=notice.required_actions.requires_confirmation,
+                requires_confirmation=is_still_unconfirmed(notice.required_actions),
                 grounded_quote=notice.required_actions.evidence_quote,
             )
         )
         step += 1
 
     # Step 4: Submission & Deadline
-    if notice.deadline.status == CertaintyStatus.STATED:
+    dl_val = get_effective_val(notice.deadline)
+    if notice.deadline.status == CertaintyStatus.STATED or notice.deadline.user_confirmed:
         items.append(
             ChecklistItem(
                 step_number=step,
-                action=f"Submit Before Deadline: Complete submission by {notice.deadline.value}.",
+                action=f"Submit Before Deadline: Complete submission by {dl_val}.",
                 category="submission",
                 is_mandatory=True,
-                requires_confirmation=notice.deadline.requires_confirmation,
+                requires_confirmation=is_still_unconfirmed(notice.deadline),
                 grounded_quote=notice.deadline.evidence_quote,
             )
         )
@@ -109,7 +124,7 @@ def generate_action_checklist(notice: StructuredNotice) -> ActionChecklist:
         items.append(
             ChecklistItem(
                 step_number=step,
-                action=f"Verify Submission Deadline: The deadline date is tentative or conflicting ({notice.deadline.value}). Confirm the exact closing date immediately.",
+                action=f"Verify Submission Deadline: The deadline date is tentative or conflicting ({dl_val}). Confirm the exact closing date immediately.",
                 category="submission",
                 is_mandatory=True,
                 requires_confirmation=True,

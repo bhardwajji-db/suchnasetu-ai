@@ -7,6 +7,8 @@ import { GroundedFactsView } from '../views/GroundedFactsView';
 import { SummaryActionsView } from '../views/SummaryActionsView';
 import { FollowUpQAView } from '../views/FollowUpQAView';
 import { AnalysisProgressModal } from './AnalysisProgressModal';
+import { ConfirmationModal } from './ConfirmationModal';
+import { OriginalNoticeViewerModal } from './OriginalNoticeViewerModal';
 
 export const ApplicationLayout: React.FC = () => {
   const { activeTab } = useNotice();
@@ -36,6 +38,8 @@ export const ApplicationLayout: React.FC = () => {
         </main>
       </div>
       <AnalysisProgressModal />
+      <ConfirmationModal />
+      <OriginalNoticeViewerModal />
     </div>
   );
 };

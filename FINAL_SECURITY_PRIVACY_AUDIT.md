@@ -30,6 +30,7 @@ The architecture strictly adheres to an air-gapped, 100% on-device processing mo
 | **6** | **Temporary File Leakage / Disk Residue** | Python `tempfile.NamedTemporaryFile` with guaranteed `try...finally` unlinking immediately after OCR execution. | `tests/test_unit_pipeline.py::test_22_temporary_file_cleanup` | **PASSED** |
 | **7** | **Cross-Session Data Contamination** | Stateless request-response architecture in FastAPI; fresh Pydantic validation on every request; zero cross-user shared global variables. | `tests/test_unit_pipeline.py::test_23_cross_session_contamination` | **PASSED** |
 | **8** | **Stale Data / Desynchronization Attack** | Client-side Web Crypto SHA-256 and server-side `hashlib.sha256` digest verification. | `tests/test_notice_fingerprint_stale.py`<br>`tests/test_playwright_react_frontend.py` | **PASSED** |
+| **9** | **Uncertain Fact Manipulation / Injection** | `POST /api/confirm` strictly validates `field_name` against allowed schema whitelist and stores verified text in `confirmed_value` without mutating raw source text. | `tests/test_api_endpoints.py::test_api_confirm_endpoint` | **PASSED** |
 
 ---
 

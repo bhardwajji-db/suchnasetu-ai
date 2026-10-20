@@ -4,7 +4,7 @@ import { apiClient } from '../services/apiClient';
 import { Volume2, VolumeX, Sparkles, AlertCircle } from 'lucide-react';
 
 export const PlainLanguageSummaryView: React.FC = () => {
-  const { summaryEn, summaryHi, selectedLang } = useNotice();
+  const { summaryEn, summaryHi, selectedLang, readingLevel, changeReadingLevel } = useNotice();
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
 
@@ -78,28 +78,70 @@ export const PlainLanguageSummaryView: React.FC = () => {
           <p className="text-xs text-slate-400 mt-0.5">
             {selectedLang === 'hi'
               ? 'जटिल नोटिस को 7 मुख्य प्रश्नों के स्पष्ट उत्तरों में बदला गया है।'
-              : 'Answers to the 7 core questions, calibrated for Grade 6–8 reading level.'}
+              : 'Answers to the 7 core questions, calibrated for accessible reading.'}
           </p>
         </div>
 
-        <button
-          onClick={handleReadAloud}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ${
-            isPlayingAudio
-              ? 'bg-rose-600 hover:bg-rose-500 text-white'
-              : 'bg-blue-600 hover:bg-blue-500 text-white'
-          }`}
-        >
-          {isPlayingAudio ? (
-            <>
-              <VolumeX className="w-3.5 h-3.5" /> Stop Reading
-            </>
-          ) : (
-            <>
-              <Volume2 className="w-3.5 h-3.5" /> Listen (Read Aloud)
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Reading Level Selector */}
+          <div className="hidden sm:flex items-center gap-1 bg-[#111A33] border border-[#1D2D4E] rounded-lg p-0.5">
+            <span className="text-[10px] font-semibold text-slate-400 px-2 uppercase">
+              Level:
+            </span>
+            <button
+              type="button"
+              onClick={() => changeReadingLevel('simple')}
+              className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+                readingLevel === 'simple'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Simple
+            </button>
+            <button
+              type="button"
+              onClick={() => changeReadingLevel('standard')}
+              className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+                readingLevel === 'standard'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Standard
+            </button>
+            <button
+              type="button"
+              onClick={() => changeReadingLevel('detailed')}
+              className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+                readingLevel === 'detailed'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Detailed
+            </button>
+          </div>
+
+          <button
+            onClick={handleReadAloud}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ${
+              isPlayingAudio
+                ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                : 'bg-blue-600 hover:bg-blue-500 text-white'
+            }`}
+          >
+            {isPlayingAudio ? (
+              <>
+                <VolumeX className="w-3.5 h-3.5" /> Stop Reading
+              </>
+            ) : (
+              <>
+                <Volume2 className="w-3.5 h-3.5" /> Listen (Read Aloud)
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">

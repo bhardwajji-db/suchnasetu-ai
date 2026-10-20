@@ -13,6 +13,8 @@ import type {
   StructuredNotice,
   PlainLanguageSummary,
   ActionChecklist,
+  ConfirmFactResponse,
+  ReadingLevelResponse,
 } from '../types/api';
 
 const getBaseUrl = (): string => {
@@ -141,16 +143,61 @@ export const apiClient = {
   /**
    * Execute full 5-phase structured analysis via local Gemma 4
    */
-  async analyzeNotice(noticeText: string, targetLanguage: string = 'en'): Promise<AnalyzeResponse> {
+  async analyzeNotice(
+    noticeText: string,
+    targetLanguage: string = 'en',
+    readingLevel: string = 'standard'
+  ): Promise<AnalyzeResponse> {
     const res = await fetch(`${BASE_URL}/api/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         notice_text: noticeText,
         target_language: targetLanguage,
+        reading_level: readingLevel,
       }),
     });
     return handleResponse<AnalyzeResponse>(res);
+  },
+
+  /**
+   * Confirm or correct an uncertain notice fact and refresh dependent summary and checklist
+   */
+  async confirmFact(
+    fieldName: string,
+    confirmedValue: string,
+    structuredNotice: StructuredNotice,
+    readingLevel: string = 'standard'
+  ): Promise<ConfirmFactResponse> {
+    const res = await fetch(`${BASE_URL}/api/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        field_name: fieldName,
+        confirmed_value: confirmedValue,
+        structured_notice: structuredNotice,
+        reading_level: readingLevel,
+      }),
+    });
+    return handleResponse<ConfirmFactResponse>(res);
+  },
+
+  /**
+   * Request plain language summary at a specific reading level (simple, standard, detailed)
+   */
+  async getReadingLevelSummary(
+    structuredNotice: StructuredNotice,
+    readingLevel: string = 'standard'
+  ): Promise<ReadingLevelResponse> {
+    const res = await fetch(`${BASE_URL}/api/summary/reading-level`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        structured_notice: structuredNotice,
+        reading_level: readingLevel,
+      }),
+    });
+    return handleResponse<ReadingLevelResponse>(res);
   },
 
   /**

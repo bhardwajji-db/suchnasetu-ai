@@ -1,7 +1,7 @@
 import React from 'react';
 import type { ExtractedFact } from '../types/api';
 import { useNotice } from '../context/NoticeContext';
-import { Quote, AlertCircle, CheckCircle, Check } from 'lucide-react';
+import { Quote, AlertCircle, CheckCircle, Check, Edit3 } from 'lucide-react';
 
 interface FactCardProps {
   fact: ExtractedFact;
@@ -10,7 +10,7 @@ interface FactCardProps {
 }
 
 export const FactCard: React.FC<FactCardProps> = ({ fact, fieldName, displayName }) => {
-  const { confirmUncertainFact } = useNotice();
+  const { openConfirmationModal } = useNotice();
 
   const getStatusBadge = () => {
     switch (fact.status) {
@@ -47,6 +47,9 @@ export const FactCard: React.FC<FactCardProps> = ({ fact, fieldName, displayName
     }
   };
 
+  const hasCorrection = Boolean(fact.user_confirmed && fact.confirmed_value && fact.confirmed_value !== fact.value);
+  const displayValue = fact.user_confirmed && fact.confirmed_value ? fact.confirmed_value : fact.value;
+
   return (
     <div className="bg-[#0D1528] border border-[#1D2D4E] hover:border-slate-700 transition rounded-xl p-5 flex flex-col justify-between shadow-sm">
       <div>
@@ -57,7 +60,7 @@ export const FactCard: React.FC<FactCardProps> = ({ fact, fieldName, displayName
           <div className="flex items-center gap-2">
             {fact.user_confirmed && (
               <span className="flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-950/80 text-blue-400 border border-blue-800">
-                <Check className="w-3 h-3" /> User Confirmed
+                <Check className="w-3 h-3" /> {hasCorrection ? 'Corrected' : 'Verified'}
               </span>
             )}
             {getStatusBadge()}
@@ -65,9 +68,19 @@ export const FactCard: React.FC<FactCardProps> = ({ fact, fieldName, displayName
         </div>
 
         {/* Fact Value */}
-        <div className="text-base font-semibold text-white mb-3 leading-relaxed">
-          {fact.value}
+        <div className="text-base font-semibold text-white mb-2 leading-relaxed">
+          {displayValue}
         </div>
+
+        {/* Original Value if Corrected */}
+        {hasCorrection && (
+          <div className="text-[11px] text-slate-400 mb-2 italic">
+            <span className="font-semibold text-slate-500 uppercase text-[9px] not-italic mr-1">
+              Original:
+            </span>
+            "{fact.value}"
+          </div>
+        )}
 
         {/* Verbatim Evidence Quote */}
         {fact.evidence_quote && (
@@ -88,20 +101,49 @@ export const FactCard: React.FC<FactCardProps> = ({ fact, fieldName, displayName
         )}
       </div>
 
-      {/* Confirmation Workflow */}
-      {fact.requires_confirmation && !fact.user_confirmed && (
-        <div className="mt-4 pt-3 border-t border-[#1D2D4E] flex items-center justify-between">
-          <span className="text-xs text-amber-400">
-            ⚠️ Please confirm this detail before relying on it for action steps.
-          </span>
-          <button
-            onClick={() => confirmUncertainFact(fieldName)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition shadow-sm"
-          >
-            <CheckCircle className="w-3.5 h-3.5" /> Confirm Detail
-          </button>
-        </div>
-      )}
+      {/* Confirmation Actions */}
+      <div className="mt-4 pt-3 border-t border-[#1D2D4E] flex items-center justify-between">
+        {fact.requires_confirmation && !fact.user_confirmed ? (
+          <>
+            <span className="text-xs text-amber-400 font-medium">
+              ⚠️ Needs review before action steps.
+            </span>
+            <button
+              type="button"
+              onClick={() => openConfirmationModal(fieldName, displayName, fact)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition shadow-sm"
+            >
+              <CheckCircle className="w-3.5 h-3.5" /> Review & Confirm Detail
+            </button>
+          </>
+        ) : fact.user_confirmed ? (
+          <>
+            <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+              <Check className="w-3 h-3" /> Verified by user
+            </span>
+            <button
+              type="button"
+              onClick={() => openConfirmationModal(fieldName, displayName, fact)}
+              className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-white transition"
+            >
+              <Edit3 className="w-3 h-3" /> Edit
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="text-[11px] text-slate-500">
+              Verified ground truth
+            </span>
+            <button
+              type="button"
+              onClick={() => openConfirmationModal(fieldName, displayName, fact)}
+              className="text-[11px] text-slate-400 hover:text-white transition"
+            >
+              Verify / Edit
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 };
