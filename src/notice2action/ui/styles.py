@@ -386,8 +386,21 @@ div[data-testid="stAppViewContainer"] section.main > div.block-container {
     font-weight: 600 !important;
     letter-spacing: 0.01em !important;
     transition: all 0.15s ease !important;
-    padding: 0.45rem 1rem !important;
+    padding: 0.5rem 1rem !important;
     font-size: 0.85rem !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.35 !important;
+    height: auto !important;
+    min-height: 38px !important;
+}
+
+.stButton>button:focus-visible,
+[role="tab"]:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid #38BDF8 !important;
+    outline-offset: 2px !important;
 }
 
 /* Bright Blue Visually Dominant Primary Button */
@@ -566,6 +579,15 @@ section[data-testid="stSidebar"] > div {
 }
 
 @media (max-width: 768px) {
+    /* Stack horizontal columns on tablet and mobile viewports */
+    div[data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap !important;
+        gap: 0.65rem !important;
+    }
+    div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+    }
     .platform-header {
         flex-direction: column !important;
         align-items: flex-start !important;

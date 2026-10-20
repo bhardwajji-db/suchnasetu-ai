@@ -16,6 +16,7 @@ if str(SRC_DIR) not in sys.path:
 
 import time
 import json
+import hashlib
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
@@ -107,6 +108,8 @@ def init_session_state():
         st.session_state.analysis_duration = None
     if "analysis_error" not in st.session_state:
         st.session_state.analysis_error = None
+    if "analyzed_fingerprint" not in st.session_state:
+        st.session_state.analyzed_fingerprint = None
     if "active_tab_index" not in st.session_state:
         st.session_state.active_tab_index = 0
     if "qa_input_text_box" not in st.session_state:
@@ -188,6 +191,12 @@ with st.sidebar:
             st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
             st.session_state.uploaded_image = None
             st.session_state.structured_notice = None
+            st.session_state.summary_en = None
+            st.session_state.summary_hi = None
+            st.session_state.checklist_en = None
+            st.session_state.checklist_hi = None
+            st.session_state.analyzed_fingerprint = None
+            st.session_state.analysis_duration = None
             st.session_state.analysis_error = None
             st.session_state.followup_history = []
             st.rerun()
@@ -218,6 +227,12 @@ with st.sidebar:
                 st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
                 st.session_state.uploaded_image = None
             st.session_state.structured_notice = None
+            st.session_state.summary_en = None
+            st.session_state.summary_hi = None
+            st.session_state.checklist_en = None
+            st.session_state.checklist_hi = None
+            st.session_state.analyzed_fingerprint = None
+            st.session_state.analysis_duration = None
             st.session_state.analysis_error = None
             st.session_state.followup_history = []
             if "Hindi" in selected_sample_key:
@@ -243,9 +258,11 @@ with st.sidebar:
         st.session_state.summary_hi = None
         st.session_state.checklist_en = None
         st.session_state.checklist_hi = None
+        st.session_state.analyzed_fingerprint = None
         st.session_state.analysis_duration = None
         st.session_state.analysis_error = None
         st.session_state.followup_history = []
+        st.session_state.active_tab_index = 0
         st.rerun()
 
     st.markdown(
@@ -414,6 +431,12 @@ with tab_input:
                     st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
                     st.session_state.uploaded_image = None
                     st.session_state.structured_notice = None
+                    st.session_state.summary_en = None
+                    st.session_state.summary_hi = None
+                    st.session_state.checklist_en = None
+                    st.session_state.checklist_hi = None
+                    st.session_state.analyzed_fingerprint = None
+                    st.session_state.analysis_duration = None
                     st.session_state.analysis_error = None
                     st.session_state.followup_history = []
                     st.rerun()
@@ -422,9 +445,33 @@ with tab_input:
                 st.session_state.raw_notice_text = ""
                 st.session_state.uploaded_image = None
                 st.session_state.structured_notice = None
+                st.session_state.summary_en = None
+                st.session_state.summary_hi = None
+                st.session_state.checklist_en = None
+                st.session_state.checklist_hi = None
+                st.session_state.analyzed_fingerprint = None
+                st.session_state.analysis_duration = None
                 st.session_state.analysis_error = None
                 st.session_state.followup_history = []
                 st.rerun()
+
+    # Content fingerprint and stale detection
+    current_fingerprint = (
+        hashlib.sha256(st.session_state.raw_notice_text.strip().encode("utf-8")).hexdigest()
+        if st.session_state.raw_notice_text.strip()
+        else None
+    )
+    is_notice_stale = bool(
+        st.session_state.structured_notice is not None
+        and st.session_state.analyzed_fingerprint is not None
+        and current_fingerprint != st.session_state.analyzed_fingerprint
+    )
+
+    if is_notice_stale:
+        st.warning(
+            "⚠️ **Notice Buffer Modified:** The text in the buffer has changed since last analysis. Click **'🚀 Analyze Notice with Gemma 4'** below to refresh the facts and checklist.",
+            icon="⚠️",
+        )
 
     # Dominant Primary Analyze Button spanning below both columns
     st.markdown("<div style='margin-top: 0.75rem;'></div>", unsafe_allow_html=True)
@@ -496,6 +543,9 @@ with tab_input:
                     st.write("🤖 **Phase 3/5:** Calling local Gemma 4 for structured fact extraction...")
                     structured = analyzer.analyze_notice(st.session_state.raw_notice_text)
                     st.session_state.structured_notice = structured
+                    st.session_state.analyzed_fingerprint = hashlib.sha256(
+                        st.session_state.raw_notice_text.strip().encode("utf-8")
+                    ).hexdigest()
 
                     st.write("🔬 **Phase 4/5:** Validating structured output and verbatim evidence quotes...")
                     time.sleep(0.04)
@@ -594,6 +644,12 @@ with tab_structured:
     else:
         sn: StructuredNotice = st.session_state.structured_notice
 
+        if is_notice_stale:
+            st.warning(
+                "⚠️ **Stale Results Notice:** The facts displayed below belong to the previously analyzed notice text and do not match the modified buffer in Tab 1. Please re-run analysis in Tab 1 to refresh.",
+                icon="⚠️",
+            )
+
         # High-level overview banner
         if st.session_state.analysis_duration:
             render_analysis_banner(st.session_state.analysis_duration, config.ollama_model, 8)
@@ -646,6 +702,12 @@ with tab_summary:
             unsafe_allow_html=True,
         )
     else:
+        if is_notice_stale:
+            st.warning(
+                "⚠️ **Stale Results Notice:** This summary and action checklist were generated from a previous version of the notice. Please re-run analysis in Tab 1 to refresh.",
+                icon="⚠️",
+            )
+
         is_hindi = st.session_state.selected_lang == "hi"
 
         # Display Summary

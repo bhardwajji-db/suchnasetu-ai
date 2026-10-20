@@ -29,3 +29,38 @@
 - **Files Changed:** `app.py`, `src/notice2action/ui/styles.py`.
 - **Fix Implemented:** Created balanced two-column workspace: Upload Document on left, Notice Content / Ground-Truth Buffer on right, with dominant primary analyze button spanning below.
 - **Verification:** Verified visually and via AppTest (`scratch/test_complete_user_journey.py`).
+
+### BUG-005: Sandboxed Iframe Tab Navigation Dispatch Failure
+- **Reproduction:** Clicking sidebar buttons failed to switch tabs in the main dashboard area.
+- **Root Cause:** Custom HTML injected via `st.components.v1.html` runs inside sandboxed iframes blocking access to `window.parent.document`. Streamlit 1.66 also switched to React Aria tabs (`div[role="tab"]`), breaking BaseWeb selectors.
+- **Files Changed:** `app.py`, `src/notice2action/ui/styles.py`.
+- **Fix Implemented:** Migrated to native dynamic tab keying (`f"main_dashboard_tabs_{cur_tab_idx}"`) with `on_click=set_active_tab` callbacks.
+- **Verification:** Verified via Playwright in real headless Chrome (`tests/test_playwright_e2e.py`).
+
+### BUG-006: StreamlitWidgetAlreadyInstantiatedError on Navigation
+- **Reproduction:** Clicking sidebar nav buttons crashed the application with widget instantiation error.
+- **Root Cause:** Modifying `st.session_state` keys during script body execution after `st.tabs` creation.
+- **Files Changed:** `app.py`.
+- **Fix Implemented:** Switched all nav buttons to pre-instantiation `on_click` callbacks executing before the script body evaluates.
+- **Verification:** Verified via `tests/test_ui_controls_comprehensive.py`.
+
+### BUG-007: Suggested Q&A Lifecycle Input Overwrite
+- **Reproduction:** Clicking preset questions in Tab 4 cleared the input text or triggered premature empty submission.
+- **Root Cause:** Widget state lifecycle overwrite during rerun.
+- **Files Changed:** `app.py`.
+- **Fix Implemented:** Added module-level `set_qa_inquiry()` callback and fallback evaluation on `(user_q or st.session_state.get('qa_input_text_box', ''))`.
+- **Verification:** Verified in Playwright E2E and `test_ui_controls_comprehensive.py`.
+
+### BUG-008: Stale Structured Notice State After Buffer Modification
+- **Reproduction:** Modifying text buffer after running analysis showed outdated facts, summaries, and checklists without indication.
+- **Root Cause:** No cryptographic binding between buffer contents and cached analysis results.
+- **Files Changed:** `app.py`, `tests/test_notice_fingerprint_stale.py`.
+- **Fix Implemented:** Implemented SHA-256 fingerprint comparison (`analyzed_fingerprint`) and rendered stale-result warning banners across Tabs 1, 2, and 3. Added full buffer clear reset.
+- **Verification:** Verified via `tests/test_notice_fingerprint_stale.py`.
+
+### BUG-009: Sidebar Button Styling Collision & Mobile Horizontal Overflow
+- **Reproduction:** Generic button CSS centered utility buttons and caused horizontal scrolling on 390px mobile screens.
+- **Root Cause:** Unscoped `.stButton > button` CSS rules.
+- **Files Changed:** `src/notice2action/ui/styles.py`.
+- **Fix Implemented:** Scoped navigation styling to `[class*="st-key-sidebar_nav_"]`, added responsive column wrapping at `<= 768px`, and enforced `overflow-x: hidden !important; max-width: 100vw;`.
+- **Verification:** Tested across 6 viewports with Playwright; 0 horizontal overflow.
