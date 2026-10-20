@@ -67,7 +67,7 @@
       {
         "field_name": "contact_details",
         "expected_value": "scholarships@example.invalid",
-        "actual_value": "Scholarship Office, Room 204, Academic Block; Email: scholarships@example.invalid",
+        "actual_value": "Scholarship Office, Room 204, Academic Block; scholarships@example.invalid",
         "status": "PASS",
         "is_critical": true,
         "notes": null
@@ -143,10 +143,10 @@
     },
     "contact_details": {
       "field_name": "contact_details",
-      "value": "Scholarship Office, Room 204, Academic Block; Email: scholarships@example.invalid",
+      "value": "Scholarship Office, Room 204, Academic Block; scholarships@example.invalid",
       "status": "stated",
-      "evidence_quote": "Submission method: Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.\n\nHelpdesk: scholarships@example.invalid",
-      "source_location": "Lines 18-20",
+      "evidence_quote": "Submission method: Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.",
+      "source_location": "Line 18",
       "requires_confirmation": false,
       "user_confirmed": false,
       "explanation": null
@@ -173,20 +173,22 @@
     },
     "missing_information": [
       "Application fee",
-      "Specific definition of 'last qualifying examination'",
+      "Specific application form details",
       "Application Fee"
     ],
-    "uncertain_or_conflicting_details": [],
+    "uncertain_or_conflicting_details": [
+      "The notice explicitly states it is synthetic test data and not an official announcement."
+    ],
     "raw_notice_text": "INSTITUTE OF TECHNOLOGY — SYNTHETIC TEST NOTICE\n\nNotice ID: TEST-SCH-2026-001\n\nDate of issue: 20 October 2026\n\nSubject: Merit Scholarship Application\n\nEligible students must submit their merit scholarship applications by 5:00 PM on 30 October 2026.\n\nEligibility: Students who obtained at least 80% marks in their last qualifying examination.\n\nRequired documents:\n1. Previous qualifying examination marksheet.\n2. College identity card.\n3. Bank account proof.\n\nSubmission method: Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.\n\nHelpdesk: scholarships@example.invalid\n\nLate applications will not be accepted.\n\nThis notice is synthetic test data. It is not an official announcement.\n"
   },
   "summary": {
-    "about": "This notice is about applying for a Merit Scholarship. It is a chance to get recognized for your hard work!",
+    "about": "This notice is about applying for a Merit Scholarship. It is a chance to get financial help for your studies!",
     "eligible": "You can apply if you scored at least 80% in your last big exam.",
-    "actions": "Please give your application and all your papers to the Scholarship Office. They are located in Room 204, Academic Block.",
-    "documents": "You must bring three things: 1. Your marksheet from your last big exam. 2. Your college ID card. 3. Proof of your bank account.",
-    "deadline": "The deadline is 5:00 PM on October 30, 2026. Please do not wait until the last minute!",
-    "help_contact": "If you have questions, you can visit the Scholarship Office (Room 204, Academic Block). You can also email them at scholarships@example.invalid.",
-    "missing": "⚠️ Important: The notice is missing some key details. It does not say what the application fee is, and it does not explain exactly what counts as your 'last qualifying examination'."
+    "actions": "Please give your application and all needed papers to the Scholarship Office. They are in Room 204, Academic Block.",
+    "documents": "You must bring these three things: 1. Your marksheet from your last exam. 2. Your college ID card. 3. Proof of your bank account.",
+    "deadline": "The deadline is 5:00 PM on October 30, 2026. Please do not be late!",
+    "help_contact": "If you have questions, you can visit the Scholarship Office (Room 204, Academic Block) or email scholarships@example.invalid.",
+    "missing": "⚠️ Important: The notice is missing some key details. We do not know: 1. The application fee amount. 2. Details about the specific application form. 3. The exact application fee."
   },
   "checklist": {
     "items": [
@@ -232,7 +234,7 @@
       },
       {
         "step_number": 5,
-        "action": "Contact Official Source: Inquire about missing details (Application fee, Specific definition of 'last qualifying examination', Application Fee) via Scholarship Office, Room 204, Academic Block; Email: scholarships@example.invalid.",
+        "action": "Contact Official Source: Inquire about missing details (Application fee, Specific application form details, Application Fee) via Scholarship Office, Room 204, Academic Block; scholarships@example.invalid.",
         "category": "clarification",
         "is_mandatory": false,
         "requires_confirmation": false,

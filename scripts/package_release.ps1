@@ -40,6 +40,10 @@ $ItemsToCopy = @(
     "pyproject.toml",
     "requirements.txt",
     "README.md",
+    "MIGRATION_VERIFICATION_REPORT.md",
+    "FRONTEND_MIGRATION_PLAN.md",
+    "FRONTEND_API_CONTRACT.md",
+    "FRONTEND_MIGRATION_STATUS.md",
     "FINAL_FUNCTIONALITY_REPORT.md",
     "UI_BUG_AUDIT.md",
     "UI_LAYOUT_AUDIT.md",
@@ -49,6 +53,7 @@ $ItemsToCopy = @(
     "FINAL_FUNCTIONALITY_AUDIT.md",
     "FINAL_TEST_RESULTS.md",
     "FINAL_BUG_FIX_LOG.md",
+    "frontend",
     ".env.example",
     ".gitignore"
 )
@@ -56,13 +61,19 @@ $ItemsToCopy = @(
 foreach ($item in $ItemsToCopy) {
     $srcPath = Join-Path $ProjectRoot $item
     if (Test-Path $srcPath) {
-        Copy-Item -Path $srcPath -Destination $StagingDir -Recurse -Force
-        Write-Host "  Included: $item" -ForegroundColor Green
+        if ($item -eq "frontend") {
+            $dest = Join-Path $StagingDir "frontend"
+            robocopy $srcPath $dest /E /XD node_modules dist | Out-Null
+            Write-Host "  Included: $item (excluding node_modules/dist)" -ForegroundColor Green
+        } else {
+            Copy-Item -Path $srcPath -Destination $StagingDir -Recurse -Force
+            Write-Host "  Included: $item" -ForegroundColor Green
+        }
     }
 }
 
-# Clean any pycache or pytest_cache from staging
-Get-ChildItem -Path $StagingDir -Include "__pycache__", ".pytest_cache" -Recurse -Force | Remove-Item -Recurse -Force
+# Clean any pycache, pytest_cache, node_modules, or dist from staging
+Get-ChildItem -Path $StagingDir -Include "__pycache__", ".pytest_cache", "node_modules", "dist" -Recurse -Force | Remove-Item -Recurse -Force
 
 # Create ZIP archive
 Write-Host "`nCompressing clean archive to $ZipFile..." -ForegroundColor Yellow
