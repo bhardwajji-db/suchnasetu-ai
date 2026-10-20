@@ -17,6 +17,7 @@ if str(SRC_DIR) not in sys.path:
 import time
 import json
 import streamlit as st
+import streamlit.components.v1 as components
 from PIL import Image
 
 from notice2action.config import config, run_preflight_diagnostics
@@ -88,6 +89,10 @@ def init_session_state():
         st.session_state.analysis_duration = None
     if "analysis_error" not in st.session_state:
         st.session_state.analysis_error = None
+    if "active_tab_index" not in st.session_state:
+        st.session_state.active_tab_index = 0
+    if "qa_input_text_box" not in st.session_state:
+        st.session_state.qa_input_text_box = ""
 
 
 init_session_state()
@@ -113,19 +118,22 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    # Navigation Guide
+    # Interactive Sidebar Navigation
     st.markdown("<span class='card-label'>🧭 Navigation</span>", unsafe_allow_html=True)
-    st.markdown(
-        """
-        <div style="margin-bottom: 0.85rem;">
-            <div class="sidebar-nav-item active">📥 1. Process Notice</div>
-            <div class="sidebar-nav-item">🔍 2. Extracted Facts</div>
-            <div class="sidebar-nav-item">📋 3. Summary & Actions</div>
-            <div class="sidebar-nav-item">💬 4. Follow-Up Q&A</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    nav_tabs = [
+        (0, "📥 1. Process Notice"),
+        (1, "🔍 2. Extracted Facts"),
+        (2, "📋 3. Summary & Actions"),
+        (3, "💬 4. Follow-Up Q&A"),
+    ]
+    cur_idx = st.session_state.get("active_tab_index", 0)
+    for idx, label in nav_tabs:
+        btn_type = "primary" if cur_idx == idx else "secondary"
+        if st.button(label, key=f"sidebar_nav_{idx}", type=btn_type, use_container_width=True):
+            st.session_state.active_tab_index = idx
+            st.rerun()
+
+    st.markdown("<div style='margin-bottom: 0.65rem;'></div>", unsafe_allow_html=True)
 
     # Diagnostics Drawer & System Status
     st.markdown("<span class='card-label'>⚡ System Status</span>", unsafe_allow_html=True)
@@ -165,6 +173,7 @@ with st.sidebar:
         "📄 Scholarship Notice (EN)": "sample_scholarship_notice.txt",
         "🏛️ College Circular (EN)": "synthetic_scholarship_notice.txt",
         "🇮🇳 Notice (Hindi)": "sample_hindi_notice.txt",
+        "🖼️ Scanned Notice (OCR Demo)": "synthetic_notice_ocr.png",
         "⚠️ Tentative Dates Notice": "sample_uncertain_notice.txt",
         "❓ Missing Fields Notice": "sample_missing_fields_notice.txt",
     }
@@ -173,13 +182,18 @@ with st.sidebar:
         options=list(sample_dict.keys()),
         index=0,
         label_visibility="collapsed",
+        key="sample_fixture_select",
     )
-    if st.button("📥 Load Selected Sample", use_container_width=True):
+    if st.button("📥 Load Selected Sample", use_container_width=True, key="btn_load_sample"):
         fname = sample_dict[selected_sample_key]
         p = fixtures_dir / fname
         if p.is_file():
-            st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
-            st.session_state.uploaded_image = None
+            if fname.endswith(".png"):
+                st.session_state.uploaded_image = Image.open(p)
+                st.session_state.raw_notice_text = ""
+            else:
+                st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
+                st.session_state.uploaded_image = None
             st.session_state.structured_notice = None
             st.session_state.analysis_error = None
             st.session_state.followup_history = []
@@ -227,6 +241,31 @@ with st.sidebar:
 render_platform_header(status=diag.overall_status, model_name=config.ollama_model, ocr_status="ok")
 step_val = 3 if st.session_state.structured_notice else (2 if st.session_state.raw_notice_text else 1)
 render_intro_workflow_panel(current_step=step_val)
+
+
+def switch_active_tab_client_side(target_index: int):
+    """Client-side JavaScript to click and activate the corresponding Streamlit tab."""
+    js = f"""
+    <script>
+    (function() {{
+        function doSelect() {{
+            try {{
+                const doc = window.parent.document;
+                const tabs = doc.querySelectorAll('button[data-baseweb="tab"]');
+                if (tabs && tabs.length > {target_index}) {{
+                    tabs[{target_index}].click();
+                }}
+            }} catch(e) {{}}
+        }}
+        setTimeout(doSelect, 40);
+        setTimeout(doSelect, 220);
+    }})();
+    </script>
+    """
+    components.html(js, height=0, width=0)
+
+
+switch_active_tab_client_side(st.session_state.active_tab_index)
 
 tab_input, tab_structured, tab_summary, tab_followup = st.tabs([
     "📥 Notice Ingestion & OCR",
@@ -280,43 +319,52 @@ with tab_input:
                 )
                 if ingest_res.source_type == "image":
                     st.session_state.uploaded_image = ingest_res.image
-                    st.image(ingest_res.image, caption="Uploaded Notice Preview", use_container_width=True)
-
-                    c_ocr1, c_ocr2 = st.columns(2)
-                    with c_ocr1:
-                        ocr_lang = st.selectbox("OCR Language", ["eng (English)", "hin (Hindi)", "eng+hin (Bilingual)"], index=0)
-                    with c_ocr2:
-                        apply_prep = st.checkbox("Enhance Contrast", value=True)
-
-                    c_btn_ocr1, c_btn_ocr2 = st.columns([1.5, 1])
-                    with c_btn_ocr1:
-                        if st.button("⚙️ Run Tesseract OCR", use_container_width=True):
-                            with st.spinner("Extracting text via Tesseract OCR..."):
-                                lang_code = "hin" if "hin" in ocr_lang and "+" not in ocr_lang else ("eng+hin" if "+" in ocr_lang else "eng")
-                                ocr_res = extract_text_from_image(ingest_res.image, target_lang=lang_code, apply_preprocessing=apply_prep)
-                                if ocr_res.error:
-                                    st.error(ocr_res.error)
-                                else:
-                                    st.session_state.raw_notice_text = ocr_res.extracted_text
-                                    st.session_state.ocr_confidence = ocr_res.confidence_score
-                                    st.session_state.structured_notice = None
-                                    st.session_state.analysis_error = None
-                                    if ocr_res.warning:
-                                        st.warning(ocr_res.warning)
-                                    st.success(f"Extracted {ocr_res.line_count} lines (Confidence: {ocr_res.confidence_score}%)")
-                                    st.rerun()
-                    with c_btn_ocr2:
-                        if st.button("🗑️ Reset Image", use_container_width=True):
-                            st.session_state.uploaded_image = None
-                            st.session_state.raw_notice_text = ""
-                            st.rerun()
-
+                    st.session_state.structured_notice = None
+                    st.session_state.analysis_error = None
                 elif ingest_res.source_type == "text":
                     st.session_state.raw_notice_text = ingest_res.raw_text
                     st.session_state.uploaded_image = None
                     st.session_state.structured_notice = None
                     st.session_state.analysis_error = None
                     st.success(f"Loaded text file '{ingest_res.filename}' ({ingest_res.char_count} chars).")
+                    st.rerun()
+
+        if st.session_state.uploaded_image is not None:
+            st.image(st.session_state.uploaded_image, caption="Loaded Notice Preview", use_container_width=True)
+
+            c_ocr1, c_ocr2 = st.columns(2)
+            with c_ocr1:
+                ocr_lang = st.selectbox(
+                    "OCR Language",
+                    ["eng (English)", "hin (Hindi)", "eng+hin (Bilingual)"],
+                    index=0,
+                    key="ocr_lang_select",
+                )
+            with c_ocr2:
+                apply_prep = st.checkbox("Enhance Contrast", value=True, key="ocr_prep_chk")
+
+            c_btn_ocr1, c_btn_ocr2 = st.columns([1.5, 1])
+            with c_btn_ocr1:
+                if st.button("⚙️ Run Tesseract OCR", type="primary", use_container_width=True, key="btn_run_ocr"):
+                    with st.spinner("Extracting text via Tesseract OCR..."):
+                        lang_code = "hin" if "hin" in ocr_lang and "+" not in ocr_lang else ("eng+hin" if "+" in ocr_lang else "eng")
+                        ocr_res = extract_text_from_image(st.session_state.uploaded_image, target_lang=lang_code, apply_preprocessing=apply_prep)
+                        if ocr_res.error:
+                            st.error(ocr_res.error)
+                        else:
+                            st.session_state.raw_notice_text = ocr_res.extracted_text
+                            st.session_state.ocr_confidence = ocr_res.confidence_score
+                            st.session_state.structured_notice = None
+                            st.session_state.analysis_error = None
+                            if ocr_res.warning:
+                                st.warning(ocr_res.warning)
+                            st.success(f"Extracted {ocr_res.line_count} lines (Confidence: {ocr_res.confidence_score}%)")
+                            st.rerun()
+            with c_btn_ocr2:
+                if st.button("🗑️ Reset Image", use_container_width=True, key="btn_reset_ocr_img"):
+                    st.session_state.uploaded_image = None
+                    st.session_state.raw_notice_text = ""
+                    st.session_state.ocr_confidence = None
                     st.rerun()
 
     with col_paste:
@@ -371,22 +419,32 @@ with tab_input:
     st.markdown("<div style='margin-top: 0.75rem;'></div>", unsafe_allow_html=True)
     analyze_btn = st.button("🚀 Analyze Notice with Gemma 4", type="primary", use_container_width=True)
 
-    # Success Banner if notice has been analyzed
+    # Success Banner with interactive jump buttons if notice has been analyzed
     if st.session_state.structured_notice is not None:
         dur = f"{st.session_state.analysis_duration:.2f}s" if st.session_state.analysis_duration else "complete"
         st.markdown(
             f"""
-            <div style="margin-top: 0.65rem; padding: 0.55rem 0.85rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 0.8rem; font-weight: 600; color: #34D399;">
-                    ✅ Notice Analyzed ({dur}) &bull; 8 Key Fields Grounded
-                </div>
-                <div style="font-size: 0.75rem; color: #94A3B8;">
-                    View Tab 2 & 3 &rarr;
+            <div style="margin-top: 0.65rem; padding: 0.55rem 0.85rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px;">
+                <div style="font-size: 0.85rem; font-weight: 700; color: #34D399; margin-bottom: 0.4rem;">
+                    ✅ Notice Analyzed ({dur}) &bull; 8 Key Fields Grounded &bull; Ready to Review
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
+        col_jump1, col_jump2, col_jump3 = st.columns(3)
+        with col_jump1:
+            if st.button("🔍 View Grounded Facts (Tab 2)", type="secondary", use_container_width=True, key="btn_jump_tab2"):
+                st.session_state.active_tab_index = 1
+                st.rerun()
+        with col_jump2:
+            if st.button("📋 View Summary & Checklist (Tab 3)", type="secondary", use_container_width=True, key="btn_jump_tab3"):
+                st.session_state.active_tab_index = 2
+                st.rerun()
+        with col_jump3:
+            if st.button("💬 Ask Follow-Up Q&A (Tab 4)", type="secondary", use_container_width=True, key="btn_jump_tab4"):
+                st.session_state.active_tab_index = 3
+                st.rerun()
 
     # Recovery box if previous analysis failed
     if st.session_state.analysis_error:
@@ -463,6 +521,9 @@ with tab_input:
             if st.session_state.checklist_en:
                 render_checklist_widget(st.session_state.checklist_en, key_prefix="dash_widget")
             render_qa_shortcut()
+            if st.button("💬 Open Follow-Up Q&A Assistant", use_container_width=True, key="btn_open_qa_dash"):
+                st.session_state.active_tab_index = 3
+                st.rerun()
 
             # Export structured data options
             st.download_button(
@@ -571,7 +632,7 @@ with tab_summary:
 
         # Export Report Option
         st.markdown("---")
-        st.markdown("##### 📥 Export Action Plan")
+        st.markdown("##### 📥 Export Action Plan & Calendar")
         export_text = (
             f"# Notice2Action AI — Action Report\n\n"
             f"**Notice Purpose**: {st.session_state.structured_notice.purpose.value}\n"
@@ -594,13 +655,29 @@ with tab_summary:
                 if item.grounded_quote:
                     export_text += f"   - Quote: \"{item.grounded_quote}\"\n"
 
-        st.download_button(
-            label="📄 Download Action Plan (Markdown)",
-            data=export_text,
-            file_name="notice2action_plan.md",
-            mime="text/markdown",
-            use_container_width=False,
-        )
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            st.download_button(
+                label="📄 Download Action Plan (Markdown)",
+                data=export_text,
+                file_name="notice2action_plan.md",
+                mime="text/markdown",
+                use_container_width=True,
+                key="btn_dl_markdown_tab3",
+            )
+        with col_dl2:
+            if cur_checklist and hasattr(cur_checklist, "to_ics_bytes"):
+                ics_data = cur_checklist.to_ics_bytes()
+            else:
+                ics_data = b"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Notice2Action AI//EN\r\nEND:VCALENDAR\r\n"
+            st.download_button(
+                label="📅 Add Deadline to Calendar (.ics)",
+                data=ics_data,
+                file_name="notice_deadline.ics",
+                mime="text/calendar",
+                use_container_width=True,
+                key="btn_dl_ics_tab3",
+            )
 
 
 # ----------------- TAB 4: FOLLOW-UP Q&A -----------------
@@ -632,32 +709,44 @@ with tab_followup:
         # Pre-set quick questions
         st.markdown("<span class='card-label'>💡 Suggested Inquiries</span>", unsafe_allow_html=True)
         c1, c2, c3, c4 = st.columns(4)
-        sample_q = None
-        if c1.button("📋 Required Documents?", use_container_width=True):
-            sample_q = "What documents are needed to apply?"
-        if c2.button("👥 Eligibility Criteria?", use_container_width=True):
-            sample_q = "Who is eligible for this opportunity?"
-        if c3.button("⏳ Late Submissions?", use_container_width=True):
-            sample_q = "Can I submit the application late?"
-        if c4.button("📅 Exact Deadline?", use_container_width=True):
-            sample_q = "What is the final deadline to submit?"
+        if c1.button("📋 Required Documents?", use_container_width=True, key="qa_sug_docs"):
+            st.session_state.qa_input_text_box = "What documents are needed to apply?"
+            st.rerun()
+        if c2.button("👥 Eligibility Criteria?", use_container_width=True, key="qa_sug_elig"):
+            st.session_state.qa_input_text_box = "Who is eligible for this opportunity?"
+            st.rerun()
+        if c3.button("⏳ Late Submissions?", use_container_width=True, key="qa_sug_late"):
+            st.session_state.qa_input_text_box = "Can I submit the application late?"
+            st.rerun()
+        if c4.button("📅 Exact Deadline?", use_container_width=True, key="qa_sug_dl"):
+            st.session_state.qa_input_text_box = "What is the final deadline to submit?"
+            st.rerun()
 
         user_q = st.text_input(
             "Enter your question:",
-            value=sample_q or "",
             placeholder="e.g. Is there any application fee required?",
             label_visibility="collapsed",
+            key="qa_input_text_box",
         )
-        c_ask1, _ = st.columns([1, 3])
+
+        c_ask1, c_ask2 = st.columns([1.2, 3])
         with c_ask1:
-            ask_btn = st.button("💬 Ask Assistant", type="primary", use_container_width=True)
+            ask_btn = st.button("💬 Ask Assistant", type="primary", use_container_width=True, key="btn_ask_qa")
+        with c_ask2:
+            if st.session_state.followup_history:
+                if st.button("🗑️ Clear Q&A History", type="secondary", use_container_width=False, key="btn_clear_qa"):
+                    st.session_state.followup_history = []
+                    st.session_state.qa_input_text_box = ""
+                    st.rerun()
 
         if ask_btn:
-            if user_q.strip():
+            target_question = st.session_state.get("qa_input_text_box", "").strip()
+            if target_question:
                 with st.spinner("Finding grounded answer in notice text..."):
                     assistant = FollowUpAssistant()
-                    ans = assistant.answer_question(user_q, st.session_state.raw_notice_text)
+                    ans = assistant.answer_question(target_question, st.session_state.raw_notice_text)
                     st.session_state.followup_history.insert(0, ans)
+                    st.rerun()
 
         # Render History
         if st.session_state.followup_history:

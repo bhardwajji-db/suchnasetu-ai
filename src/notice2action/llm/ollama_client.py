@@ -57,6 +57,9 @@ def clean_llm_json_response(raw_text: str) -> str:
     if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
         cleaned = cleaned[first_brace : last_brace + 1]
 
+    # Clean trailing commas before closing braces or brackets (common LLM JSON error)
+    cleaned = re.sub(r",\s*([\]}])", r"\1", cleaned)
+
     return cleaned
 
 
@@ -120,8 +123,8 @@ class OllamaClient:
             "keep_alive": "30m",
             "options": {
                 "temperature": temperature,
-                "num_predict": 2048,
-                "num_ctx": 3072,
+                "num_predict": 4096,
+                "num_ctx": 8192,
             },
         }
         if json_mode:

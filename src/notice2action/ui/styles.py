@@ -470,6 +470,39 @@ section[data-testid="stSidebar"] > div {
     border-left: 3px solid #0875FF;
 }
 
+/* Sidebar Interactive Nav Buttons */
+[data-testid="stSidebar"] div[data-testid="stButton"] > button {
+    text-align: left !important;
+    justify-content: flex-start !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    padding: 0.45rem 0.65rem !important;
+    border-radius: 7px !important;
+    margin-bottom: 0.2rem !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="primary"] {
+    background: #102746 !important;
+    color: #F2F6FF !important;
+    border: 1px solid #0875FF !important;
+    border-left: 4px solid #0875FF !important;
+    box-shadow: 0 2px 8px rgba(8, 117, 255, 0.25) !important;
+}
+
+[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="secondary"] {
+    background: transparent !important;
+    color: #9EB5D8 !important;
+    border: 1px solid rgba(29, 61, 103, 0.3) !important;
+}
+
+[data-testid="stSidebar"] div[data-testid="stButton"] > button[kind="secondary"]:hover {
+    background: #0E2342 !important;
+    color: #F2F6FF !important;
+    border: 1px solid #1D3D67 !important;
+}
+
 /* Status Banner */
 .status-banner {
     padding: 0.65rem 0.95rem;

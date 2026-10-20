@@ -145,7 +145,7 @@
       "field_name": "contact_details",
       "value": "Helpdesk: scholarships@example.invalid; Submission location: Scholarship Office, Room 204, Academic Block.",
       "status": "uncertain",
-      "evidence_quote": "Helpdesk: scholarships@example.invalid\n\n...to the Scholarship Office, Room 204, Academic Block.",
+      "evidence_quote": "Helpdesk: scholarships@example.invalid\n...to the Scholarship Office, Room 204, Academic Block.",
       "source_location": null,
       "requires_confirmation": true,
       "user_confirmed": false,
@@ -155,7 +155,7 @@
       "field_name": "required_actions",
       "value": "Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.",
       "status": "stated",
-      "evidence_quote": "Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.",
+      "evidence_quote": "Submission method: Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.",
       "source_location": "Line 18",
       "requires_confirmation": false,
       "user_confirmed": false,
@@ -177,18 +177,17 @@
       "Application Fee"
     ],
     "uncertain_or_conflicting_details": [
-      "The notice is synthetic test data and not an official announcement.",
       "Official Contact: The provided evidence quotation could not be found anywhere in the notice text."
     ],
     "raw_notice_text": "INSTITUTE OF TECHNOLOGY — SYNTHETIC TEST NOTICE\n\nNotice ID: TEST-SCH-2026-001\n\nDate of issue: 20 October 2026\n\nSubject: Merit Scholarship Application\n\nEligible students must submit their merit scholarship applications by 5:00 PM on 30 October 2026.\n\nEligibility: Students who obtained at least 80% marks in their last qualifying examination.\n\nRequired documents:\n1. Previous qualifying examination marksheet.\n2. College identity card.\n3. Bank account proof.\n\nSubmission method: Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.\n\nHelpdesk: scholarships@example.invalid\n\nLate applications will not be accepted.\n\nThis notice is synthetic test data. It is not an official announcement.\n"
   },
   "summary": {
-    "about": "This notice is about applying for a Merit Scholarship. It is a chance to get recognition for your good grades!",
+    "about": "This notice is about applying for a Merit Scholarship. It is a chance to get recognition for your hard work!",
     "eligible": "You can apply if you scored at least 80% in your last big exam.",
-    "actions": "Please give your application and all your papers to the Scholarship Office. This office is in Room 204, Academic Block.",
-    "documents": "You need three things: 1. Your marks sheet from your last exam. 2. Your college ID card. 3. Proof of your bank account.",
-    "deadline": "The deadline is 5:00 PM on October 30, 2026. Please do not miss this date!",
-    "help_contact": "If you need help, you can email scholarships@example.invalid. Remember, you must submit everything at the Scholarship Office (Room 204, Academic Block).",
+    "actions": "Please give your application and all your papers to the Scholarship Office. It is located in Room 204, Academic Block.",
+    "documents": "You must bring these three things: 1. Your old exam marksheet. 2. Your college ID card. 3. Proof of your bank account.",
+    "deadline": "The last day to submit everything is October 30, 2026, by 5:00 PM.",
+    "help_contact": "Need help? You can email scholarships@example.invalid. Remember, you must submit your papers at the Scholarship Office, Room 204, Academic Block.",
     "missing": "⚠️ Important: The notice is missing some key details. We do not know: 1. The application fee amount. 2. Specific details about the application form."
   },
   "checklist": {
@@ -220,7 +219,7 @@
         "is_mandatory": true,
         "requires_confirmation": false,
         "is_completed": false,
-        "grounded_quote": "Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.",
+        "grounded_quote": "Submission method: Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.",
         "notes": null
       },
       {

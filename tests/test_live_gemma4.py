@@ -19,6 +19,8 @@ from notice2action.schemas import CertaintyStatus
 from notice2action.ocr import extract_text_from_image
 from PIL import Image
 
+pytestmark = pytest.mark.live
+
 
 @pytest.fixture(scope="module")
 def ollama_client():
