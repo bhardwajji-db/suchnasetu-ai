@@ -26,13 +26,13 @@ The system is designed with four foundational principles:
 +-----------------------------------------------------------------------------------------+
 |                                      HOST MACHINE                                       |
 |                                                                                         |
-|  +-------------------------------------+        +-------------------------------------+ |
-|  |     React 19 + Vite Frontend        |        |    Legacy Streamlit Application     | |
-|  |     (Port 5173 - Modern UI)         |        |    (Port 8501 - Backward Compat)    | |
-|  +------------------+------------------+        +------------------+------------------+ |
-|                     |                                              |                    |
-|                     | REST / JSON                                  | Direct Python SDK  |
-|                     v                                              v                    |
+|  +------------------------------------------------------------------------------------+ |
+|  |                 React 19 + TypeScript + Vite Frontend                              | |
+|  |                 (Port 5173 - Modern Accessible Dashboard)                          | |
+|  +------------------------------------------+-----------------------------------------+ |
+|                                             |                                           |
+|                                             | REST / JSON                               |
+|                                             v                                           |
 |  +------------------------------------------------------------------------------------+ |
 |  |                         FastAPI ASGI REST Backend Layer                            | |
 |  |                         (Port 8000 - server.py)                                    | |
@@ -61,14 +61,13 @@ The system is designed with four foundational principles:
 
 | Component | Technology | Network Address | Primary Role |
 | :--- | :--- | :--- | :--- |
-| **Frontend** | React 19, TypeScript, Vite 6, Tailwind CSS v4 | `http://127.0.0.1:5173/` | Modern accessible dashboard with language & provider selectors |
+| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS v4 | `http://127.0.0.1:5173/` | Modern accessible dashboard with language & provider selectors |
 | **Backend** | FastAPI, Uvicorn, Pydantic v2 | `http://127.0.0.1:8000/` | REST API, validation, session storage, evidence indexing |
 | **Evidence Service** | Python 3.11, Pydantic | In-Memory / Indexed | Line-level text segmenting, verbatim quote verification |
 | **Session Store** | Python 3.11, Thread-safe JSON | Local Disk / Memory | Session isolation, conversation history, user confirmations |
 | **Local LLM** | Ollama Daemon (`gemma4:latest`) | `http://127.0.0.1:11434/` | 100% on-device generative reasoning (default) |
 | **Cloud LLMs** | OpenRouter, Gemini, Hugging Face | Secure Outbound HTTPS | Optional cloud inference when credentials are provided |
 | **Vision / OCR** | Tesseract OCR v5.4.0 (Default) / RapidOCR | System Executable / ONNX | Local optical character recognition & layout preservation |
-| **Legacy UI** | Streamlit 1.66.0 | `http://localhost:8501/` | Maintained for backward compatibility |
 
 ---
 

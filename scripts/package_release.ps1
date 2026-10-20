@@ -35,8 +35,6 @@ $ItemsToCopy = @(
     "docs",
     "assets",
     "reports",
-    ".streamlit",
-    "app.py",
     "pyproject.toml",
     "requirements.txt",
     "README.md",

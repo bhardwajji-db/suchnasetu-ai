@@ -132,19 +132,13 @@ npm run dev -- --host 127.0.0.1 --port 5173
 ```
 *Access UI in browser:* [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
 
-### 4. Optional: Start Legacy Streamlit App (Terminal 4)
-```powershell
-.\.venv\Scripts\streamlit.exe run app.py --server.port 8501 --server.headless true
-```
-*Access Streamlit UI:* [http://localhost:8501/](http://localhost:8501/)
-
 ---
 
 ## 🧪 Automated Testing Suite
 
 ```powershell
-# 1. Run all backend unit, contract, multi-provider & pipeline tests (87 tests)
-.\.venv\Scripts\python.exe -m pytest tests/test_api_endpoints.py tests/test_multi_provider_llm.py tests/test_services_and_six_fields.py tests/test_unit_pipeline.py tests/test_structured_notice_regression.py tests/test_negative_and_edge_cases.py tests/test_notice_fingerprint_stale.py tests/test_ui_controls_comprehensive.py -v
+# 1. Run all backend unit, contract, multi-provider & pipeline tests
+.\.venv\Scripts\python.exe -m pytest tests/test_api_endpoints.py tests/test_multi_provider_llm.py tests/test_services_and_six_fields.py tests/test_unit_pipeline.py tests/test_structured_notice_regression.py tests/test_negative_and_edge_cases.py -v
 
 # 2. Run frontend Vitest component tests (10 suites, 16 tests)
 cd frontend
@@ -167,7 +161,6 @@ cd ..
 
 ```
 ps2/
-├── app.py                         # Legacy Streamlit application entry point
 ├── pyproject.toml                 # Canonical Python project configuration (Apache-2.0)
 ├── requirements.txt               # Locked Python dependencies
 ├── LICENSE                        # Apache 2.0 Open-Source License

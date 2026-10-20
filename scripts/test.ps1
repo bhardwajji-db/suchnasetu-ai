@@ -2,7 +2,8 @@
 # Windows PowerShell compatible
 
 param (
-    [switch]$IncludeLive = $false
+    [switch]$IncludeLive = $false,
+    [switch]$IncludeFrontend = $true
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,10 +18,22 @@ if (-not (Test-Path $PytestExe)) {
 }
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " Running Notice2Action AI Deterministic Unit Tests" -ForegroundColor Cyan
+Write-Host " Running Notice2Action AI Backend Test Suites (pytest)" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-& $PytestExe tests\test_unit_pipeline.py -v
+& $PytestExe tests\test_unit_pipeline.py tests\test_api_endpoints.py tests\test_services_and_six_fields.py tests\test_multi_provider_llm.py tests\test_negative_and_edge_cases.py tests\test_structured_notice_regression.py -v
+
+if ($IncludeFrontend) {
+    Write-Host "`n==========================================================" -ForegroundColor Cyan
+    Write-Host " Running Frontend Vitest Component Suite" -ForegroundColor Cyan
+    Write-Host "==========================================================" -ForegroundColor Cyan
+    Push-Location (Join-Path $ProjectRoot "frontend")
+    try {
+        npm run test
+    } finally {
+        Pop-Location
+    }
+}
 
 if ($IncludeLive) {
     Write-Host "`n==========================================================" -ForegroundColor Yellow

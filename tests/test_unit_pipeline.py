@@ -412,9 +412,15 @@ def test_24_confirmation_before_uncertain_details_become_actionable():
     assert "Verify" in deadline_items[0].action or "Confirm" in deadline_items[0].action
 
 
-# 25. Streamlit App Loading Regression Test (Ponytail check)
-def test_25_streamlit_app_loads_without_import_error():
-    from streamlit.testing.v1 import AppTest
-    at = AppTest.from_file("../app.py")
-    at.run()
-    assert not at.exception, f"Streamlit app raised an unexpected exception: {at.exception}"
+# 25. FastAPI Backend Server Loading Regression Test
+def test_25_fastapi_server_loads_without_import_error():
+    from notice2action.api.server import app
+    assert app is not None
+    # Verify core production routes are registered
+    route_paths = [r.path for r in app.routes]
+    assert "/api/health" in route_paths
+    assert "/api/analyze" in route_paths
+    assert "/api/followup" in route_paths
+    assert "/api/providers" in route_paths
+    assert "/api/export/ics" in route_paths
+    assert "/api/evidence/search" in route_paths
