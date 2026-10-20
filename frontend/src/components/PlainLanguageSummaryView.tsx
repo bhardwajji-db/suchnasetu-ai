@@ -167,6 +167,14 @@ export const PlainLanguageSummaryView: React.FC = () => {
           <span>{audioError}</span>
         </div>
       )}
+
+      {/* Legal & Informational Disclaimer */}
+      <div className="p-3 rounded-lg bg-[#070B14]/90 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
+        <AlertCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+        <span>
+          <strong>Notice:</strong> This plain-language summary and sequential action plan are generated for accessibility and informational purposes only. They do not constitute formal legal advice or statutory interpretation. Always consult the original notice issuer or qualified legal counsel for binding determinations.
+        </span>
+      </div>
     </div>
   );
 };

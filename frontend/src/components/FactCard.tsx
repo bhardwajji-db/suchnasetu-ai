@@ -64,6 +64,11 @@ export const FactCard: React.FC<FactCardProps> = ({ fact, fieldName, displayName
               </span>
             )}
             {getStatusBadge()}
+            {fact.uncertainty_type && !fact.user_confirmed && (
+              <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-950/50 text-amber-300 border border-amber-800/60" title={`Uncertainty cause: ${fact.uncertainty_type}`}>
+                {fact.uncertainty_type.replace('_', ' ')}
+              </span>
+            )}
           </div>
         </div>
 

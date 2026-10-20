@@ -1,16 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type {
   StructuredNotice,
+  SixCoreFields,
   PlainLanguageSummary,
   ActionChecklist,
   FollowUpAnswer,
   PreflightReport,
   SampleFixture,
   OCRResponse,
+  LLMProviderStatus,
 } from '../types/api';
 import { apiClient } from '../services/apiClient';
 
 interface NoticeContextType {
+  sessionId: string | null;
   rawNoticeText: string;
   setRawNoticeText: (text: string) => void;
   uploadedImage: string | null;
@@ -19,6 +22,7 @@ interface NoticeContextType {
   ocrResult: OCRResponse | null;
   setOcrResult: (res: OCRResponse | null) => void;
   structuredNotice: StructuredNotice | null;
+  sixCoreFields: SixCoreFields | null;
   summaryEn: PlainLanguageSummary | null;
   summaryHi: PlainLanguageSummary | null;
   checklistEn: ActionChecklist | null;
@@ -43,6 +47,9 @@ interface NoticeContextType {
   analysisError: string | null;
   followUpHistory: FollowUpAnswer[];
   systemHealth: PreflightReport | null;
+  providers: LLMProviderStatus[];
+  activeProvider: string;
+  switchProvider: (providerId: string) => Promise<void>;
   samples: SampleFixture[];
   activeTab: number;
   setActiveTab: (tab: number) => void;
@@ -61,12 +68,14 @@ interface NoticeContextType {
 const NoticeContext = createContext<NoticeContextType | undefined>(undefined);
 
 export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [rawNoticeText, setRawNoticeText] = useState<string>('');
   const [uploadedImage, setUploadedImageState] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [ocrResult, setOcrResult] = useState<OCRResponse | null>(null);
 
   const [structuredNotice, setStructuredNotice] = useState<StructuredNotice | null>(null);
+  const [sixCoreFields, setSixCoreFields] = useState<SixCoreFields | null>(null);
   const [summaryEn, setSummaryEn] = useState<PlainLanguageSummary | null>(null);
   const [summaryHi, setSummaryHi] = useState<PlainLanguageSummary | null>(null);
   const [checklistEn, setChecklistEn] = useState<ActionChecklist | null>(null);
@@ -86,6 +95,8 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [followUpHistory, setFollowUpHistory] = useState<FollowUpAnswer[]>([]);
   const [systemHealth, setSystemHealth] = useState<PreflightReport | null>(null);
+  const [providers, setProviders] = useState<LLMProviderStatus[]>([]);
+  const [activeProvider, setActiveProvider] = useState<string>('ollama');
   const [samples, setSamples] = useState<SampleFixture[]>([]);
   const [activeTab, setActiveTab] = useState<number>(0);
 
@@ -129,10 +140,25 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const health = await apiClient.getHealth();
       setSystemHealth(health);
+      if (health.active_provider) {
+        setActiveProvider(health.active_provider);
+      }
+      const provs = await apiClient.getProviders();
+      setProviders(provs);
     } catch (e) {
-      console.error('Failed to load system health', e);
+      console.error('Failed to load system health or providers', e);
     }
   }, []);
+
+  const switchProvider = useCallback(async (providerId: string) => {
+    try {
+      await apiClient.selectProvider(providerId);
+      setActiveProvider(providerId);
+      refreshHealth();
+    } catch (e: any) {
+      setAnalysisError(`Failed to switch provider: ${e.message}`);
+    }
+  }, [refreshHealth]);
 
   useEffect(() => {
     refreshHealth();
@@ -145,6 +171,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setUploadedFile(null);
     setOcrResult(null);
     setStructuredNotice(null);
+    setSixCoreFields(null);
     setSummaryEn(null);
     setSummaryHi(null);
     setChecklistEn(null);
@@ -156,6 +183,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setIsOriginalNoticeOpen(false);
     setConfirmingFact(null);
     setReadingLevel('standard');
+    setSessionId(null);
   };
 
   const resetSession = () => {
@@ -179,6 +207,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setUploadedFile(null);
       }
       setStructuredNotice(null);
+      setSixCoreFields(null);
       setSummaryEn(null);
       setSummaryHi(null);
       setChecklistEn(null);
@@ -212,8 +241,20 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, 1200);
 
     try {
-      const res = await apiClient.analyzeNotice(rawNoticeText, selectedLang, readingLevel);
+      const res = await apiClient.analyzeNotice(
+        rawNoticeText,
+        selectedLang,
+        readingLevel,
+        sessionId,
+        activeProvider
+      );
+      if (res.session_id) {
+        setSessionId(res.session_id);
+      }
       setStructuredNotice(res.structured_notice);
+      if (res.six_core_fields) {
+        setSixCoreFields(res.six_core_fields);
+      }
       setSummaryEn(res.summary_en);
       setSummaryHi(res.summary_hi);
       setChecklistEn(res.checklist_en);
@@ -222,7 +263,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setAnalysisDuration(res.duration_seconds);
       setAnalysisPhase(5);
     } catch (err: any) {
-      setAnalysisError(err.message || 'Analysis failed. Please ensure Ollama is running.');
+      setAnalysisError(err.message || 'Analysis failed. Please verify provider configuration or local Ollama.');
     } finally {
       clearInterval(timer);
       setIsAnalyzing(false);
@@ -241,8 +282,17 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const saveConfirmation = useCallback(async (fieldName: string, confirmedValue: string) => {
     if (!structuredNotice) return;
     try {
-      const res = await apiClient.confirmFact(fieldName, confirmedValue, structuredNotice, readingLevel);
+      const res = await apiClient.confirmFact(
+        fieldName,
+        confirmedValue,
+        structuredNotice,
+        readingLevel,
+        sessionId
+      );
       setStructuredNotice(res.structured_notice);
+      if (res.six_core_fields) {
+        setSixCoreFields(res.six_core_fields);
+      }
       setSummaryEn(res.summary_en);
       setSummaryHi(res.summary_hi);
       setChecklistEn(res.checklist_en);
@@ -258,7 +308,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setStructuredNotice(updated);
       }
     }
-  }, [structuredNotice, readingLevel]);
+  }, [structuredNotice, readingLevel, sessionId]);
 
   const changeReadingLevel = useCallback(async (level: 'simple' | 'standard' | 'detailed') => {
     setReadingLevel(level);
@@ -297,7 +347,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const askQuestion = async (question: string) => {
     if (!question.trim() || !rawNoticeText.trim()) return;
     try {
-      const answer = await apiClient.askFollowUp(question, rawNoticeText);
+      const answer = await apiClient.askFollowUp(question, rawNoticeText, sessionId, selectedLang);
       setFollowUpHistory((prev) => [answer, ...prev]);
     } catch (err: any) {
       setFollowUpHistory((prev) => [
@@ -318,6 +368,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   return (
     <NoticeContext.Provider
       value={{
+        sessionId,
         rawNoticeText,
         setRawNoticeText,
         uploadedImage,
@@ -326,6 +377,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         ocrResult,
         setOcrResult,
         structuredNotice,
+        sixCoreFields,
         summaryEn,
         summaryHi,
         checklistEn,
@@ -350,6 +402,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         analysisError,
         followUpHistory,
         systemHealth,
+        providers,
+        activeProvider,
+        switchProvider,
         samples,
         activeTab,
         setActiveTab,

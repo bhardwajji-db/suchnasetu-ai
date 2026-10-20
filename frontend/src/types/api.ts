@@ -20,9 +20,25 @@ export interface ExtractedFact {
   user_confirmed: boolean;
   confirmed_value?: string | null;
   explanation?: string | null;
+  uncertainty_type?: 'ocr_quality' | 'document_ambiguity' | 'missing_in_text' | 'conflict' | string | null;
+}
+
+export interface SixCoreFields {
+  issuing_authority: ExtractedFact;
+  notice_reference_number: ExtractedFact;
+  notice_date: ExtractedFact;
+  recipient: ExtractedFact;
+  main_subject: ExtractedFact;
+  required_action_and_deadline: ExtractedFact;
 }
 
 export interface StructuredNotice {
+  issuing_authority?: ExtractedFact;
+  notice_reference_number?: ExtractedFact;
+  notice_date?: ExtractedFact;
+  recipient?: ExtractedFact;
+  main_subject?: ExtractedFact;
+  required_action_and_deadline?: ExtractedFact;
   purpose: ExtractedFact;
   eligibility: ExtractedFact;
   deadline: ExtractedFact;
@@ -78,9 +94,27 @@ export interface DiagnosticItem {
 
 export interface PreflightReport {
   overall_status: 'ok' | 'warning' | 'error';
+  active_provider?: string;
   model_name: string;
   is_ready_for_inference: boolean;
   items: DiagnosticItem[];
+}
+
+export interface LLMProviderStatus {
+  id: string;
+  name: string;
+  is_active: boolean;
+  is_local: boolean;
+  requires_api_key: boolean;
+  model: string;
+  endpoint?: string;
+  key_configured: boolean;
+}
+
+export interface EvidenceCitation {
+  line_number: number;
+  quote: string;
+  relevance_score: number;
 }
 
 export interface SampleFixture {
@@ -105,13 +139,18 @@ export interface OCRResponse {
   line_count: number;
   char_count: number;
   is_preprocessed: boolean;
+  engine_used?: string;
+  is_uncertain?: boolean;
+  uncertainty_reason?: string | null;
   warning?: string | null;
   error?: string | null;
   fingerprint: string;
 }
 
 export interface AnalyzeResponse {
+  session_id?: string;
   structured_notice: StructuredNotice;
+  six_core_fields?: SixCoreFields;
   summary_en: PlainLanguageSummary;
   summary_hi: PlainLanguageSummary;
   checklist_en: ActionChecklist;
@@ -122,6 +161,7 @@ export interface AnalyzeResponse {
 
 export interface ConfirmFactResponse {
   structured_notice: StructuredNotice;
+  six_core_fields?: SixCoreFields;
   summary_en: PlainLanguageSummary;
   summary_hi: PlainLanguageSummary;
   checklist_en: ActionChecklist;

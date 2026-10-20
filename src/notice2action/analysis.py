@@ -1,6 +1,7 @@
 """
 Notice Analysis Pipeline for Notice2Action AI.
-Guides Gemma 4 to extract structured semantic facts, quotation evidence,
+Guides the configured LLM (Ollama, OpenRouter, Gemini, or Hugging Face)
+to extract structured semantic facts, the Six Core Fields, quotation evidence,
 and uncertainty flags, followed by strict deterministic grounding verification.
 """
 
@@ -13,10 +14,12 @@ from notice2action.schemas import (
     CertaintyStatus,
     ExtractedFact,
     StructuredNotice,
+    SixCoreFields,
     NOT_STATED_LABEL,
     normalize_string_list,
 )
-from notice2action.llm.ollama_client import OllamaClient
+from notice2action.llm.base import BaseLLMClient
+from notice2action.llm.factory import get_llm_client
 from notice2action.grounding import verify_structured_notice
 from notice2action.security import wrap_untrusted_notice
 
@@ -28,10 +31,17 @@ RULES:
 1. Grounding: Extract facts ONLY from the notice. Never invent dates, fees, rules, or contacts.
 2. Missing Info: If unmentioned, set "value" to "Not stated in the notice.", "status" to "not_stated", "evidence_quote" to null.
 3. Quotation: For stated facts, provide an exact verbatim quotation ("evidence_quote") from the notice proving the fact.
-4. Uncertainty: If tentative or provisional, set "status" to "uncertain" and "requires_confirmation" to true.
+4. Uncertainty: If tentative, provisional, or ambiguous, set "status" to "uncertain", "requires_confirmation" to true, and specify "uncertainty_type" ("document_ambiguity", "ocr_quality", "missing_in_text", or "conflict").
 
 Format:
 {
+  "issuing_authority": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
+  "notice_reference_number": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
+  "notice_date": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
+  "recipient": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
+  "main_subject": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
+  "required_action_and_deadline": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
+
   "purpose": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
   "eligibility": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
   "deadline": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
@@ -40,8 +50,8 @@ Format:
   "contact_details": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
   "required_actions": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
   "important_conditions": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
-  "missing_information": ["List of short strings describing critical aspects missing from the notice, e.g. 'Application fee', 'Selection criteria'"],
-  "uncertain_or_conflicting_details": ["List of short strings describing ambiguous or contradictory details in the notice"]
+  "missing_information": ["List of critical aspects missing from the notice, e.g. 'Application fee', 'Selection criteria'"],
+  "uncertain_or_conflicting_details": ["List of ambiguous or contradictory details in the notice"]
 }"""
 
 
@@ -72,6 +82,11 @@ def parse_fact_dict(field_name: str, data: Optional[Dict[str, Any]]) -> Extracte
     explanation = data.get("explanation")
     exp_clean = str(explanation).strip() if explanation else None
 
+    unc_type = data.get("uncertainty_type")
+    unc_clean = str(unc_type).strip() if unc_type else None
+    if not unc_clean and status in [CertaintyStatus.UNCERTAIN, CertaintyStatus.CONFLICTING]:
+        unc_clean = "document_ambiguity"
+
     return ExtractedFact(
         field_name=field_name,
         value=val if val else NOT_STATED_LABEL,
@@ -79,6 +94,7 @@ def parse_fact_dict(field_name: str, data: Optional[Dict[str, Any]]) -> Extracte
         evidence_quote=quote_clean,
         requires_confirmation=req_conf or (status in [CertaintyStatus.UNCERTAIN, CertaintyStatus.CONFLICTING]),
         explanation=exp_clean,
+        uncertainty_type=unc_clean,
     )
 
 
@@ -88,14 +104,14 @@ def _normalize_str_list(items: Any) -> List[str]:
 
 
 class NoticeAnalyzer:
-    """Orchestrates structured notice analysis using Gemma 4 and grounding checks."""
+    """Orchestrates structured notice analysis using the configured LLM and grounding checks."""
 
-    def __init__(self, client: Optional[OllamaClient] = None):
-        self.client = client or OllamaClient()
+    def __init__(self, client: Optional[BaseLLMClient] = None):
+        self.client = client or get_llm_client()
 
     def analyze_notice(self, notice_text: str) -> StructuredNotice:
         """
-        Takes raw notice text, queries Gemma 4 for structured extraction,
+        Takes raw notice text, queries the LLM for structured extraction,
         and applies deterministic evidence verification.
         """
         wrapped_input = wrap_untrusted_notice(notice_text)
@@ -109,15 +125,39 @@ class NoticeAnalyzer:
         if not isinstance(raw_json, dict):
             raw_json = {}
 
+        # Parse Six Core Fields
+        issuing_authority = parse_fact_dict("issuing_authority", raw_json.get("issuing_authority"))
+        notice_reference_number = parse_fact_dict("notice_reference_number", raw_json.get("notice_reference_number"))
+        notice_date = parse_fact_dict("notice_date", raw_json.get("notice_date"))
+        recipient = parse_fact_dict("recipient", raw_json.get("recipient"))
+        main_subject = parse_fact_dict("main_subject", raw_json.get("main_subject"))
+        required_action_and_deadline = parse_fact_dict("required_action_and_deadline", raw_json.get("required_action_and_deadline"))
+
+        # Parse Procedural Fields
+        purpose = parse_fact_dict("purpose", raw_json.get("purpose"))
+        eligibility = parse_fact_dict("eligibility", raw_json.get("eligibility"))
+        deadline = parse_fact_dict("deadline", raw_json.get("deadline"))
+        fee_or_cost = parse_fact_dict("fee_or_cost", raw_json.get("fee_or_cost"))
+        required_documents = parse_fact_dict("required_documents", raw_json.get("required_documents"))
+        contact_details = parse_fact_dict("contact_details", raw_json.get("contact_details"))
+        required_actions = parse_fact_dict("required_actions", raw_json.get("required_actions"))
+        important_conditions = parse_fact_dict("important_conditions", raw_json.get("important_conditions"))
+
         unverified = StructuredNotice(
-            purpose=parse_fact_dict("purpose", raw_json.get("purpose")),
-            eligibility=parse_fact_dict("eligibility", raw_json.get("eligibility")),
-            deadline=parse_fact_dict("deadline", raw_json.get("deadline")),
-            fee_or_cost=parse_fact_dict("fee_or_cost", raw_json.get("fee_or_cost")),
-            required_documents=parse_fact_dict("required_documents", raw_json.get("required_documents")),
-            contact_details=parse_fact_dict("contact_details", raw_json.get("contact_details")),
-            required_actions=parse_fact_dict("required_actions", raw_json.get("required_actions")),
-            important_conditions=parse_fact_dict("important_conditions", raw_json.get("important_conditions")),
+            issuing_authority=issuing_authority,
+            notice_reference_number=notice_reference_number,
+            notice_date=notice_date,
+            recipient=recipient,
+            main_subject=main_subject,
+            required_action_and_deadline=required_action_and_deadline,
+            purpose=purpose,
+            eligibility=eligibility,
+            deadline=deadline,
+            fee_or_cost=fee_or_cost,
+            required_documents=required_documents,
+            contact_details=contact_details,
+            required_actions=required_actions,
+            important_conditions=important_conditions,
             missing_information=normalize_string_list(raw_json.get("missing_information", [])),
             uncertain_or_conflicting_details=normalize_string_list(raw_json.get("uncertain_or_conflicting_details", [])),
             raw_notice_text=notice_text,
@@ -126,4 +166,3 @@ class NoticeAnalyzer:
         # Apply evidence grounding verification
         verified = verify_structured_notice(unverified, notice_text)
         return verified
-

@@ -2,10 +2,10 @@ import React from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { FactCard } from '../components/FactCard';
 import { StaleWarningBanner } from '../components/StaleWarningBanner';
-import { Search, AlertCircle, FileQuestion, ArrowRight } from 'lucide-react';
+import { Search, AlertCircle, FileQuestion, ArrowRight, ShieldCheck, FileText } from 'lucide-react';
 
 export const GroundedFactsView: React.FC = () => {
-  const { structuredNotice, setActiveTab } = useNotice();
+  const { structuredNotice, sixCoreFields, setActiveTab } = useNotice();
 
   if (!structuredNotice) {
     return (
@@ -28,15 +28,48 @@ export const GroundedFactsView: React.FC = () => {
     );
   }
 
-  const factDimensions = [
-    { key: 'purpose', name: 'Notice Purpose & Program Name', fact: structuredNotice.purpose },
+  // 1. The Six Core Structured Fields (Friend Suggestion E)
+  const sixFields = [
+    {
+      key: 'issuing_authority',
+      name: '1. Issuing Authority or Department',
+      fact: structuredNotice.issuing_authority || sixCoreFields?.issuing_authority || structuredNotice.purpose,
+    },
+    {
+      key: 'notice_reference_number',
+      name: '2. Notice / Reference Number',
+      fact: structuredNotice.notice_reference_number || sixCoreFields?.notice_reference_number,
+    },
+    {
+      key: 'notice_date',
+      name: '3. Notice Issuance Date',
+      fact: structuredNotice.notice_date || sixCoreFields?.notice_date,
+    },
+    {
+      key: 'recipient',
+      name: '4. Recipient or Concerned Party',
+      fact: structuredNotice.recipient || sixCoreFields?.recipient || structuredNotice.eligibility,
+    },
+    {
+      key: 'main_subject',
+      name: '5. Main Issue, Allegation, or Subject',
+      fact: structuredNotice.main_subject || sixCoreFields?.main_subject || structuredNotice.purpose,
+    },
+    {
+      key: 'required_action_and_deadline',
+      name: '6. Required Action and Deadline',
+      fact: structuredNotice.required_action_and_deadline || sixCoreFields?.required_action_and_deadline || structuredNotice.deadline,
+    },
+  ];
+
+  // 2. Procedural & Operational Dimensions
+  const proceduralDimensions = [
     { key: 'eligibility', name: 'Eligibility Criteria & Thresholds', fact: structuredNotice.eligibility },
     { key: 'deadline', name: 'Final Submission Deadline & Cutoff', fact: structuredNotice.deadline },
-    { key: 'fee_or_cost', name: 'Application / Registration Fee', fact: structuredNotice.fee_or_cost },
+    { key: 'fee_or_cost', name: 'Application / Penalty / Costs', fact: structuredNotice.fee_or_cost },
     { key: 'required_documents', name: 'Required Documents & Verification', fact: structuredNotice.required_documents },
-    { key: 'contact_details', name: 'Official Contact & Queries Helpdesk', fact: structuredNotice.contact_details },
-    { key: 'required_actions', name: 'Mandatory Submission Procedure', fact: structuredNotice.required_actions },
-    { key: 'important_conditions', name: 'Important Rules & Special Conditions', fact: structuredNotice.important_conditions },
+    { key: 'contact_details', name: 'Official Contact & Helpdesk', fact: structuredNotice.contact_details },
+    { key: 'important_conditions', name: 'Important Rules & Conditions', fact: structuredNotice.important_conditions },
   ];
 
   return (
@@ -53,16 +86,42 @@ export const GroundedFactsView: React.FC = () => {
 
       <StaleWarningBanner />
 
-      {/* 8 Fact Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {factDimensions.map((d) => (
-          <FactCard
-            key={d.key}
-            fieldName={d.key}
-            displayName={d.name}
-            fact={d.fact}
-          />
-        ))}
+      {/* SECTION 1: Six Core Notice Fields */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-blue-400 font-bold text-xs uppercase tracking-wider">
+          <ShieldCheck className="w-4 h-4" />
+          <span>Six Core Notice Fields (Structured Legal Extraction)</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sixFields.map((d) =>
+            d.fact ? (
+              <FactCard
+                key={d.key}
+                fieldName={d.key}
+                displayName={d.name}
+                fact={d.fact}
+              />
+            ) : null
+          )}
+        </div>
+      </div>
+
+      {/* SECTION 2: Procedural & Requirement Details */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
+          <FileText className="w-4 h-4" />
+          <span>Procedural & Compliance Dimensions</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {proceduralDimensions.map((d) => (
+            <FactCard
+              key={d.key}
+              fieldName={d.key}
+              displayName={d.name}
+              fact={d.fact}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Missing Information & Uncertainty Dossiers */}

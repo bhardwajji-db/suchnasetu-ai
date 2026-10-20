@@ -15,6 +15,8 @@ import type {
   ActionChecklist,
   ConfirmFactResponse,
   ReadingLevelResponse,
+  LLMProviderStatus,
+  EvidenceCitation,
 } from '../types/api';
 
 const getBaseUrl = (): string => {
@@ -65,6 +67,26 @@ export const apiClient = {
   async getHealth(): Promise<PreflightReport> {
     const res = await fetch(`${BASE_URL}/api/health`);
     return handleResponse<PreflightReport>(res);
+  },
+
+  /**
+   * List all available LLM providers and their configuration status
+   */
+  async getProviders(): Promise<LLMProviderStatus[]> {
+    const res = await fetch(`${BASE_URL}/api/providers`);
+    return handleResponse<LLMProviderStatus[]>(res);
+  },
+
+  /**
+   * Select active LLM provider (ollama, openrouter, gemini, huggingface)
+   */
+  async selectProvider(provider: string): Promise<any> {
+    const res = await fetch(`${BASE_URL}/api/providers/select`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider }),
+    });
+    return handleResponse<any>(res);
   },
 
   /**
@@ -120,18 +142,22 @@ export const apiClient = {
   },
 
   /**
-   * Execute Tesseract OCR on an image file
+   * Execute OCR on an image file
    */
   async runOCR(
     file: File | Blob,
     filename: string = 'notice_image.png',
     targetLang: string = 'eng',
-    enhanceContrast: boolean = true
+    enhanceContrast: boolean = true,
+    engine?: string
   ): Promise<OCRResponse> {
     const formData = new FormData();
     formData.append('file', file, filename);
     formData.append('target_lang', targetLang);
     formData.append('enhance_contrast', String(enhanceContrast));
+    if (engine) {
+      formData.append('engine', engine);
+    }
 
     const res = await fetch(`${BASE_URL}/api/ocr`, {
       method: 'POST',
@@ -141,12 +167,14 @@ export const apiClient = {
   },
 
   /**
-   * Execute full 5-phase structured analysis via local Gemma 4
+   * Execute structured analysis via configured LLM
    */
   async analyzeNotice(
     noticeText: string,
     targetLanguage: string = 'en',
-    readingLevel: string = 'standard'
+    readingLevel: string = 'standard',
+    sessionId?: string | null,
+    provider?: string | null
   ): Promise<AnalyzeResponse> {
     const res = await fetch(`${BASE_URL}/api/analyze`, {
       method: 'POST',
@@ -155,9 +183,27 @@ export const apiClient = {
         notice_text: noticeText,
         target_language: targetLanguage,
         reading_level: readingLevel,
+        session_id: sessionId || undefined,
+        provider: provider || undefined,
       }),
     });
     return handleResponse<AnalyzeResponse>(res);
+  },
+
+  /**
+   * Search grounded citations within the active notice text
+   */
+  async searchEvidence(query: string, noticeText: string, maxResults: number = 5): Promise<EvidenceCitation[]> {
+    const res = await fetch(`${BASE_URL}/api/evidence/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query,
+        notice_text: noticeText,
+        max_results: maxResults,
+      }),
+    });
+    return handleResponse<EvidenceCitation[]>(res);
   },
 
   /**
@@ -167,7 +213,8 @@ export const apiClient = {
     fieldName: string,
     confirmedValue: string,
     structuredNotice: StructuredNotice,
-    readingLevel: string = 'standard'
+    readingLevel: string = 'standard',
+    sessionId?: string | null
   ): Promise<ConfirmFactResponse> {
     const res = await fetch(`${BASE_URL}/api/confirm`, {
       method: 'POST',
@@ -177,6 +224,7 @@ export const apiClient = {
         confirmed_value: confirmedValue,
         structured_notice: structuredNotice,
         reading_level: readingLevel,
+        session_id: sessionId || undefined,
       }),
     });
     return handleResponse<ConfirmFactResponse>(res);
@@ -203,13 +251,20 @@ export const apiClient = {
   /**
    * Ask follow-up question grounded strictly in active notice text
    */
-  async askFollowUp(question: string, noticeText: string): Promise<FollowUpAnswer> {
+  async askFollowUp(
+    question: string,
+    noticeText: string,
+    sessionId?: string | null,
+    targetLanguage: string = 'en'
+  ): Promise<FollowUpAnswer> {
     const res = await fetch(`${BASE_URL}/api/followup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question,
         notice_text: noticeText,
+        session_id: sessionId || undefined,
+        target_language: targetLanguage,
       }),
     });
     return handleResponse<FollowUpAnswer>(res);

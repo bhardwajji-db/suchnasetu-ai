@@ -1,9 +1,18 @@
 import React from 'react';
 import { useNotice } from '../context/NoticeContext';
-import { Cpu, Globe, CheckCircle2, AlertTriangle, XCircle, Eye } from 'lucide-react';
+import { Cpu, Globe, CheckCircle2, AlertTriangle, XCircle, Eye, Server } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { systemHealth, selectedLang, setSelectedLang, openOriginalNoticeModal, rawNoticeText } = useNotice();
+  const {
+    systemHealth,
+    providers,
+    activeProvider,
+    switchProvider,
+    selectedLang,
+    setSelectedLang,
+    openOriginalNoticeModal,
+    rawNoticeText,
+  } = useNotice();
 
   const getStatusBadge = () => {
     if (!systemHealth) {
@@ -33,7 +42,7 @@ export const Header: React.FC = () => {
     return (
       <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-950/80 text-rose-400 border border-rose-800/80">
         <XCircle className="w-3.5 h-3.5 text-rose-400" />
-        Ollama Offline
+        Provider Offline
       </span>
     );
   };
@@ -74,6 +83,30 @@ export const Header: React.FC = () => {
         <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-slate-300 bg-[#111A33] border border-[#1D2D4E]">
           <Cpu className="w-3.5 h-3.5 text-blue-400" />
           <span>Local Gemma 4 (100% Privacy)</span>
+        </div>
+
+        {/* LLM Provider Selector */}
+        <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium text-slate-300 bg-[#111A33] border border-[#1D2D4E]">
+          <Server className="w-3.5 h-3.5 text-blue-400" />
+          <select
+            value={activeProvider}
+            onChange={(e) => switchProvider(e.target.value)}
+            className="bg-transparent text-slate-200 text-xs font-semibold outline-none cursor-pointer py-1"
+            title="Select AI Inference Provider"
+          >
+            {providers.length > 0 ? (
+              providers.map((p) => (
+                <option key={p.id} value={p.id} className="bg-[#0B132B] text-slate-200">
+                  {p.is_local ? '🔒 ' : '☁️ '}
+                  {p.name} {p.key_configured ? '' : '(No Key)'}
+                </option>
+              ))
+            ) : (
+              <option value="ollama" className="bg-[#0B132B] text-slate-200">
+                🔒 Ollama (Local)
+              </option>
+            )}
+          </select>
         </div>
 
         {/* System Health */}

@@ -1,69 +1,31 @@
 """
 Local Model Adapter for Gemma 4 via Ollama.
 Handles request lifecycle, timeouts, JSON parsing, thinking-token stripping, and error paths.
+Inherits from BaseLLMClient to adhere to the multi-provider interface.
 """
 
 from __future__ import annotations
 
 import json
-import re
 from typing import Dict, Any, Optional, List
 import requests
 
 from notice2action.config import config
+from notice2action.llm.base import (
+    BaseLLMClient,
+    clean_llm_json_response,
+    LLMClientError,
+    LLMConnectionError,
+    LLMModelError,
+    LLMTimeoutError,
+    OllamaClientError,
+    OllamaConnectionError,
+    OllamaModelError,
+    OllamaTimeoutError,
+)
 
 
-class OllamaClientError(Exception):
-    """Base exception for Ollama client failures."""
-    pass
-
-
-class OllamaConnectionError(OllamaClientError):
-    """Raised when the Ollama daemon cannot be reached."""
-    pass
-
-
-class OllamaModelError(OllamaClientError):
-    """Raised when the requested model is missing or fails on Ollama."""
-    pass
-
-
-class OllamaTimeoutError(OllamaClientError):
-    """Raised when local inference times out."""
-    pass
-
-
-def clean_llm_json_response(raw_text: str) -> str:
-    """
-    Cleans raw model output:
-    1. Removes <thinking>...</thinking> blocks produced by reasoning models.
-    2. Strips markdown fences (```json ... ```).
-    3. Trims whitespace.
-    """
-    if not raw_text:
-        return ""
-
-    # Remove thinking tags and enclosed thoughts
-    cleaned = re.sub(r"<thinking>[\s\S]*?</thinking>", "", raw_text, flags=re.IGNORECASE).strip()
-
-    # Match JSON block inside markdown code fences
-    fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned)
-    if fence_match:
-        cleaned = fence_match.group(1).strip()
-
-    # Find first { and last } if extra commentary is around it
-    first_brace = cleaned.find("{")
-    last_brace = cleaned.rfind("}")
-    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
-        cleaned = cleaned[first_brace : last_brace + 1]
-
-    # Clean trailing commas before closing braces or brackets (common LLM JSON error)
-    cleaned = re.sub(r",\s*([\]}])", r"\1", cleaned)
-
-    return cleaned
-
-
-class OllamaClient:
+class OllamaClient(BaseLLMClient):
     """Adapter for interacting with locally hosted Gemma 4 through Ollama."""
 
     def __init__(
@@ -72,9 +34,21 @@ class OllamaClient:
         model: Optional[str] = None,
         timeout_seconds: Optional[int] = None,
     ):
-        self.base_url = (base_url or config.ollama_base_url).rstrip("/")
-        self.model = model or config.ollama_model
+        self._base_url = (base_url or config.ollama_base_url).rstrip("/")
+        self._model = model or config.ollama_model
         self.timeout = timeout_seconds or config.ollama_timeout_seconds
+
+    @property
+    def provider_name(self) -> str:
+        return "ollama"
+
+    @property
+    def model(self) -> str:
+        return self._model
+
+    @property
+    def base_url(self) -> str:
+        return self._base_url
 
     def check_health(self) -> Dict[str, Any]:
         """Checks if Ollama is responsive and if the model is loaded."""
@@ -91,6 +65,7 @@ class OllamaClient:
                 for m in models
             )
             return {
+                "provider": "ollama",
                 "connected": True,
                 "models": models,
                 "has_target_model": has_model,
@@ -112,7 +87,7 @@ class OllamaClient:
         temperature: float = 0.1,
     ) -> str:
         """
-        Sends a chat completion request to Gemma 4.
+        Sends a chat completion request to Gemma 4 via Ollama /api/chat.
         Returns the raw cleaned assistant text content.
         """
         endpoint = f"{self.base_url}/api/chat"
@@ -169,25 +144,3 @@ class OllamaClient:
             ) from e
         except requests.exceptions.RequestException as e:
             raise OllamaClientError(f"Ollama request error: {e}") from e
-
-    def generate_structured_json(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-    ) -> Dict[str, Any]:
-        """
-        Requests structured JSON from Gemma 4 and parses it into a Python dict.
-        """
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-        raw_output = self.generate_chat(messages, json_mode=True, temperature=0.0)
-        clean_json_str = clean_llm_json_response(raw_output)
-
-        try:
-            return json.loads(clean_json_str)
-        except json.JSONDecodeError as e:
-            raise OllamaClientError(
-                f"Failed to parse JSON response from Gemma 4: {e}. Raw content: {raw_output[:300]}"
-            ) from e

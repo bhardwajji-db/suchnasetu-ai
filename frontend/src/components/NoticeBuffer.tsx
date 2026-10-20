@@ -53,34 +53,35 @@ export const NoticeBuffer: React.FC = () => {
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            onClick={() => loadSampleFixture('synthetic_scholarship_notice.txt')}
+            onClick={() => loadSampleFixture('demo_missing_compliance.txt')}
             className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold text-white bg-blue-700 hover:bg-blue-600 transition shadow-sm"
           >
-            Competition Demo (TEST-SCH)
+            📋 Demo 1: Compliance
           </button>
           <button
             type="button"
-            onClick={() => loadSampleFixture('demo_scholarship_ambiguous.txt')}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-200 hover:text-white bg-[#111A33] hover:bg-[#1D2D4E] border border-[#1D2D4E] transition"
+            onClick={() => loadSampleFixture('demo_outstanding_dues.txt')}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold text-white bg-indigo-700 hover:bg-indigo-600 transition shadow-sm"
           >
-            🎓 Demo A: Scholarship
+            💰 Demo 2: Outstanding Dues
           </button>
           <button
             type="button"
-            onClick={() => loadSampleFixture('demo_campus_placement.txt')}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-200 hover:text-white bg-[#111A33] hover:bg-[#1D2D4E] border border-[#1D2D4E] transition"
+            onClick={() => loadSampleFixture('demo_response_hearing.txt')}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold text-white bg-purple-700 hover:bg-purple-600 transition shadow-sm"
           >
-            💼 Demo B: Placement
-          </button>
-          <button
-            type="button"
-            onClick={() => loadSampleFixture('demo_municipal_water_advisory.txt')}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-200 hover:text-white bg-[#111A33] hover:bg-[#1D2D4E] border border-[#1D2D4E] transition"
-          >
-            🚰 Demo C: Municipal Water
+            ⚖️ Demo 3: Hearing
           </button>
 
-          {samples.length > 4 && (
+          <button
+            type="button"
+            onClick={() => loadSampleFixture('synthetic_scholarship_notice.txt')}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-200 hover:text-white bg-[#111A33] hover:bg-[#1D2D4E] border border-[#1D2D4E] transition"
+          >
+            🎯 Scholarship Demo
+          </button>
+
+          {samples.length > 0 && (
             <select
               aria-label="More synthetic demo notices"
               onChange={(e) => {
@@ -90,9 +91,9 @@ export const NoticeBuffer: React.FC = () => {
                 }
               }}
               defaultValue=""
-              className="bg-[#111A33] text-slate-300 text-[11px] border border-[#1D2D4E] rounded-md px-2 py-1 focus:outline-none"
+              className="bg-[#111A33] text-slate-300 text-[11px] border border-[#1D2D4E] rounded-md px-2 py-1 focus:outline-none cursor-pointer"
             >
-              <option value="" disabled>More Demos...</option>
+              <option value="" disabled>More Samples...</option>
               {samples.map((s) => (
                 <option key={s.id} value={s.id}>{s.title}</option>
               ))}

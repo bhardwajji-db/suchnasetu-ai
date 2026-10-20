@@ -5,124 +5,118 @@
 > **Track:** Track 1 — Best Use of Gemma 4  
 > **Theme:** "AI Belongs to Everyone"  
 > **Official Challenge Reference:** [events2026.co.in/problem-statements](https://events2026.co.in/problem-statements)  
+> **License:** Apache License 2.0 (See [LICENSE](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/LICENSE))  
 
 ---
 
 ## 🌟 Executive Summary
 
-Official college circulars, scholarship announcements, government notices, and application forms are frequently published as low-resolution image posters, cluttered PDFs, or dense academic legalese. Students and applicants routinely miss critical deadlines, overlook mandatory documents, or misinterpret eligibility criteria.
+Official college circulars, scholarship announcements, government notices, and application forms are frequently published as low-resolution image posters, cluttered scans, or dense bureaucratic legalese. Students and applicants routinely miss critical deadlines, overlook mandatory documents, or misinterpret eligibility criteria.
 
-**Notice2Action AI** is an air-gapped, local-first accessibility assistant powered by Google's **Gemma 4** (`gemma4:latest`) and local **Tesseract OCR v5.4.0**. It extracts, verifies, simplifies, and translates notices into **grounded, plain-language action checklists** with strict anti-hallucination verification.
-
-The platform offers two seamless interfaces:
-1. **Modern React 19 Frontend:** High-performance dashboard built with TypeScript, Vite, and Tailwind CSS v4, connected to a robust FastAPI REST layer.
-2. **Legacy Streamlit Application:** Full-featured compatibility interface preserved for single-command rapid demonstrations.
+**Notice2Action AI** transforms complex administrative communications into clear, structured, evidence-grounded action plans. By default, it operates **100% locally and air-gapped** using **Google Gemma 4** (`gemma4:latest`) via Ollama and **Tesseract OCR v5.4.0**, guaranteeing that no user documents ever leave the host machine. For users seeking cloud scalability, a modular multi-provider integration layer also supports **OpenRouter**, **Google Gemini**, and **Hugging Face Inference**.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Key Capabilities & Implemented Features
 
-- **📥 Multi-Format Ingestion:** Paste raw text or upload scanned images (`.png`, `.jpg`, `.jpeg`, `.webp`, `.txt`) up to 10MB.
-- **👁️ Adaptive Tesseract OCR:** Automatic grayscale conversion, Lanczos resolution enhancement, autocontrast stretching, and line preservation with confidence scoring.
-- **🧠 Local Gemma 4 Extraction:** Extracts purpose, eligibility criteria, submission deadlines, application fees, required documents, contact details, and required actions into strict Pydantic v2 schemas.
-- **🛡️ Deterministic Evidence Grounding:** Anti-hallucination engine verifies that every single extracted fact is backed by a verbatim quotation from the source text.
-- **⚠️ Uncertain-Field Confirmation Workflow:** Tentative dates or conflicting details trigger an interactive confirmation modal, allowing users to verify or rectify values while preserving original notice ground truth.
-- **📋 Plain-Language Accessible Summary:** Answers the 7 core user questions (*What is this about? Who is eligible? What must I do? What documents? What deadline? Where to get help? What's missing?*).
-- **🎚️ Reading-Level Selector:** Switch dynamically between Simple (Grade 5), Standard (Grade 8), and Detailed explanations.
-- **📜 Original Notice Viewer:** Slide-over modal accessible from any view to inspect source notice text, search words, copy text, and view original image scans.
-- **✅ Interactive Action Checklist:** Ordered sequential checklist with category badges, deadline alerts, strike-through completion, and progress tracking.
-- **📅 RFC 5545 iCalendar & Markdown Export:** Export scheduled deadlines with alarms (`.ics`) and formatted action dossiers (`.md`).
-- **🌐 English & Hindi Bilingual Output:** Full bilingual support with critical entity preservation (dates, amounts, and percentages remain strictly intact).
-- **🔊 Audio Accessibility (Read-Aloud):** Dual-mode TTS (server-side MP3 via gTTS and client-side browser Web Speech API) for visually impaired applicants.
-- **💬 Truthful Follow-Up Q&A:** Answers user questions strictly from notice evidence. If a rule is absent, it truthfully reports that the notice does not state it.
-- **🔒 100% Privacy-Preserving & Local-First:** Offline inference on local Ollama; zero cloud API calls; zero data exfiltration.
+### 1. Multi-Provider LLM Integration Layer
+- **Local Ollama (Default):** Runs 100% on-device via Ollama (`gemma4:latest`). Zero cloud dependencies, zero external network requests.
+- **OpenRouter (Cloud):** OpenAI-compatible chat completion routing supporting open and commercial models.
+- **Google Gemini (Cloud):** Direct integration with Gemini 1.5 / 2.0 via Google Generative AI REST API (`v1beta`).
+- **Hugging Face Inference (Cloud):** Serverless router integration for open-access model checkpoints.
+- **Clean Configuration & Credential Safety:** Starts without cloud keys. Clear diagnostic status when a selected cloud provider requires credentials. **Never hardcodes API keys or transmits documents to external providers without explicit user selection.**
+
+### 2. Six Core Notice Fields (Structured Legal Extraction)
+Inspects and extracts the six essential fields required to understand any legal or administrative notice:
+1. **Issuing Authority or Department** (e.g. Directorate of Higher Education, Municipal Corporation)
+2. **Notice / Reference Number** (e.g. `REF-2026-8812`)
+3. **Notice Date** (Date of official issuance)
+4. **Recipient or Concerned Party** (Target audience or applicant group)
+5. **Main Issue, Allegation, or Subject** (Core purpose of the notice)
+6. **Required Action and Deadline** (Mandatory steps paired with explicit cutoff date/time)
+
+### 3. Uncertain OCR & Interpretation Confirmation
+- Detects tentative, provisional, or ambiguous terms (`tentative`, `subject to revision`, `approximate`).
+- Distinguishes OCR quality degradation (low character confidence, faint scans) from semantic text ambiguity.
+- Provides interactive **Review & Confirm Modal** allowing users to correct or verify fields before downstream action plan generation.
+- **Non-Destructive Ground Truth:** Preserves original verbatim notice extraction alongside user-confirmed values.
+
+### 4. Grounded Evidence Service & Session Store
+- **Evidence Service (`EvidenceService`):** Segments notice text into 1-based line numbers, indexes tokens, and provides sub-second keyword and semantic search for verbatim quotations.
+- **Session Store (`SessionStore`):** Thread-safe local persistence (`.sessions/`) providing complete session isolation. Questions and analyses in one session never leak into another.
+
+### 5. Multilingual Support (English & Hindi)
+- Language toggle switches plain-language summaries, action checklists, and follow-up Q&A into Hindi (Devanagari script).
+- **Critical Entity Audit:** Automatically ensures dates, monetary amounts, reference numbers, percentages, and contacts are preserved verbatim without translation distortion.
+
+### 6. Reading-Level Selector
+- **Simple (Grade 5):** Plain vocabulary, direct short sentences.
+- **Standard (Grade 8):** Clear, balanced explanation answering the 7 core user questions.
+- **Detailed:** Comprehensive operational breakdown.
+- **Informational Disclaimer:** Displays a prominent legal disclaimer clarifying that simplified summaries are for accessibility and informational purposes and do not substitute for professional legal advice.
+
+### 7. Truthful Evidence-Grounded Q&A
+- Answers queries strictly based on the active notice text and Evidence Service index.
+- If an inquired detail (such as late submissions, unstated fees, or unmentioned exemptions) is absent, the system truthfully responds:  
+  **`"This information was not found in the provided notice."`**
+- Treats notice content strictly as **inert data**, immune to prompt injection attacks.
+
+### 8. Original Notice Document Viewer
+- Global slide-over drawer accessible from any tab.
+- Displays verbatim raw notice text, word/character/line counters, and high-resolution scanned image previews.
+- Full-text search bar and single-click clipboard copy. Never exposes server filesystem paths to users.
+
+### 9. Three Dedicated Fictional Demo Notices
+Clearly labeled **DEMO / FICTIONAL** notices ready for one-click evaluation without file upload:
+- 📋 **Demo 1 (Compliance):** Missing mandatory enrollment certificates with a 14-day cure deadline ([`demo_missing_compliance.txt`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/tests/fixtures/demo_missing_compliance.txt)).
+- 💰 **Demo 2 (Outstanding Dues):** Municipal water and sewerage demand assessment with penalty surcharge date ([`demo_outstanding_dues.txt`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/tests/fixtures/demo_outstanding_dues.txt)).
+- ⚖️ **Demo 3 (Administrative Hearing):** Environmental air emission compliance show-cause notice and statutory personal hearing schedule ([`demo_response_hearing.txt`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/tests/fixtures/demo_response_hearing.txt)).
 
 ---
 
-## 🏗️ System Architecture
+## ⚙️ Configuration & Environment Variables
 
-```
-                                [Notice Image or Pasted Text]
-                                              │
-                                              ▼
-                                  [Security & Ingestion Gate]
-                             (Max 10MB, Format & Injection Shield)
-                                              │
-                    ┌─────────────────────────┴─────────────────────────┐
-                    ▼                                                   ▼
-          [Image Preprocessing]                                   [Direct Text]
-     (Grayscale, Autocontrast, Sharpen)                                 │
-                    │                                                   │
-                    ▼                                                   │
-          [Tesseract OCR Engine]                                        │
-                    │                                                   │
-                    └─────────────────────────┬─────────────────────────┘
-                                              ▼
-                                  [Editable Extracted Text]
-                                              │
-                                              ▼
-                                 [Prompt Delimiter Framing]
-                                              │
-                                              ▼
-                                  [Local Gemma 4 on Ollama]
-                                              │
-                                              ▼
-                              [Evidence Grounding Verification]
-                         (Verbatim Match & Critical Entity Audit)
-                                              │
-                    ┌─────────────────────────┼─────────────────────────┐
-                    ▼                         ▼                         ▼
-         [Plain-Language Summary]    [Action Checklist]       [Follow-Up Assistant]
-           (7 Core Questions)        (Confirmation Gate)     (Truthful Grounded Q&A)
-                    │                         │                         │
-                    └─────────────────────────┼─────────────────────────┘
-                                              │
-                    ┌─────────────────────────┴─────────────────────────┐
-                    ▼                                                   ▼
-       [Modern React 19 Frontend]                         [FastAPI REST Backend]
-        (Port 5173 - Vite + Tailwind)                      (Port 8000 - server.py)
-                    │
-                    ▼
-       [Legacy Streamlit Web UI]
-         (Port 8501 - app.py)
+All settings are configured via environment variables or a local `.env` file in the project root. Copy `.env.example` to get started:
+
+```powershell
+cp .env.example .env
 ```
 
+| Variable | Default Value | Description |
+| :--- | :--- | :--- |
+| `LLM_PROVIDER` | `ollama` | Active provider: `ollama`, `openrouter`, `gemini`, `huggingface` |
+| `LLM_API_KEY` | *(empty)* | Generic fallback API key |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama daemon URL |
+| `OLLAMA_MODEL` | `gemma4:latest` | Local Gemma 4 model identifier |
+| `OLLAMA_TIMEOUT_SECONDS` | `120` | Max timeout for local inference |
+| `OPENROUTER_API_KEY` | *(empty)* | Optional: OpenRouter API Key |
+| `OPENROUTER_MODEL` | `google/gemma-2-9b-it:free` | Model identifier for OpenRouter |
+| `GEMINI_API_KEY` | *(empty)* | Optional: Google Gemini API Key |
+| `GEMINI_MODEL` | `gemini-1.5-flash` | Model identifier for Google Gemini |
+| `HUGGINGFACE_API_KEY`| *(empty)* | Optional: Hugging Face Inference User Token |
+| `HUGGINGFACE_MODEL` | `google/gemma-2-9b-it` | Model identifier for Hugging Face |
+| `OCR_ENGINE` | `tesseract` | OCR engine: `tesseract` (default) or `rapidocr` |
+| `TESSERACT_CMD` | `C:\Program Files\Tesseract-OCR\tesseract.exe` | Path to local Tesseract executable |
+| `MAX_UPLOAD_SIZE_MB` | `10` | Maximum upload ceiling |
+| `ALLOWED_EXTENSIONS` | `png,jpg,jpeg,webp,txt`| Permitted file extensions |
+| `SESSION_STORAGE_DIR`| `.sessions` | Directory for isolated session storage |
+
+> [!IMPORTANT]
+> **API Key Policy:** Never commit `.env` or real API keys to version control. `.env` and `.sessions/` are strictly excluded in `.gitignore`. The application starts and runs tests completely offline without any API keys.
+
 ---
 
-## 💻 System Requirements & Local Setup
+## ⚡ Quickstart Runbook
 
-### Hardware Tested:
-- **Processor:** AMD Ryzen 7 7445HS / Intel Core i7 or equivalent (8+ Cores)
-- **Memory:** 16 GB DDR5 System RAM
-- **GPU:** NVIDIA GeForce RTX 4050 Laptop GPU (6 GB VRAM) or equivalent CUDA GPU
-- **OS:** Windows 11 Home / Pro (PowerShell compatible)
-
-### Prerequisites:
-1. **Python:** 3.11 or higher (configured in `.\.venv\`)
-2. **Node.js:** v20+ or v24+ with npm
-3. **Ollama:** Version 0.40.3+ with `gemma4:latest` model pulled
-4. **Tesseract OCR:** v5.4.0+ installed at `C:\Program Files\Tesseract-OCR\tesseract.exe`
-
----
-
-## ⚡ Verified Quickstart Runbook
-
-All commands are executed from the project root:
+Execute all commands from the project root:
 `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`
 
-### 1. Start Local Ollama Server
-In Terminal 1:
+### 1. Start Local Ollama Server (Terminal 1)
 ```powershell
 ollama serve
 ```
-*Verify model:*
-```powershell
-ollama list
-# Should display gemma4:latest
-```
 
-### 2. Start FastAPI REST Backend (Port 8000)
-In Terminal 2:
+### 2. Start FastAPI REST Backend (Terminal 2)
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn notice2action.api.server:app --host 127.0.0.1 --port 8000
 ```
@@ -131,135 +125,104 @@ In Terminal 2:
 curl.exe -s http://127.0.0.1:8000/api/health
 ```
 
-### 3. Start React 19 Frontend (Port 5173)
-In Terminal 3:
+### 3. Start React 19 Frontend Dashboard (Terminal 3)
 ```powershell
 cd frontend
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
-*Access in browser:* [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
+*Access UI in browser:* [http://127.0.0.1:5173/](http://127.0.0.1:5173/)
 
-### 4. Optional: Start Legacy Streamlit Interface (Port 8501)
-In Terminal 4:
+### 4. Optional: Start Legacy Streamlit App (Terminal 4)
 ```powershell
 .\.venv\Scripts\streamlit.exe run app.py --server.port 8501 --server.headless true
 ```
-*Access in browser:* [http://localhost:8501/](http://localhost:8501/)
+*Access Streamlit UI:* [http://localhost:8501/](http://localhost:8501/)
 
 ---
 
-## 🧪 Comprehensive Automated Testing Runbook
+## 🧪 Automated Testing Suite
 
 ```powershell
-# 1. Run all backend pipeline and API unit tests (67 tests, ~27s)
-.\.venv\Scripts\python.exe -m pytest tests/test_api_endpoints.py tests/test_unit_pipeline.py tests/test_negative_and_edge_cases.py tests/test_structured_notice_regression.py tests/test_notice_fingerprint_stale.py tests/test_ui_controls_comprehensive.py tests/test_streamlit_interaction.py -v
+# 1. Run all backend unit, contract, multi-provider & pipeline tests (87 tests)
+.\.venv\Scripts\python.exe -m pytest tests/test_api_endpoints.py tests/test_multi_provider_llm.py tests/test_services_and_six_fields.py tests/test_unit_pipeline.py tests/test_structured_notice_regression.py tests/test_negative_and_edge_cases.py tests/test_notice_fingerprint_stale.py tests/test_ui_controls_comprehensive.py -v
 
-# 2. Run frontend component tests (10 suites, 16 tests, ~5s)
+# 2. Run frontend Vitest component tests (10 suites, 16 tests)
 cd frontend
-npm run test
+npm test -- --run
 cd ..
 
-# 3. Compile frontend production bundle
+# 3. Compile frontend production bundle (TypeScript strict check + Vite build)
 cd frontend
+npx tsc -b
 npm run build
 cd ..
 
-# 4. Run real Google Chrome Playwright multi-viewport & workflow tests
-.\.venv\Scripts\python.exe -m pytest tests/test_playwright_react_frontend.py -v
-
-# 5. Run live Gemma 4 inference & OCR integration tests
+# 4. Run live local Ollama & Gemma 4 integration tests
 .\.venv\Scripts\python.exe -m pytest tests/test_live_gemma4.py -v
-
-# 6. Run ground-truth accuracy benchmark (100% Critical Field Accuracy)
-.\.venv\Scripts\python.exe scripts/evaluate_ground_truth.py
 ```
 
 ---
 
-## 📂 Project Directory Structure
+## 📂 Repository Layout
 
 ```
 ps2/
 ├── app.py                         # Legacy Streamlit application entry point
-├── pyproject.toml                 # Canonical Python project configuration
+├── pyproject.toml                 # Canonical Python project configuration (Apache-2.0)
 ├── requirements.txt               # Locked Python dependencies
+├── LICENSE                        # Apache 2.0 Open-Source License
 ├── .env.example                   # Environment configuration template
-├── ARCHITECTURE.md                # Exhaustive system architecture document
+├── ARCHITECTURE.md                # System architecture & OCR comparison
 ├── API.md                         # Complete REST API specification
-├── REQUIREMENTS_CHECKLIST.md      # PS02 requirements compliance matrix
-├── IMPLEMENTATION_TRACKER.md      # Implementation progress tracker
-├── IMPLEMENTATION_CHANGELOG.md    # Detailed changelog and audit log
-├── FINAL_TEST_RESULTS.md          # Complete test results ledger
-├── FINAL_BUG_FIX_LOG.md           # Defect root cause and remediation log
-├── FINAL_UI_VERIFICATION.md       # Multi-viewport responsive audit report
-├── FINAL_SECURITY_PRIVACY_AUDIT.md# Air-gap and threat model audit
-├── FINAL_COMPLETION_REPORT.md     # Final release certification report
+├── IMPLEMENTATION_REPORT.md       # Comprehensive implementation report
+├── TEST_REPORT.md                 # Full test ledger and execution log
 │
 ├── frontend/                      # Modern React 19 Frontend
 │   ├── package.json               # Node dependencies & build scripts
 │   ├── vite.config.ts             # Vite configuration with API proxy
 │   ├── tsconfig.json              # TypeScript root configuration
 │   └── src/
-│       ├── App.tsx                # Top-level application component
-│       ├── context/               # NoticeContext state provider
+│       ├── context/NoticeContext.tsx # Global state: sessions, providers, language
 │       ├── components/            # Reusable UI component library
-│       │   ├── Header.tsx         # Top bar with health & language switcher
-│       │   ├── Sidebar.tsx        # Navigation tabs & demo loader
-│       │   ├── NoticeBuffer.tsx   # Ground-truth notice buffer & demo selectors
-│       │   ├── FileDropzone.tsx   # Drag-and-drop file uploader
-│       │   ├── FactCard.tsx       # Grounded fact dimension cards
-│       │   ├── ConfirmationModal.tsx # Uncertain-field verification modal
-│       │   ├── OriginalNoticeViewerModal.tsx # Ground-truth document viewer
-│       │   ├── PlainLanguageSummaryView.tsx # 7-question summary & reading level
-│       │   └── ActionChecklistTable.tsx # Sequential checklist & exports
-│       ├── views/                 # Primary tab views (Ingestion, Facts, Summary, QA)
+│       │   ├── Header.tsx         # Header with provider & language selectors
+│       │   ├── FactCard.tsx       # Grounded fact cards with uncertainty badges
+│       │   ├── ConfirmationModal.tsx # Human-in-the-loop review modal
+│       │   ├── OriginalNoticeViewerModal.tsx # Raw notice & OCR image viewer
+│       │   ├── PlainLanguageSummaryView.tsx # 3-level summary & read-aloud
+│       │   └── ActionChecklistTable.tsx # Interactive action checklist
+│       ├── views/                 # Primary tabs: Ingestion, Facts, Summary, QA
 │       ├── services/apiClient.ts  # Typed API client for FastAPI
-│       └── test/                  # Vitest test suites (10 test files)
+│       └── test/                  # Vitest test suites (16 tests)
 │
 ├── src/notice2action/             # Core Python package
 │   ├── api/server.py              # FastAPI REST backend application
 │   ├── config.py                  # Configuration & diagnostics
-│   ├── schemas.py                 # Pydantic models & certainty statuses
-│   ├── security.py                # Input validation & injection defense
-│   ├── ingestion.py               # Document & text ingestion
-│   ├── ocr.py                     # Adaptive Tesseract OCR pipeline
-│   ├── grounding.py               # Anti-hallucination evidence engine
-│   ├── analysis.py                # Gemma 4 structured analysis orchestrator
-│   ├── summary.py                 # Plain-language summary generator (3 reading levels)
+│   ├── schemas.py                 # Six Core Fields, Pydantic models
+│   ├── ocr.py                     # Dual-engine OCR (Tesseract / RapidOCR)
+│   ├── analysis.py                # Structured notice analysis orchestrator
+│   ├── grounding.py               # Deterministic anti-hallucination verification
+│   ├── summary.py                 # Multi-level summary generator
 │   ├── checklist.py               # Grounded action checklist generator
+│   ├── followup.py                # Truthful Q&A engine
 │   ├── translation.py             # Hindi & English bilingual engine
-│   ├── followup.py                # Grounded Q&A assistant
-│   └── tts.py                     # Read-aloud TTS engine
+│   ├── services/                  # Domain Services
+│   │   ├── evidence_service.py    # Line-level evidence segmenting & search
+│   │   └── session_store.py       # Isolated thread-safe session storage
+│   └── llm/                       # Modular LLM Integration Layer
+│       ├── base.py                # BaseLLMClient interface & exceptions
+│       ├── factory.py             # Provider discovery & instantiation
+│       ├── ollama_client.py       # Local Ollama Gemma 4 adapter
+│       ├── openrouter_client.py   # OpenRouter cloud adapter
+│       ├── gemini_client.py       # Google Gemini cloud adapter
+│       └── huggingface_client.py  # Hugging Face cloud adapter
 │
-├── tests/                         # Pytest test suites (74+ tests)
-│   ├── test_api_endpoints.py      # FastAPI REST endpoint tests
-│   ├── test_playwright_react_frontend.py # Chrome multi-viewport & workflow tests
-│   ├── test_unit_pipeline.py      # Core unit pipeline tests
+├── tests/                         # Pytest test suites (87+ tests)
+│   ├── test_multi_provider_llm.py # Multi-provider & offline mock tests
+│   ├── test_services_and_six_fields.py # EvidenceService, SessionStore, 6 fields
+│   ├── test_api_endpoints.py      # FastAPI REST endpoint integration tests
 │   ├── test_live_gemma4.py        # Live local model integration tests
-│   └── fixtures/                  # Synthetic demo notices (Scholarship, Placement, Water)
+│   └── fixtures/                  # Three dedicated fictional demos + samples
 │
-├── scripts/                       # PowerShell automation scripts
-│   ├── setup.ps1                  # Bootstrap environment
-│   ├── preflight.ps1              # System diagnostics
-│   ├── package_release.ps1        # Clean release packager
-│   └── evaluate_ground_truth.py   # Accuracy benchmark runner
-│
-└── release/                       # Clean production release archive
+└── release/                       # Standalone clean distribution archive
     └── notice2action_ps02_release.zip
 ```
-
----
-
-## 📦 Clean Release Package
-
-To generate a clean ZIP archive excluding virtual environments, weights, caches, git history, and transient dependencies:
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/package_release.ps1
-```
-*Archive created at: `release/notice2action_ps02_release.zip`.*
-
----
-
-## 📄 License
-
-Licensed under the Apache License, Version 2.0.

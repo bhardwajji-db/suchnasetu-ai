@@ -2,22 +2,22 @@
 
 **Project:** Notice2Action AI (PS02 — Notice-to-Action Accessibility Assistant)  
 **Date:** October 20, 2026  
-**Auditor / Engineer:** Senior Full-Stack Engineer, QA Automation & Local AI Specialist  
+**Auditor / Engineer:** Senior Full-Stack Engineer, AI Architect & QA Automation Specialist  
 **Repository Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
 **Base URL:** `http://127.0.0.1:8000`  
-**API Version:** `1.0.0`  
+**API Version:** `2.0.0`  
 
 ---
 
 ## 1. Overview & Conventions
 
-The Notice2Action AI REST API is built on FastAPI and exposes all backend document ingestion, optical character recognition, local LLM extraction, confirmation workflows, and export services.
+The Notice2Action AI REST API is built on FastAPI and exposes all backend document ingestion, multi-engine OCR, multi-provider LLM extraction, evidence indexing, session management, and export services.
 
 ### General Conventions
 - All request and response bodies use JSON (`application/json`) unless handling file uploads (`multipart/form-data`) or exports (`text/markdown`, `text/calendar`, `audio/mpeg`).
 - CORS is enabled for local Vite development origins (`http://localhost:5173`, `http://127.0.0.1:5173`).
 - Pydantic v2 schemas enforce strict data validation on every endpoint.
-- Errors follow standard HTTP status codes with structured `{ "detail": "message" }` payloads.
+- Errors follow standard HTTP status codes with structured `{ "detail": "message", "error_type": "..." }` payloads.
 
 ---
 
@@ -26,12 +26,13 @@ The Notice2Action AI REST API is built on FastAPI and exposes all backend docume
 ### 2.1 System Health & Diagnostics
 
 #### `GET /api/health`
-Runs preflight system checks on Python runtime, Tesseract OCR executable, and local Ollama daemon.
+Runs preflight system checks on Python runtime, Tesseract OCR executable, configured LLM provider, and session store.
 
 **Response:** `200 OK`
 ```json
 {
   "overall_status": "ok",
+  "active_provider": "ollama",
   "model_name": "gemma4:latest",
   "is_ready_for_inference": true,
   "items": [
@@ -48,15 +49,15 @@ Runs preflight system checks on Python runtime, Tesseract OCR executable, and lo
       "remedy": null
     },
     {
-      "name": "Ollama Server",
+      "name": "Configured LLM Provider",
       "status": "ok",
-      "details": "Connected to http://127.0.0.1:11434. Found 9 model(s).",
+      "details": "Active provider: 'ollama'",
       "remedy": null
     },
     {
-      "name": "LLM Model (gemma4:latest)",
+      "name": "Ollama Server",
       "status": "ok",
-      "details": "Model 'gemma4:latest' is downloaded and ready in Ollama.",
+      "details": "Connected to http://127.0.0.1:11434. Found 9 model(s).",
       "remedy": null
     }
   ]
@@ -65,229 +66,230 @@ Runs preflight system checks on Python runtime, Tesseract OCR executable, and lo
 
 ---
 
-### 2.2 Synthetic Demo Notices
+### 2.2 LLM Provider Management
 
-#### `GET /api/samples`
-Returns the list of available synthetic demo notices for testing and demonstration.
+#### `GET /api/providers`
+Returns configuration, model name, and API key readiness status for all supported providers (`ollama`, `openrouter`, `gemini`, `huggingface`).
 
 **Response:** `200 OK`
 ```json
 [
   {
-    "id": "demo_scholarship_ambiguous.txt",
-    "title": "🎓 Demo A: Scholarship (Ambiguous Deadline)",
-    "type": "text",
-    "language": "en"
+    "id": "ollama",
+    "name": "Ollama (Local / Offline)",
+    "is_active": true,
+    "is_local": true,
+    "requires_api_key": false,
+    "model": "gemma4:latest",
+    "endpoint": "http://127.0.0.1:11434",
+    "key_configured": true
   },
   {
-    "id": "demo_campus_placement.txt",
-    "title": "💼 Demo B: Campus Placement (CGPA & NOC)",
-    "type": "text",
-    "language": "en"
-  },
-  {
-    "id": "demo_municipal_water_advisory.txt",
-    "title": "🚰 Demo C: Municipal Water Advisory (Zero-Hallucination)",
-    "type": "text",
-    "language": "en"
-  },
-  {
-    "id": "synthetic_scholarship_notice.txt",
-    "title": "🎯 Competition Demo (TEST-SCH-2026-001)",
-    "type": "text",
-    "language": "en"
+    "id": "openrouter",
+    "name": "OpenRouter (Cloud Router)",
+    "is_active": false,
+    "is_local": false,
+    "requires_api_key": true,
+    "model": "google/gemma-2-9b-it:free",
+    "endpoint": "https://openrouter.ai/api/v1",
+    "key_configured": false
   }
 ]
 ```
 
-#### `GET /api/samples/{filename}`
-Retrieves content of a specific demo notice fixture. Protected against directory traversal.
+#### `POST /api/providers/select`
+Selects the active LLM provider for subsequent inference operations.
 
-**Parameters:** `filename` (string, path parameter)  
-**Responses:**
-- `200 OK`: JSON `{ "filename": "...", "content": "...", "fingerprint": "..." }` or raw image bytes (`image/png`).
-- `404 Not Found`: Fixture does not exist.
+**Request Body:**
+```json
+{
+  "provider": "ollama"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "active_provider": "ollama",
+  "status": {
+    "provider": "ollama",
+    "connected": true,
+    "has_target_model": true,
+    "target_model": "gemma4:latest"
+  }
+}
+```
 
 ---
 
-### 2.3 Notice Ingestion & OCR
+### 2.3 Evidence Service & Session Store
+
+#### `POST /api/evidence/search`
+Searches indexed notice segments for verbatim quotations matching a user query with relevance scoring.
+
+**Request Body:**
+```json
+{
+  "query": "Where do I submit documents?",
+  "notice_text": "Notice:\nLine 1: Announcement.\nLine 2: Submit all documents at Counter #4 before Nov 14.",
+  "max_results": 3
+}
+```
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "line_number": 3,
+    "quote": "Line 2: Submit all documents at Counter #4 before Nov 14.",
+    "relevance_score": 1.0
+  }
+]
+```
+
+#### `GET /api/session/{session_id}`
+Retrieves persisted session state, user confirmations, and Q&A conversation history.
+
+---
+
+### 2.4 Document Ingestion & OCR
 
 #### `POST /api/ingest/text`
-Sanitizes pasted notice text, checks for prompt injection, and computes its SHA-256 fingerprint.
-
-**Request Body:**
-```json
-{
-  "text": "GOVERNMENT SCHOLARSHIP NOTIFICATION..."
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "raw_text": "GOVERNMENT SCHOLARSHIP NOTIFICATION...",
-  "char_count": 850,
-  "line_count": 28,
-  "security_warning": null,
-  "fingerprint": "a3f2b4c8..."
-}
-```
-
-#### `POST /api/ingest/upload`
-Uploads and validates a notice file (`.png`, `.jpg`, `.jpeg`, `.webp`, `.txt`). Enforces 10MB limit.
-
-**Content-Type:** `multipart/form-data`  
-**Parameters:** `file` (UploadFile)  
-**Response:** `200 OK` with source metadata (`"source_type": "text"` or `"source_type": "image"`).
+Sanitizes pasted notice text, filters injection attacks, and indexes lines in `EvidenceService`.
 
 #### `POST /api/ocr`
-Executes local Tesseract OCR on an uploaded image with adaptive contrast preprocessing.
+Executes optical character recognition using the configured engine (`tesseract` or `rapidocr`).
 
-**Content-Type:** `multipart/form-data`  
-**Parameters:**
-- `file` (UploadFile, required)
-- `target_lang` (string, optional, default `"eng"`)
-- `enhance_contrast` (boolean, optional, default `true`)
+**Form Data:**
+- `file`: Scanned document image (`.png`, `.jpg`, `.jpeg`, `.webp`)
+- `target_lang`: Language code (`eng`, `hin`, or `eng+hin`)
+- `enhance_contrast`: Boolean (`true` or `false`)
+- `engine`: Optional engine override (`tesseract` or `rapidocr`)
 
 **Response:** `200 OK`
 ```json
 {
-  "extracted_text": "Extracted text content...",
-  "confidence_score": 93.4,
+  "extracted_text": "OFFICIAL NOTICE...",
+  "confidence_score": 88.4,
   "languages_used": "eng",
-  "line_count": 22,
-  "char_count": 680,
+  "line_count": 24,
+  "char_count": 1420,
   "is_preprocessed": true,
-  "warning": null,
-  "error": null,
-  "fingerprint": "b7d1e8..."
+  "engine_used": "tesseract",
+  "is_uncertain": false,
+  "fingerprint": "a3b8..."
 }
 ```
 
 ---
 
-### 2.4 Analysis, Confirmation & Reading Level
+### 2.5 Structured Notice Analysis
 
 #### `POST /api/analyze`
-Executes the full 5-phase extraction pipeline using local Gemma 4 inference and Pydantic validation.
+Executes structured notice extraction via the active LLM, returning the Six Core Fields, procedural dimensions, plain-language summaries (English & Hindi), and sequential action checklists.
 
 **Request Body:**
 ```json
 {
-  "notice_text": "Official notice text...",
+  "notice_text": "Notice text to analyze...",
   "target_language": "en",
-  "reading_level": "standard"
+  "reading_level": "standard",
+  "session_id": null,
+  "provider": null
 }
 ```
 
 **Response:** `200 OK`
 ```json
 {
-  "structured_notice": {
-    "purpose": { "field_name": "purpose", "value": "...", "status": "stated", "evidence_quote": "..." },
-    "eligibility": { "field_name": "eligibility", "value": "...", "status": "stated" },
-    "deadline": { "field_name": "deadline", "value": "31 October 2026", "status": "stated" },
-    "fee_or_cost": { "field_name": "fee_or_cost", "value": "No fee", "status": "stated" },
-    "required_documents": { "field_name": "required_documents", "value": "...", "status": "stated" },
-    "contact_details": { "field_name": "contact_details", "value": "...", "status": "stated" },
-    "required_actions": { "field_name": "required_actions", "value": "...", "status": "stated" },
-    "important_conditions": { "field_name": "important_conditions", "value": "...", "status": "stated" },
-    "missing_information": [],
-    "uncertain_or_conflicting_details": []
+  "session_id": "c1f7a0b3-9821-4f32-84de-d68a2bf5c290",
+  "six_core_fields": {
+    "issuing_authority": {
+      "field_name": "issuing_authority",
+      "value": "Metropolitan Technical University",
+      "status": "stated",
+      "evidence_quote": "METROPOLITAN TECHNICAL UNIVERSITY (MTU)"
+    },
+    "notice_reference_number": {
+      "field_name": "notice_reference_number",
+      "value": "MTU/COMP/2026/8941",
+      "status": "stated",
+      "evidence_quote": "Ref No: MTU/COMP/2026/8941"
+    },
+    "notice_date": {
+      "field_name": "notice_date",
+      "value": "October 12, 2026",
+      "status": "stated",
+      "evidence_quote": "Date of Issuance: October 12, 2026"
+    },
+    "recipient": {
+      "field_name": "recipient",
+      "value": "All Final-Year Degree Candidates (Batch of 2026)",
+      "status": "stated",
+      "evidence_quote": "To: All Final-Year Degree Candidates (Batch of 2026)"
+    },
+    "main_subject": {
+      "field_name": "main_subject",
+      "value": "Deficient Enrollment Dossiers and Submission of Pending Certificates",
+      "status": "stated",
+      "evidence_quote": "Subject: Deficient Enrollment Dossiers and Submission of Pending Certificates"
+    },
+    "required_action_and_deadline": {
+      "field_name": "required_action_and_deadline",
+      "value": "Submit deficient documents by November 14, 2026 (5:00 PM IST)",
+      "status": "stated",
+      "evidence_quote": "DEADLINE: November 14, 2026 (5:00 PM IST)."
+    }
   },
-  "summary_en": {
-    "about": "...",
-    "eligible": "...",
-    "actions": "...",
-    "documents": "...",
-    "deadline": "...",
-    "help_contact": "...",
-    "missing": "..."
-  },
+  "structured_notice": { ... },
+  "summary_en": { ... },
   "summary_hi": { ... },
-  "checklist_en": {
-    "items": [
-      {
-        "step_number": 1,
-        "action": "...",
-        "category": "eligibility",
-        "is_mandatory": true,
-        "is_completed": false
-      }
-    ]
-  },
+  "checklist_en": { ... },
   "checklist_hi": { ... },
   "fingerprint": "...",
-  "duration_seconds": 18.42
+  "duration_seconds": 4.12
 }
 ```
-
-#### `POST /api/confirm`
-Saves user verification or correction for an uncertain fact and synchronizes dependent summaries and checklists without overwriting the original ground-truth extraction.
-
-**Request Body:**
-```json
-{
-  "field_name": "deadline",
-  "confirmed_value": "15 November 2026",
-  "structured_notice": { ... },
-  "reading_level": "standard"
-}
-```
-
-**Response:** `200 OK` with updated `structured_notice` (`confirmed_value` set, `user_confirmed: true`), refreshed `summary_en`, `summary_hi`, `checklist_en`, `checklist_hi`.
-
-#### `POST /api/summary/reading-level`
-Generates plain-language summary calibrated to requested reading level (`simple`, `standard`, `detailed`).
-
-**Request Body:**
-```json
-{
-  "structured_notice": { ... },
-  "reading_level": "simple"
-}
-```
-
-**Response:** `200 OK` with `summary_en` and `summary_hi` at the requested reading level.
 
 ---
 
-### 2.5 Follow-Up Q&A
+### 2.6 Field Confirmation & Correction
+
+#### `POST /api/confirm`
+Allows human-in-the-loop verification or correction of any uncertain field, instantly updating downstream summaries and action checklists while preserving original extraction proof.
+
+---
+
+### 2.7 Evidence-Grounded Q&A
 
 #### `POST /api/followup`
-Answers follow-up questions grounded strictly within the active notice text. Refuses out-of-scope inquiries.
+Answers follow-up questions strictly grounded within the active notice text. If information is absent, returns `"This information was not found in the provided notice."`
 
 **Request Body:**
 ```json
 {
-  "question": "What is the application deadline?",
-  "notice_text": "Official notice text..."
+  "question": "Is late submission allowed?",
+  "notice_text": "Notice text...",
+  "session_id": "c1f7a0b3-9821-4f32-84de-d68a2bf5c290",
+  "target_language": "en"
 }
 ```
 
 **Response:** `200 OK`
 ```json
 {
-  "question": "What is the application deadline?",
-  "answer": "The final deadline for online registration is 31 October 2026.",
-  "is_supported": true,
-  "evidence_quote": "Closing date for online registration is 31 October 2026.",
-  "unsupported_message": null
+  "question": "Is late submission allowed?",
+  "answer": "This information was not found in the provided notice. The notice does not specify this detail.",
+  "is_supported": false,
+  "evidence_quote": null,
+  "unsupported_message": "Late submission policy is not specified."
 }
 ```
 
 ---
 
-### 2.6 Export Endpoints
+### 2.8 Export Endpoints
 
-#### `POST /api/export/markdown`
-Generates a downloadable Markdown action report.  
-**Content-Type:** `text/markdown` (`attachment; filename="notice2action_plan.md"`)
-
-#### `POST /api/export/ics`
-Generates an RFC 5545 iCalendar schedule with alarm notifications.  
-**Content-Type:** `text/calendar` (`attachment; filename="notice_deadline.ics"`)
-
-#### `POST /api/tts`
-Synthesizes MP3 audio for text read-aloud via gTTS.  
-**Content-Type:** `audio/mpeg` (or `204 No Content` if offline).
+- `POST /api/export/markdown`: Formatted Markdown action plan report.
+- `POST /api/export/ics`: RFC 5545 iCalendar (`.ics`) file.
+- `POST /api/tts`: Audio read-aloud via gTTS (`audio/mpeg`).

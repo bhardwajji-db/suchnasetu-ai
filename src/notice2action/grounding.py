@@ -210,6 +210,15 @@ def verify_structured_notice(notice: StructuredNotice, raw_text: str) -> Structu
     Runs evidence verification across all structured fields of a notice.
     Automatically audits missing fields and uncertain details lists.
     """
+    # Six Core Fields Verification
+    verified_issuing = verify_fact_grounding(notice.issuing_authority, raw_text)
+    verified_ref_num = verify_fact_grounding(notice.notice_reference_number, raw_text)
+    verified_date = verify_fact_grounding(notice.notice_date, raw_text)
+    verified_recipient = verify_fact_grounding(notice.recipient, raw_text)
+    verified_main_subj = verify_fact_grounding(notice.main_subject, raw_text)
+    verified_req_action_dl = verify_fact_grounding(notice.required_action_and_deadline, raw_text)
+
+    # Procedural Fields Verification
     verified_purpose = verify_fact_grounding(notice.purpose, raw_text)
     verified_eligibility = verify_fact_grounding(notice.eligibility, raw_text)
     verified_deadline = verify_fact_grounding(notice.deadline, raw_text)
@@ -229,6 +238,10 @@ def verify_structured_notice(notice: StructuredNotice, raw_text: str) -> Structu
         ("Required Documents", verified_documents),
         ("Official Contact", verified_contact),
         ("Required Actions", verified_actions),
+        ("Issuing Authority", verified_issuing),
+        ("Notice Number", verified_ref_num),
+        ("Notice Date", verified_date),
+        ("Recipient", verified_recipient),
     ]
     for fname, fval in fields:
         if fval.status == CertaintyStatus.NOT_STATED and fname not in missing_items:
@@ -241,6 +254,12 @@ def verify_structured_notice(notice: StructuredNotice, raw_text: str) -> Structu
             uncertain_items.append(f"{fname}: {fval.explanation or 'Needs confirmation'}")
 
     return StructuredNotice(
+        issuing_authority=verified_issuing,
+        notice_reference_number=verified_ref_num,
+        notice_date=verified_date,
+        recipient=verified_recipient,
+        main_subject=verified_main_subj,
+        required_action_and_deadline=verified_req_action_dl,
         purpose=verified_purpose,
         eligibility=verified_eligibility,
         deadline=verified_deadline,

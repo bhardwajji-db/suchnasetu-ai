@@ -1,18 +1,25 @@
 """
 Notice2Action AI — FastAPI REST Backend
-Wraps existing notice2action domain modules without modifying business logic.
-Provides REST endpoints for React frontend and external integrations.
+Modular REST layer supporting:
+- Multi-provider LLMs (Ollama, OpenRouter, Gemini, Hugging Face)
+- Evidence indexing and citation retrieval (EvidenceService)
+- Isolated analysis sessions (SessionStore)
+- Six Core Legal Notice Fields and human-in-the-loop confirmation
+- Adaptive OCR (Tesseract / RapidOCR)
+- Multilingual translation (English and Hindi)
+- Reading-level calibration (Simple, Standard, Detailed)
 """
 
 from __future__ import annotations
 
 import io
 import time
+import uuid
 import hashlib
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Response
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
@@ -21,13 +28,14 @@ from PIL import Image
 from notice2action.config import config, run_preflight_diagnostics
 from notice2action.schemas import (
     StructuredNotice,
+    SixCoreFields,
     PlainLanguageSummary,
     ActionChecklist,
     FollowUpAnswer,
     ExtractedFact,
 )
 from notice2action.ingestion import ingest_pasted_text, ingest_uploaded_file
-from notice2action.ocr import extract_text_from_image
+from notice2action.ocr import extract_text_from_image, get_ocr_engine
 from notice2action.analysis import NoticeAnalyzer
 from notice2action.summary import generate_deterministic_summary
 from notice2action.checklist import generate_action_checklist
@@ -37,11 +45,23 @@ from notice2action.translation import (
 )
 from notice2action.followup import FollowUpAssistant
 from notice2action.tts import generate_audio_bytes
+from notice2action.llm import (
+    get_llm_client,
+    get_all_provider_statuses,
+    LLMClientError,
+    LLMConfigError,
+    LLMAuthError,
+    LLMConnectionError,
+    LLMTimeoutError,
+    LLMRateLimitError,
+)
+from notice2action.services.evidence_service import evidence_service, EvidenceCitation
+from notice2action.services.session_store import session_store, SessionState
 
 
 app = FastAPI(
     title="Notice2Action AI API",
-    version="1.0.0",
+    version="2.0.0",
     description="REST backend for Notice-to-Action Accessibility Assistant (PS02)",
 )
 
@@ -61,6 +81,42 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------
+# Centralized Error Handlers
+# ---------------------------------------------------------
+
+@app.exception_handler(LLMConfigError)
+async def llm_config_error_handler(request: Request, exc: LLMConfigError):
+    return JSONResponse(
+        status_code=400,
+        content={"detail": str(exc), "error_type": "LLMConfigError"},
+    )
+
+
+@app.exception_handler(LLMAuthError)
+async def llm_auth_error_handler(request: Request, exc: LLMAuthError):
+    return JSONResponse(
+        status_code=401,
+        content={"detail": str(exc), "error_type": "LLMAuthError"},
+    )
+
+
+@app.exception_handler(LLMRateLimitError)
+async def llm_rate_limit_handler(request: Request, exc: LLMRateLimitError):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": str(exc), "error_type": "LLMRateLimitError"},
+    )
+
+
+@app.exception_handler(LLMConnectionError)
+async def llm_connection_handler(request: Request, exc: LLMConnectionError):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": str(exc), "error_type": "LLMConnectionError"},
+    )
 
 
 # ---------------------------------------------------------
@@ -86,6 +142,9 @@ class OCRResponse(BaseModel):
     line_count: int
     char_count: int
     is_preprocessed: bool
+    engine_used: str = "tesseract"
+    is_uncertain: bool = False
+    uncertainty_reason: Optional[str] = None
     warning: Optional[str] = None
     error: Optional[str] = None
     fingerprint: str
@@ -95,10 +154,14 @@ class AnalyzeRequest(BaseModel):
     notice_text: str = Field(..., description="Notice text to analyze")
     target_language: str = Field(default="en", description="'en' or 'hi'")
     reading_level: str = Field(default="standard", description="'simple', 'standard', 'detailed'")
+    session_id: Optional[str] = Field(default=None, description="Optional persistent session ID")
+    provider: Optional[str] = Field(default=None, description="Optional LLM provider override")
 
 
 class AnalyzeResponse(BaseModel):
+    session_id: str
     structured_notice: StructuredNotice
+    six_core_fields: SixCoreFields
     summary_en: PlainLanguageSummary
     summary_hi: PlainLanguageSummary
     checklist_en: ActionChecklist
@@ -108,14 +171,16 @@ class AnalyzeResponse(BaseModel):
 
 
 class ConfirmFactRequest(BaseModel):
-    field_name: str = Field(..., description="Fact attribute being confirmed (e.g. 'deadline')")
+    field_name: str = Field(..., description="Fact attribute being confirmed (e.g. 'deadline', 'notice_date')")
     confirmed_value: str = Field(..., description="User confirmed or corrected value")
     structured_notice: StructuredNotice = Field(..., description="Active structured notice")
     reading_level: str = Field(default="standard", description="'simple', 'standard', 'detailed'")
+    session_id: Optional[str] = Field(default=None, description="Optional session ID")
 
 
 class ConfirmFactResponse(BaseModel):
     structured_notice: StructuredNotice
+    six_core_fields: SixCoreFields
     summary_en: PlainLanguageSummary
     summary_hi: PlainLanguageSummary
     checklist_en: ActionChecklist
@@ -136,6 +201,18 @@ class ReadingLevelResponse(BaseModel):
 class FollowUpRequest(BaseModel):
     question: str = Field(..., description="User's query")
     notice_text: str = Field(..., description="Active ground-truth notice text")
+    session_id: Optional[str] = Field(default=None, description="Session ID for context isolation")
+    target_language: str = Field(default="en", description="'en' or 'hi'")
+
+
+class SelectProviderRequest(BaseModel):
+    provider: str = Field(..., description="Provider name: 'ollama', 'openrouter', 'gemini', 'huggingface'")
+
+
+class EvidenceSearchRequest(BaseModel):
+    query: str = Field(..., description="Search query")
+    notice_text: str = Field(..., description="Raw text of the active notice")
+    max_results: int = Field(default=5, description="Max citations to return")
 
 
 class ExportMarkdownRequest(BaseModel):
@@ -155,7 +232,7 @@ class TTSRequest(BaseModel):
 
 
 # ---------------------------------------------------------
-# Routes
+# Health & Diagnostic Routes
 # ---------------------------------------------------------
 
 @app.get("/api/health")
@@ -164,7 +241,8 @@ def get_health() -> Dict[str, Any]:
     report = run_preflight_diagnostics()
     return {
         "overall_status": report.overall_status,
-        "model_name": config.ollama_model,
+        "active_provider": config.llm_provider,
+        "model_name": config.ollama_model if config.llm_provider == "ollama" else getattr(config, f"{config.llm_provider}_model", "unknown"),
         "is_ready_for_inference": report.is_ready_for_inference(),
         "items": [
             {
@@ -178,10 +256,62 @@ def get_health() -> Dict[str, Any]:
     }
 
 
+# ---------------------------------------------------------
+# LLM Provider Management Routes
+# ---------------------------------------------------------
+
+@app.get("/api/providers")
+def get_providers() -> List[Dict[str, Any]]:
+    """Returns configuration and credential status for all supported LLM providers."""
+    return get_all_provider_statuses()
+
+
+@app.post("/api/providers/select")
+def select_provider(payload: SelectProviderRequest) -> Dict[str, Any]:
+    """Selects the active LLM provider for subsequent inference operations."""
+    prov = payload.provider.lower().strip()
+    valid = ["ollama", "openrouter", "gemini", "huggingface"]
+    if prov not in valid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid provider '{prov}'. Valid providers: {', '.join(valid)}"
+        )
+
+    config.llm_provider = prov
+    client = get_llm_client(prov)
+    health = client.check_health()
+    return {
+        "active_provider": prov,
+        "status": health,
+    }
+
+
+# ---------------------------------------------------------
+# Sample Notice Fixtures
+# ---------------------------------------------------------
+
 @app.get("/api/samples")
 def list_samples() -> List[Dict[str, str]]:
     """Lists available synthetic demo fixtures and sample notices."""
     return [
+        {
+            "id": "demo_missing_compliance.txt",
+            "title": "📋 Fictional Demo 1: Missing Documents & Compliance",
+            "type": "text",
+            "language": "en",
+        },
+        {
+            "id": "demo_outstanding_dues.txt",
+            "title": "💰 Fictional Demo 2: Outstanding Dues & Demand",
+            "type": "text",
+            "language": "en",
+        },
+        {
+            "id": "demo_response_hearing.txt",
+            "title": "⚖️ Fictional Demo 3: Show-Cause & Statutory Hearing",
+            "type": "text",
+            "language": "en",
+        },
         {
             "id": "demo_scholarship_ambiguous.txt",
             "title": "🎓 Demo A: Scholarship (Ambiguous Deadline)",
@@ -242,7 +372,6 @@ def list_samples() -> List[Dict[str, str]]:
 @app.get("/api/samples/{filename}")
 def get_sample_content(filename: str):
     """Retrieves content of a synthetic demo notice fixture."""
-    # Prevent directory traversal
     clean_name = Path(filename).name
     p = config.synthetic_fixtures_dir / clean_name
     if not p.is_file():
@@ -260,6 +389,10 @@ def get_sample_content(filename: str):
     }
 
 
+# ---------------------------------------------------------
+# Ingestion & OCR Endpoints
+# ---------------------------------------------------------
+
 @app.post("/api/ingest/text", response_model=IngestTextResponse)
 def ingest_text_endpoint(payload: IngestTextRequest):
     """Sanitizes text and calculates its fingerprint."""
@@ -273,6 +406,9 @@ def ingest_text_endpoint(payload: IngestTextRequest):
     raw_text = res.raw_text or ""
     fp = hashlib.sha256(raw_text.strip().encode("utf-8")).hexdigest()
     line_count = len(raw_text.splitlines()) if raw_text else 0
+
+    # Index into EvidenceService
+    evidence_service.index_notice(raw_text)
 
     return IngestTextResponse(
         raw_text=raw_text,
@@ -295,6 +431,7 @@ async def ingest_upload_endpoint(file: UploadFile = File(...)):
     if res.source_type == "text":
         raw_text = res.raw_text or ""
         fp = hashlib.sha256(raw_text.strip().encode("utf-8")).hexdigest()
+        evidence_service.index_notice(raw_text)
         return {
             "source_type": "text",
             "filename": res.filename,
@@ -305,7 +442,6 @@ async def ingest_upload_endpoint(file: UploadFile = File(...)):
             "fingerprint": fp,
         }
     else:
-        # Image was uploaded
         return {
             "source_type": "image",
             "filename": res.filename,
@@ -320,19 +456,26 @@ async def ocr_endpoint(
     file: UploadFile = File(...),
     target_lang: str = Form("eng"),
     enhance_contrast: bool = Form(True),
+    engine: Optional[str] = Form(None),
 ):
-    """Executes Tesseract OCR on an uploaded image."""
+    """Executes OCR on an uploaded image with selected engine."""
     try:
         content = await file.read()
         img = Image.open(io.BytesIO(content)).convert("RGB")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image file: {e}")
 
-    # Map target language code
     lang_code = "hin" if "hin" in target_lang and "+" not in target_lang else ("eng+hin" if "+" in target_lang else "eng")
-    ocr_res = extract_text_from_image(img, target_lang=lang_code, apply_preprocessing=enhance_contrast)
+    ocr_res = extract_text_from_image(
+        img,
+        target_lang=lang_code,
+        apply_preprocessing=enhance_contrast,
+        engine_name=engine,
+    )
 
     fp = hashlib.sha256(ocr_res.extracted_text.strip().encode("utf-8")).hexdigest() if ocr_res.extracted_text else ""
+    if ocr_res.extracted_text:
+        evidence_service.index_notice(ocr_res.extracted_text)
 
     return OCRResponse(
         extracted_text=ocr_res.extracted_text,
@@ -341,27 +484,71 @@ async def ocr_endpoint(
         line_count=ocr_res.line_count,
         char_count=ocr_res.char_count,
         is_preprocessed=ocr_res.is_preprocessed,
+        engine_used=ocr_res.engine_used,
+        is_uncertain=ocr_res.is_uncertain,
+        uncertainty_reason=ocr_res.uncertainty_reason,
         warning=ocr_res.warning,
         error=ocr_res.error,
         fingerprint=fp,
     )
 
 
+# ---------------------------------------------------------
+# Evidence Service & Session Store Endpoints
+# ---------------------------------------------------------
+
+@app.post("/api/evidence/search")
+def search_evidence_endpoint(payload: EvidenceSearchRequest) -> List[EvidenceCitation]:
+    """Retrieves line-level grounded citations for a search query."""
+    return evidence_service.search_evidence(
+        query=payload.query,
+        notice_text=payload.notice_text,
+        max_results=payload.max_results,
+    )
+
+
+@app.get("/api/evidence/{fingerprint}")
+def get_evidence_endpoint(fingerprint: str):
+    """Retrieves stored evidence index for a notice fingerprint."""
+    store = evidence_service.get_evidence_store(fingerprint)
+    if not store:
+        raise HTTPException(status_code=404, detail="Evidence index not found for fingerprint.")
+    return store
+
+
+@app.get("/api/session/{session_id}")
+def get_session_endpoint(session_id: str):
+    """Retrieves stored state for an isolated session."""
+    session = session_store.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    return session
+
+
+# ---------------------------------------------------------
+# Analysis & Confirmation Endpoints
+# ---------------------------------------------------------
+
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 def analyze_endpoint(payload: AnalyzeRequest):
-    """Executes the full 5-phase analysis pipeline using local Gemma 4."""
+    """Executes the full structured analysis pipeline using the configured LLM."""
     text = payload.notice_text.strip()
     if not text:
         raise HTTPException(status_code=422, detail="Notice text cannot be empty.")
 
     start_time = time.time()
-    analyzer = NoticeAnalyzer()
+    custom_client = get_llm_client(payload.provider) if payload.provider else None
+    analyzer = NoticeAnalyzer(client=custom_client)
 
     try:
-        # Phase 3: Structured extraction via Gemma 4 & deterministic verification
-        structured = analyzer.analyze_notice(text)
+        # Index document in EvidenceService
+        evidence_service.index_notice(text)
 
-        # Phase 5: Summaries & Checklists
+        # Structured extraction & deterministic verification
+        structured = analyzer.analyze_notice(text)
+        six_core = structured.to_six_core_fields()
+
+        # Summaries & Checklists
         summary_en = generate_deterministic_summary(structured, reading_level=payload.reading_level)
         checklist_en = generate_action_checklist(structured)
 
@@ -372,8 +559,24 @@ def analyze_endpoint(payload: AnalyzeRequest):
         duration = time.time() - start_time
         fp = hashlib.sha256(text.encode("utf-8")).hexdigest()
 
+        # Create or update session state
+        s_id = payload.session_id or str(uuid.uuid4())
+        session_store.update_session(s_id, {
+            "raw_notice_text": text,
+            "fingerprint": fp,
+            "reading_level": payload.reading_level,
+            "target_language": payload.target_language,
+            "structured_notice": structured.model_dump(),
+            "summary_en": summary_en.model_dump(),
+            "summary_hi": summary_hi.model_dump(),
+            "checklist_en": checklist_en.model_dump(),
+            "checklist_hi": checklist_hi.model_dump(),
+        })
+
         return AnalyzeResponse(
+            session_id=s_id,
             structured_notice=structured,
+            six_core_fields=six_core,
             summary_en=summary_en,
             summary_hi=summary_hi,
             checklist_en=checklist_en,
@@ -381,10 +584,12 @@ def analyze_endpoint(payload: AnalyzeRequest):
             fingerprint=fp,
             duration_seconds=round(duration, 2),
         )
+    except (LLMConfigError, LLMAuthError, LLMRateLimitError, LLMConnectionError):
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Analysis pipeline error: {e}. Please ensure Ollama is running with model '{config.ollama_model}'.",
+            detail=f"Analysis pipeline error: {e}. Active provider: '{config.llm_provider}'",
         )
 
 
@@ -394,7 +599,9 @@ def confirm_fact_endpoint(payload: ConfirmFactRequest):
     field_name = payload.field_name.strip()
     valid_fields = [
         "purpose", "eligibility", "deadline", "fee_or_cost",
-        "required_documents", "contact_details", "required_actions", "important_conditions"
+        "required_documents", "contact_details", "required_actions", "important_conditions",
+        "issuing_authority", "notice_reference_number", "notice_date", "recipient",
+        "main_subject", "required_action_and_deadline"
     ]
     if field_name not in valid_fields:
         raise HTTPException(
@@ -403,10 +610,11 @@ def confirm_fact_endpoint(payload: ConfirmFactRequest):
         )
 
     sn = payload.structured_notice
-    fact = getattr(sn, field_name)
-    fact.user_confirmed = True
-    fact.confirmed_value = payload.confirmed_value.strip()
-    fact.requires_confirmation = False
+    if hasattr(sn, field_name):
+        fact = getattr(sn, field_name)
+        fact.user_confirmed = True
+        fact.confirmed_value = payload.confirmed_value.strip()
+        fact.requires_confirmation = False
 
     # Refresh dependent summary & checklist
     summary_en = generate_deterministic_summary(sn, reading_level=payload.reading_level)
@@ -414,8 +622,20 @@ def confirm_fact_endpoint(payload: ConfirmFactRequest):
     summary_hi = translate_summary_to_hindi(summary_en, client=None)
     checklist_hi = translate_checklist_to_hindi(checklist_en, client=None)
 
+    # Update session if provided
+    if payload.session_id:
+        session = session_store.get_session(payload.session_id)
+        if session:
+            session.user_confirmations[field_name] = payload.confirmed_value.strip()
+            session.structured_notice = sn.model_dump()
+            session_store.update_session(payload.session_id, {
+                "user_confirmations": session.user_confirmations,
+                "structured_notice": session.structured_notice,
+            })
+
     return ConfirmFactResponse(
         structured_notice=sn,
+        six_core_fields=sn.to_six_core_fields(),
         summary_en=summary_en,
         summary_hi=summary_hi,
         checklist_en=checklist_en,
@@ -450,7 +670,21 @@ def followup_endpoint(payload: FollowUpRequest):
         raise HTTPException(status_code=422, detail="Notice text cannot be empty.")
 
     assistant = FollowUpAssistant()
-    answer = assistant.answer_question(q, text)
+    answer = assistant.answer_question(q, text, target_lang=payload.target_language)
+
+    # Record in session history if session_id is active
+    if payload.session_id:
+        session = session_store.get_session(payload.session_id)
+        if session:
+            session.qa_history.append({
+                "question": q,
+                "answer": answer.answer,
+                "is_supported": answer.is_supported,
+                "evidence_quote": answer.evidence_quote,
+                "timestamp": time.time(),
+            })
+            session_store.update_session(payload.session_id, {"qa_history": session.qa_history})
+
     return answer
 
 
@@ -464,6 +698,10 @@ def export_markdown_endpoint(payload: ExportMarkdownRequest):
     report = (
         f"# Notice2Action AI — Action Report\n\n"
         f"**Notice Purpose**: {sn.purpose.value}\n"
+        f"**Issuing Authority**: {sn.issuing_authority.value}\n"
+        f"**Reference Number**: {sn.notice_reference_number.value}\n"
+        f"**Notice Date**: {sn.notice_date.value}\n"
+        f"**Recipient**: {sn.recipient.value}\n"
         f"**Deadline**: {sn.deadline.value}\n"
         f"**Eligibility**: {sn.eligibility.value}\n\n"
         f"## Plain-Language Summary\n"
@@ -506,7 +744,6 @@ def tts_endpoint(payload: TTSRequest):
     """Generates MP3 audio for text read-aloud via gTTS."""
     audio_bytes = generate_audio_bytes(payload.text, lang=payload.lang)
     if audio_bytes is None:
-        # Offline or gTTS unavailable; return 204 to signal client to use Web Speech API
         return Response(status_code=204)
 
     return Response(

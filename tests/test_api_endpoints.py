@@ -289,3 +289,39 @@ def test_api_reading_level_endpoint(client):
     assert data["reading_level"] == "simple"
     assert "Due date:" in data["summary_en"]["deadline"]
 
+
+def test_api_providers_endpoints(client):
+    """Tests provider discovery and selection endpoints."""
+    # 1. List providers
+    res = client.get("/api/providers")
+    assert res.status_code == 200
+    providers = res.json()
+    assert len(providers) == 4
+    prov_ids = [p["id"] for p in providers]
+    assert "ollama" in prov_ids
+    assert "openrouter" in prov_ids
+
+    # 2. Select invalid provider
+    bad_res = client.post("/api/providers/select", json={"provider": "fake_cloud"})
+    assert bad_res.status_code == 400
+
+    # 3. Select valid provider
+    ok_res = client.post("/api/providers/select", json={"provider": "ollama"})
+    assert ok_res.status_code == 200
+    assert ok_res.json()["active_provider"] == "ollama"
+
+
+def test_api_evidence_search_endpoint(client):
+    """Tests grounded evidence search endpoint."""
+    payload = {
+        "query": "Where do I submit documents?",
+        "notice_text": "Notice:\nLine 1: Announcement.\nLine 2: Submit all documents at Desk #4.",
+        "max_results": 2,
+    }
+    res = client.post("/api/evidence/search", json=payload)
+    assert res.status_code == 200
+    citations = res.json()
+    assert len(citations) >= 1
+    assert "Desk #4" in citations[0]["quote"]
+
+

@@ -1,13 +1,15 @@
 """
 Strict Data Schemas for Notice2Action AI.
-Enforces evidence grounding, uncertainty states, and explicit missing-field tracking.
+Enforces evidence grounding, uncertainty states, explicit missing-field tracking,
+and the Six Core Notice Fields (issuing authority, reference number, notice date,
+recipient, main subject, required action and deadline).
 """
 
 from __future__ import annotations
 
 from enum import Enum
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class CertaintyStatus(str, Enum):
@@ -53,6 +55,10 @@ class ExtractedFact(BaseModel):
     explanation: Optional[str] = Field(
         default=None,
         description="Explanation of why this detail is uncertain, conflicting, or missing"
+    )
+    uncertainty_type: Optional[str] = Field(
+        default=None,
+        description="Category of uncertainty: 'ocr_quality', 'document_ambiguity', 'missing_in_text', 'conflict'"
     )
 
     @field_validator("value")
@@ -149,8 +155,75 @@ def normalize_string_list(items: Any) -> List[str]:
     return normalized
 
 
+class SixCoreFields(BaseModel):
+    """The six structured fields specifically extracted from a legal/administrative notice."""
+    issuing_authority: ExtractedFact = Field(
+        description="1. Issuing authority or department (e.g. Department of Higher Education)"
+    )
+    notice_reference_number: ExtractedFact = Field(
+        description="2. Notice or reference number, if available"
+    )
+    notice_date: ExtractedFact = Field(
+        description="3. Notice date"
+    )
+    recipient: ExtractedFact = Field(
+        description="4. Recipient or concerned party, if available"
+    )
+    main_subject: ExtractedFact = Field(
+        description="5. Main issue, allegation, or subject"
+    )
+    required_action_and_deadline: ExtractedFact = Field(
+        description="6. Required action and deadline, if specified"
+    )
+
+
 class StructuredNotice(BaseModel):
     """Complete structured breakdown of a processed notice."""
+    # Six Core Fields (Friend Suggestion E)
+    issuing_authority: ExtractedFact = Field(
+        default_factory=lambda: ExtractedFact(
+            field_name="issuing_authority",
+            value=NOT_STATED_LABEL,
+            status=CertaintyStatus.NOT_STATED,
+        )
+    )
+    notice_reference_number: ExtractedFact = Field(
+        default_factory=lambda: ExtractedFact(
+            field_name="notice_reference_number",
+            value=NOT_STATED_LABEL,
+            status=CertaintyStatus.NOT_STATED,
+        )
+    )
+    notice_date: ExtractedFact = Field(
+        default_factory=lambda: ExtractedFact(
+            field_name="notice_date",
+            value=NOT_STATED_LABEL,
+            status=CertaintyStatus.NOT_STATED,
+        )
+    )
+    recipient: ExtractedFact = Field(
+        default_factory=lambda: ExtractedFact(
+            field_name="recipient",
+            value=NOT_STATED_LABEL,
+            status=CertaintyStatus.NOT_STATED,
+        )
+    )
+    main_subject: ExtractedFact = Field(
+        default_factory=lambda: ExtractedFact(
+            field_name="main_subject",
+            value=NOT_STATED_LABEL,
+            status=CertaintyStatus.NOT_STATED,
+        )
+    )
+    required_action_and_deadline: ExtractedFact = Field(
+        default_factory=lambda: ExtractedFact(
+            field_name="required_action_and_deadline",
+            value=NOT_STATED_LABEL,
+            status=CertaintyStatus.NOT_STATED,
+        )
+    )
+
+    # Core procedural fields (retaining full backward compatibility with all UI components and tests)
     purpose: ExtractedFact
     eligibility: ExtractedFact
     deadline: ExtractedFact
@@ -176,6 +249,44 @@ class StructuredNotice(BaseModel):
     @classmethod
     def validate_and_normalize_string_list(cls, v: Any) -> List[str]:
         return normalize_string_list(v)
+
+    @model_validator(mode="after")
+    def sync_core_fields(self) -> StructuredNotice:
+        """Synchronizes main_subject and required_action_and_deadline if unpopulated."""
+        if self.main_subject.value == NOT_STATED_LABEL and self.purpose.value != NOT_STATED_LABEL:
+            self.main_subject = ExtractedFact(
+                field_name="main_subject",
+                value=self.purpose.value,
+                status=self.purpose.status,
+                evidence_quote=self.purpose.evidence_quote,
+                requires_confirmation=self.purpose.requires_confirmation,
+            )
+        if self.required_action_and_deadline.value == NOT_STATED_LABEL:
+            parts = []
+            if self.required_actions.value != NOT_STATED_LABEL:
+                parts.append(self.required_actions.value)
+            if self.deadline.value != NOT_STATED_LABEL:
+                parts.append(f"Deadline: {self.deadline.value}")
+            if parts:
+                self.required_action_and_deadline = ExtractedFact(
+                    field_name="required_action_and_deadline",
+                    value="; ".join(parts),
+                    status=self.deadline.status if self.deadline.status != CertaintyStatus.NOT_STATED else self.required_actions.status,
+                    evidence_quote=self.deadline.evidence_quote or self.required_actions.evidence_quote,
+                    requires_confirmation=self.deadline.requires_confirmation or self.required_actions.requires_confirmation,
+                )
+        return self
+
+    def to_six_core_fields(self) -> SixCoreFields:
+        """Returns the Six Core Fields model."""
+        return SixCoreFields(
+            issuing_authority=self.issuing_authority,
+            notice_reference_number=self.notice_reference_number,
+            notice_date=self.notice_date,
+            recipient=self.recipient,
+            main_subject=self.main_subject,
+            required_action_and_deadline=self.required_action_and_deadline,
+        )
 
 
 class PlainLanguageSummary(BaseModel):

@@ -44,10 +44,36 @@ def _find_tesseract_cmd() -> Optional[str]:
 
 @dataclass
 class AppConfig:
+    # LLM Provider selection: "ollama", "openrouter", "gemini", "huggingface"
+    llm_provider: str = os.getenv("LLM_PROVIDER", "ollama").lower()
+    llm_api_key: Optional[str] = os.getenv("LLM_API_KEY")
+
+    # Local Ollama
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
     ollama_model: str = os.getenv("OLLAMA_MODEL", "gemma4:latest")
     ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
+
+    # Cloud Provider 1: OpenRouter
+    openrouter_api_key: Optional[str] = os.getenv("OPENROUTER_API_KEY")
+    openrouter_model: str = os.getenv("OPENROUTER_MODEL", "google/gemma-2-9b-it:free")
+
+    # Cloud Provider 2: Google Gemini
+    gemini_api_key: Optional[str] = os.getenv("GEMINI_API_KEY")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+
+    # Cloud Provider 3: Hugging Face
+    huggingface_api_key: Optional[str] = os.getenv("HUGGINGFACE_API_KEY") or os.getenv("HF_TOKEN")
+    huggingface_model: str = os.getenv("HUGGINGFACE_MODEL", "google/gemma-2-9b-it")
+
+    # OCR Engine
+    ocr_engine: str = os.getenv("OCR_ENGINE", "tesseract").lower()
     tesseract_cmd: Optional[str] = _find_tesseract_cmd()
+
+    # Session Storage
+    session_storage_dir: Path = PROJECT_ROOT / os.getenv("SESSION_STORAGE_DIR", ".sessions")
+    session_ttl_hours: int = int(os.getenv("SESSION_TTL_HOURS", "24"))
+
+    # Ingestion & Limits
     max_upload_size_mb: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
     max_image_dimension: int = int(os.getenv("MAX_IMAGE_DIMENSION", "4096"))
     allowed_extensions: List[str] = field(
@@ -81,8 +107,8 @@ def run_preflight_diagnostics(cfg: Optional[AppConfig] = None) -> PreflightRepor
     Runs comprehensive diagnostic checks on:
     - Python environment
     - Tesseract OCR engine and language support
-    - Ollama server connectivity
-    - Gemma 4 model availability
+    - Configured LLM provider (Ollama, OpenRouter, Gemini, or Hugging Face)
+    - Session storage directory
     """
     if cfg is None:
         cfg = config
@@ -105,7 +131,23 @@ def run_preflight_diagnostics(cfg: Optional[AppConfig] = None) -> PreflightRepor
             )
         )
 
-    # 2. Tesseract OCR Check
+    # 2. OCR Engine Check
+    if cfg.ocr_engine == "rapidocr":
+        try:
+            import rapidocr_onnxruntime  # type: ignore # noqa: F401
+            report.items.append(
+                DiagnosticItem("RapidOCR Engine", "ok", "RapidOCR with ONNX Runtime is installed.")
+            )
+        except ImportError:
+            report.items.append(
+                DiagnosticItem(
+                    "RapidOCR Engine",
+                    "warning",
+                    "RapidOCR requested but rapidocr_onnxruntime is not installed. Falling back to Tesseract.",
+                    "Install with: pip install rapidocr-onnxruntime",
+                )
+            )
+
     if cfg.tesseract_cmd and Path(cfg.tesseract_cmd).is_file():
         try:
             ver_res = subprocess.run(
@@ -152,75 +194,141 @@ def run_preflight_diagnostics(cfg: Optional[AppConfig] = None) -> PreflightRepor
             )
         )
 
-    # 3. Ollama Server Connectivity
-    ollama_ok = False
-    models_found: List[str] = []
-    try:
-        resp = requests.get(f"{cfg.ollama_base_url}/api/tags", timeout=4)
-        if resp.status_code == 200:
-            ollama_ok = True
-            data = resp.json()
-            models_found = [m.get("name", "") for m in data.get("models", [])]
-            report.items.append(
-                DiagnosticItem(
-                    "Ollama Server",
-                    "ok",
-                    f"Connected to {cfg.ollama_base_url}. Found {len(models_found)} model(s).",
-                )
-            )
-        else:
-            report.items.append(
-                DiagnosticItem(
-                    "Ollama Server",
-                    "error",
-                    f"Server responded with HTTP {resp.status_code}",
-                    "Check Ollama server logs.",
-                )
-            )
-    except Exception as e:
-        report.items.append(
-            DiagnosticItem(
-                "Ollama Server",
-                "error",
-                f"Cannot connect to {cfg.ollama_base_url} ({e})",
-                "Start Ollama with 'ollama serve' in PowerShell.",
-            )
-        )
+    # 3. LLM Provider Diagnostics
+    provider = cfg.llm_provider
+    report.items.append(
+        DiagnosticItem("Configured LLM Provider", "ok", f"Active provider: '{provider}'")
+    )
 
-    # 4. Target Model (Gemma 4) Availability
-    if ollama_ok:
-        target_model = cfg.ollama_model
-        # Check exact or prefix match (e.g. gemma4:latest or gemma4)
-        model_present = any(
-            target_model == m or target_model == m.split(":")[0] or m.startswith(target_model)
-            for m in models_found
-        )
-        if model_present:
+    if provider == "ollama":
+        # Ollama Server Connectivity
+        ollama_ok = False
+        models_found: List[str] = []
+        try:
+            resp = requests.get(f"{cfg.ollama_base_url}/api/tags", timeout=4)
+            if resp.status_code == 200:
+                ollama_ok = True
+                data = resp.json()
+                models_found = [m.get("name", "") for m in data.get("models", [])]
+                report.items.append(
+                    DiagnosticItem(
+                        "Ollama Server",
+                        "ok",
+                        f"Connected to {cfg.ollama_base_url}. Found {len(models_found)} model(s).",
+                    )
+                )
+            else:
+                report.items.append(
+                    DiagnosticItem(
+                        "Ollama Server",
+                        "error",
+                        f"Server responded with HTTP {resp.status_code}",
+                        "Check Ollama server logs.",
+                    )
+                )
+        except Exception as e:
             report.items.append(
                 DiagnosticItem(
-                    f"LLM Model ({target_model})",
+                    "Ollama Server",
+                    "error",
+                    f"Cannot connect to {cfg.ollama_base_url} ({e})",
+                    "Start Ollama with 'ollama serve' in PowerShell.",
+                )
+            )
+
+        # Target Model (Gemma 4) Check
+        if ollama_ok:
+            target_model = cfg.ollama_model
+            model_present = any(
+                target_model == m or target_model == m.split(":")[0] or m.startswith(target_model)
+                for m in models_found
+            )
+            if model_present:
+                report.items.append(
+                    DiagnosticItem(
+                        f"LLM Model ({target_model})",
+                        "ok",
+                        f"Model '{target_model}' is downloaded and ready in Ollama.",
+                    )
+                )
+            else:
+                report.items.append(
+                    DiagnosticItem(
+                        f"LLM Model ({target_model})",
+                        "error",
+                        f"Model '{target_model}' was not found in Ollama tags: {models_found}",
+                        f"Run 'ollama run {target_model}' or configure OLLAMA_MODEL in .env.",
+                    )
+                )
+        else:
+            report.items.append(
+                DiagnosticItem(
+                    f"LLM Model ({cfg.ollama_model})",
+                    "warning",
+                    "Skipped model check because Ollama server is unreachable.",
+                    "Ensure Ollama server is running first.",
+                )
+            )
+
+    elif provider == "openrouter":
+        api_key = cfg.openrouter_api_key or cfg.llm_api_key
+        if api_key and api_key.strip():
+            report.items.append(
+                DiagnosticItem(
+                    "OpenRouter API Key",
                     "ok",
-                    f"Model '{target_model}' is downloaded and ready in Ollama.",
+                    f"Configured (model: {cfg.openrouter_model})",
                 )
             )
         else:
             report.items.append(
                 DiagnosticItem(
-                    f"LLM Model ({target_model})",
-                    "error",
-                    f"Model '{target_model}' was not found in Ollama tags: {models_found}",
-                    f"Run 'ollama run {target_model}' or configure OLLAMA_MODEL in .env.",
+                    "OpenRouter API Key",
+                    "warning",
+                    "Missing OPENROUTER_API_KEY in .env.",
+                    "Add OPENROUTER_API_KEY=<your_key> to .env to enable cloud inference via OpenRouter.",
                 )
             )
-    else:
-        report.items.append(
-            DiagnosticItem(
-                f"LLM Model ({cfg.ollama_model})",
-                "warning",
-                "Skipped model check because Ollama server is unreachable.",
-                "Ensure Ollama server is running first.",
+
+    elif provider == "gemini":
+        api_key = cfg.gemini_api_key or cfg.llm_api_key
+        if api_key and api_key.strip():
+            report.items.append(
+                DiagnosticItem(
+                    "Google Gemini API Key",
+                    "ok",
+                    f"Configured (model: {cfg.gemini_model})",
+                )
             )
-        )
+        else:
+            report.items.append(
+                DiagnosticItem(
+                    "Google Gemini API Key",
+                    "warning",
+                    "Missing GEMINI_API_KEY in .env.",
+                    "Add GEMINI_API_KEY=<your_key> to .env to enable Google Gemini inference.",
+                )
+            )
+
+    elif provider == "huggingface":
+        api_key = cfg.huggingface_api_key or cfg.llm_api_key
+        if api_key and api_key.strip():
+            report.items.append(
+                DiagnosticItem(
+                    "Hugging Face API Key",
+                    "ok",
+                    f"Configured (model: {cfg.huggingface_model})",
+                )
+            )
+        else:
+            report.items.append(
+                DiagnosticItem(
+                    "Hugging Face API Key",
+                    "warning",
+                    "Missing HUGGINGFACE_API_KEY in .env.",
+                    "Add HUGGINGFACE_API_KEY=<your_key> to .env to enable Hugging Face inference.",
+                )
+            )
 
     # Calculate overall status
     if any(i.status == "error" for i in report.items):
