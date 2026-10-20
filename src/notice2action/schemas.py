@@ -60,6 +60,91 @@ class ExtractedFact(BaseModel):
         return v_clean
 
 
+def normalize_string_list_entry(item: Any) -> Optional[str]:
+    """
+    Normalizes a single entry from missing_information or uncertain_or_conflicting_details
+    into a meaningful, non-empty string.
+    Safely handles dicts, strings, and other primitives. Never returns 'None' or empty strings.
+    """
+    if item is None:
+        return None
+
+    if isinstance(item, str):
+        cleaned = item.strip()
+        if not cleaned or cleaned.lower() in ("none", "null", "undefined", "n/a"):
+            return None
+        return cleaned
+
+    if isinstance(item, dict):
+        # Look for primary fact/description keys in order of precedence
+        primary_val: Optional[str] = None
+        for key in ("fact", "value", "description", "detail", "item", "text", "name", "field"):
+            v = item.get(key)
+            if v is not None and isinstance(v, str) and v.strip():
+                clean_v = v.strip()
+                if clean_v.lower() not in ("none", "null", "undefined", "n/a"):
+                    primary_val = clean_v
+                    break
+
+        # Look for supplementary context (e.g. explanation, reason, notes)
+        context_val: Optional[str] = None
+        for ctx_key in ("explanation", "reason", "notes", "uncertainty", "comment"):
+            cv = item.get(ctx_key)
+            if cv is not None and isinstance(cv, str) and cv.strip():
+                clean_cv = cv.strip()
+                if clean_cv.lower() not in ("none", "null", "undefined", "n/a") and clean_cv != primary_val:
+                    context_val = clean_cv
+                    break
+
+        if primary_val:
+            if context_val:
+                return f"{primary_val} ({context_val})"
+            return primary_val
+
+        # If no primary key was found, check all string values in the dict
+        val_candidates: List[str] = []
+        for k, v in item.items():
+            if k == "evidence_quote" and (v is None or not str(v).strip()):
+                continue
+            if v is not None and isinstance(v, str):
+                c = v.strip()
+                if c and c.lower() not in ("none", "null", "undefined", "n/a"):
+                    val_candidates.append(c)
+
+        if val_candidates:
+            return " — ".join(val_candidates)
+
+        return None
+
+    cleaned_str = str(item).strip()
+    if not cleaned_str or cleaned_str.lower() in ("none", "null", "undefined", "n/a"):
+        return None
+    return cleaned_str
+
+
+def normalize_string_list(items: Any) -> List[str]:
+    """
+    Converts arbitrary model output (list of strings, list of dicts, single item, etc.)
+    into a clean, deduplicated list of non-empty strings.
+    """
+    if items is None:
+        return []
+
+    if isinstance(items, (str, dict)):
+        items = [items]
+
+    if not isinstance(items, (list, tuple, set)):
+        return []
+
+    normalized: List[str] = []
+    for it in items:
+        entry = normalize_string_list_entry(it)
+        if entry and entry not in normalized:
+            normalized.append(entry)
+
+    return normalized
+
+
 class StructuredNotice(BaseModel):
     """Complete structured breakdown of a processed notice."""
     purpose: ExtractedFact
@@ -82,6 +167,11 @@ class StructuredNotice(BaseModel):
         default="",
         description="Original notice text used as ground truth for evidence checks"
     )
+
+    @field_validator("missing_information", "uncertain_or_conflicting_details", mode="before")
+    @classmethod
+    def validate_and_normalize_string_list(cls, v: Any) -> List[str]:
+        return normalize_string_list(v)
 
 
 class PlainLanguageSummary(BaseModel):
@@ -113,6 +203,27 @@ class ChecklistItem(BaseModel):
 class ActionChecklist(BaseModel):
     """Ordered action checklist derived strictly from grounded facts."""
     items: List[ChecklistItem] = Field(default_factory=list)
+
+    def to_ics_bytes(self, title: str = "Notice Action Plan") -> bytes:
+        """Generates an iCalendar (.ics) byte payload for calendar integration."""
+        lines = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//Notice2Action AI//EN",
+            "CALSCALE:GREGORIAN",
+            "METHOD:PUBLISH",
+        ]
+        for it in self.items:
+            mand = "Mandatory" if it.is_mandatory else "Advisory"
+            lines.extend([
+                "BEGIN:VEVENT",
+                f"SUMMARY:Step {it.step_number}: {it.action}",
+                f"DESCRIPTION:[{mand}] Category: {it.category}",
+                "STATUS:CONFIRMED",
+                "END:VEVENT",
+            ])
+        lines.append("END:VCALENDAR")
+        return "\r\n".join(lines).encode("utf-8")
 
 
 class FollowUpAnswer(BaseModel):

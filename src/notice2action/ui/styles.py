@@ -1,7 +1,18 @@
 """
-Centralized Theme Tokens and CSS for Notice2Action AI.
-Provides a modern, high-contrast dark SaaS aesthetic inspired by Linear, Raycast, and Vercel.
-Optimized for 1366x768 and multi-column document intelligence workspaces.
+Centralized Design Tokens and CSS for Notice2Action AI (PS02).
+Implements the premium dark AI document-intelligence workspace.
+Color Palette:
+- Main background: #06101F
+- Sidebar background: #071A33
+- Elevated cards & header: #0B1C35
+- Secondary surfaces: #102746
+- Primary accent: #0875FF
+- Border: #1D3D67
+- Success: #10B981
+- Warning: #F59E0B
+- Error: #EF4444
+- Text: #F2F6FF
+- Secondary text: #9EB5D8
 """
 
 THEME_CSS = """
@@ -11,41 +22,44 @@ THEME_CSS = """
 
 html, body, [class*="css"] {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: #F8FAFC;
-    background-color: #0B0F19;
+    color: #F2F6FF;
+    background-color: #06101F;
 }
 
 code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace !important;
 }
 
-/* ---------------- Layout & Compact Spacing (1366x768 optimized) ---------------- */
-.main .block-container {
-    padding-top: 0.75rem !important;
+/* ---------------- Main Layout Spacing (1366x768 optimized) ---------------- */
+.main .block-container,
+[data-testid="stMainBlockContainer"],
+div[data-testid="stAppViewContainer"] section.main > div.block-container {
+    padding-top: 0.5rem !important;
     padding-bottom: 2rem !important;
-    padding-left: 1.5rem !important;
-    padding-right: 1.5rem !important;
-    max-width: 1240px;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+    max-width: 1280px !important;
+    background-color: #06101F !important;
 }
 
-/* ---------------- Platform Header ---------------- */
+/* ---------------- Top Platform Header ---------------- */
 .platform-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.85rem 1.25rem;
-    background: linear-gradient(180deg, #161E2E 0%, #111827 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.75rem 1.25rem;
+    background: #0B1C35;
+    border: 1px solid #1D3D67;
     border-radius: 12px;
-    margin-bottom: 1.25rem;
-    box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4);
+    margin-bottom: 0.85rem;
+    box-shadow: 0 4px 18px rgba(3, 10, 22, 0.4);
 }
 
 .brand-title {
     font-size: 1.25rem;
     font-weight: 800;
     letter-spacing: -0.02em;
-    color: #FFFFFF;
+    color: #F2F6FF;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -54,33 +68,45 @@ code, pre, .font-mono {
 
 .brand-subtitle {
     font-size: 0.78rem;
-    color: #94A3B8;
+    color: #9EB5D8;
     margin-top: 0.15rem;
+}
+
+.header-status-group {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
 }
 
 .status-pill {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    padding: 0.3rem 0.65rem;
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.25);
+    padding: 0.3rem 0.75rem;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
     border-radius: 9999px;
     font-size: 0.725rem;
     font-weight: 600;
-    color: #34D399;
+    color: #10B981;
 }
 
 .status-pill.warning {
-    background: rgba(245, 158, 11, 0.1);
-    border-color: rgba(245, 158, 11, 0.25);
-    color: #FBBF24;
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.35);
+    color: #F59E0B;
 }
 
 .status-pill.error {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.25);
+    background: rgba(248, 113, 113, 0.12);
+    border-color: rgba(248, 113, 113, 0.35);
     color: #F87171;
+}
+
+.status-pill.info {
+    background: rgba(8, 117, 255, 0.12);
+    border-color: rgba(8, 117, 255, 0.35);
+    color: #38BDF8;
 }
 
 .pulse-dot {
@@ -91,65 +117,183 @@ code, pre, .font-mono {
     box-shadow: 0 0 8px #10B981;
 }
 
+/* ---------------- Introduction & Workflow Panel ---------------- */
+.intro-panel {
+    background: #0B1C35;
+    border: 1px solid #1D3D67;
+    border-radius: 12px;
+    padding: 0.85rem 1.25rem;
+    margin-bottom: 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.intro-left {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    flex: 1;
+}
+
+.intro-icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: rgba(8, 117, 255, 0.15);
+    border: 1px solid rgba(8, 117, 255, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+}
+
+.intro-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #F2F6FF;
+    margin-bottom: 0.2rem;
+}
+
+.intro-desc {
+    font-size: 0.8rem;
+    color: #9EB5D8;
+    line-height: 1.4;
+}
+
+.workflow-stepper {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    background: #102746;
+    border: 1px solid #1D3D67;
+    border-radius: 10px;
+    padding: 0.5rem 0.85rem;
+    flex-shrink: 0;
+}
+
+.workflow-step {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.725rem;
+    color: #9EB5D8;
+    font-weight: 600;
+}
+
+.workflow-step.active {
+    color: #F2F6FF;
+}
+
+.workflow-badge {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(8, 117, 255, 0.25);
+    border: 1px solid #0875FF;
+    color: #60A5FA;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+.workflow-arrow {
+    color: #1D3D67;
+    font-size: 0.75rem;
+}
+
+/* ---------------- Rounded Dark Workspace Panels ---------------- */
+.workspace-panel {
+    background: #0B1C35;
+    border: 1px solid #1D3D67;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.85rem;
+    box-shadow: 0 4px 16px rgba(4, 12, 28, 0.35);
+}
+
+.panel-header {
+    margin-bottom: 0.85rem;
+}
+
+.panel-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #F2F6FF;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.panel-subtitle {
+    font-size: 0.775rem;
+    color: #9EB5D8;
+    margin-top: 0.15rem;
+}
+
 /* ---------------- Surface Cards ---------------- */
 .dark-card {
-    background: #161E2E;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: #102746;
+    border: 1px solid #1D3D67;
     border-radius: 10px;
-    padding: 0.9rem 1.1rem;
-    margin-bottom: 0.75rem;
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.65rem;
     transition: all 0.15s ease-in-out;
 }
 
 .dark-card:hover {
-    border-color: rgba(59, 130, 246, 0.35);
-    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+    border-color: #0875FF;
+    box-shadow: 0 4px 16px rgba(8, 117, 255, 0.15);
 }
 
 .card-label {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #64748B;
-    margin-bottom: 0.35rem;
+    color: #9EB5D8;
+    margin-bottom: 0.3rem;
     display: block;
 }
 
 .card-value {
-    font-size: 0.95rem;
+    font-size: 0.925rem;
     font-weight: 600;
-    color: #F8FAFC;
+    color: #F2F6FF;
     line-height: 1.45;
 }
 
 .evidence-quote {
-    background: rgba(15, 23, 42, 0.65);
-    border-left: 3px solid #3B82F6;
-    padding: 0.5rem 0.75rem;
-    margin-top: 0.55rem;
+    background: rgba(7, 18, 37, 0.85);
+    border-left: 3px solid #0875FF;
+    padding: 0.45rem 0.7rem;
+    margin-top: 0.5rem;
     border-radius: 0 6px 6px 0;
-    font-size: 0.8rem;
-    color: #94A3B8;
+    font-size: 0.775rem;
+    color: #9EB5D8;
     font-style: italic;
     font-family: 'JetBrains Mono', monospace;
     line-height: 1.4;
 }
 
 .source-line {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: #60A5FA;
     font-weight: 600;
     margin-top: 0.25rem;
     display: block;
 }
 
-/* ---------------- Overview Banner ---------------- */
+/* ---------------- Overview Metric Grid ---------------- */
 .overview-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 1.25rem;
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
 }
 
 @media (max-width: 900px) {
@@ -159,25 +303,25 @@ code, pre, .font-mono {
 }
 
 .overview-metric {
-    background: linear-gradient(180deg, #1E293B 0%, #161E2E 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0E2342;
+    border: 1px solid #1D3D67;
     border-radius: 10px;
-    padding: 0.8rem 1rem;
+    padding: 0.75rem 0.9rem;
 }
 
 .metric-title {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     font-weight: 700;
-    color: #94A3B8;
+    color: #9EB5D8;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .metric-value {
-    font-size: 1.05rem;
+    font-size: 1rem;
     font-weight: 700;
-    color: #FFFFFF;
-    margin-top: 0.25rem;
+    color: #F2F6FF;
+    margin-top: 0.2rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -189,18 +333,18 @@ code, pre, .font-mono {
 
 /* ---------------- Tabs Styling ---------------- */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 6px;
-    background-color: #111827;
+    gap: 4px;
+    background-color: #0E2342;
     padding: 4px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    margin-bottom: 1rem;
+    border: 1px solid #1D3D67;
+    margin-bottom: 0.85rem;
 }
 
 .stTabs [data-baseweb="tab"] {
     border-radius: 7px;
     padding: 6px 14px;
-    color: #94A3B8;
+    color: #9EB5D8;
     font-weight: 600;
     font-size: 0.825rem;
     border: none !important;
@@ -209,153 +353,156 @@ code, pre, .font-mono {
 }
 
 .stTabs [data-baseweb="tab"]:hover {
-    color: #F8FAFC;
-    background-color: rgba(255, 255, 255, 0.04);
+    color: #F2F6FF;
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
 .stTabs [aria-selected="true"] {
-    background-color: #1E293B !important;
+    background-color: #0875FF !important;
     color: #FFFFFF !important;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 8px rgba(8, 117, 255, 0.35);
 }
 
-/* ---------------- Action Checklist ---------------- */
-.checklist-card {
-    background: #161E2E;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    transition: border 0.15s ease;
-}
-
-.checklist-card:hover {
-    border-color: rgba(59, 130, 246, 0.3);
-}
-
-.badge-tag {
-    display: inline-block;
-    padding: 0.15rem 0.45rem;
-    border-radius: 4px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.badge-mandatory {
-    background: rgba(239, 68, 68, 0.15);
-    color: #F87171;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.badge-advisory {
-    background: rgba(148, 163, 184, 0.12);
-    color: #94A3B8;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-}
-
-.badge-category {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60A5FA;
-    border: 1px solid rgba(59, 130, 246, 0.3);
-}
-
-/* ---------------- Buttons & Inputs ---------------- */
+/* ---------------- Action Buttons ---------------- */
 .stButton>button {
     border-radius: 8px !important;
     font-weight: 600 !important;
     letter-spacing: 0.01em !important;
     transition: all 0.15s ease !important;
-    padding: 0.45rem 1.1rem !important;
+    padding: 0.45rem 1rem !important;
     font-size: 0.85rem !important;
 }
 
-.stButton>button[kind="primary"] {
-    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-    border: 1px solid #3B82F6 !important;
-    box-shadow: 0 3px 12px 0 rgba(37, 99, 235, 0.35) !important;
+/* Bright Blue Visually Dominant Primary Button */
+.stButton>button[kind="primary"],
+div[data-testid="stButton"] > button[kind="primary"] {
+    background: linear-gradient(135deg, #0875FF 0%, #1556C0 100%) !important;
+    border: 1px solid #0875FF !important;
+    box-shadow: 0 4px 16px rgba(8, 117, 255, 0.45) !important;
+    color: #FFFFFF !important;
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    padding: 0.65rem 1.25rem !important;
 }
 
-.stButton>button[kind="primary"]:hover {
-    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%) !important;
-    box-shadow: 0 4px 16px 0 rgba(37, 99, 235, 0.5) !important;
+.stButton>button[kind="primary"]:hover,
+div[data-testid="stButton"] > button[kind="primary"]:hover {
+    background: linear-gradient(135deg, #2587FF 0%, #0875FF 100%) !important;
+    box-shadow: 0 6px 22px rgba(8, 117, 255, 0.6) !important;
     transform: translateY(-1px);
 }
 
-.stButton>button[kind="secondary"] {
-    background: #1E293B !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: #F8FAFC !important;
+/* Secondary Button (Dark Blue Surface #0E2342) */
+.stButton>button[kind="secondary"],
+div[data-testid="stButton"] > button[kind="secondary"] {
+    background: #0E2342 !important;
+    border: 1px solid #1D3D67 !important;
+    color: #9EB5D8 !important;
 }
 
-.stButton>button[kind="secondary"]:hover {
-    background: #27354A !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
+.stButton>button[kind="secondary"]:hover,
+div[data-testid="stButton"] > button[kind="secondary"]:hover {
+    background: #15325C !important;
+    border-color: #0875FF !important;
+    color: #F2F6FF !important;
 }
 
-/* ---------------- Q&A Chat Cards ---------------- */
-.qa-card {
-    background: #161E2E;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 0.9rem 1.1rem;
-    margin-bottom: 0.75rem;
+/* ---------------- Compact Text Area ---------------- */
+div[data-baseweb="textarea"] textarea {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.825rem !important;
+    line-height: 1.45 !important;
+    background-color: #071225 !important;
+    color: #F2F6FF !important;
+    border-radius: 8px !important;
+    border: 1px solid #1D3D67 !important;
 }
 
-.qa-question {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #FFFFFF;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin-bottom: 0.4rem;
+div[data-baseweb="textarea"]:focus-within {
+    border-color: #0875FF !important;
+    box-shadow: 0 0 0 1px #0875FF !important;
 }
 
-.qa-answer {
-    font-size: 0.875rem;
-    color: #CBD5E1;
-    line-height: 1.45;
-}
-
-.qa-evidence {
-    margin-top: 0.45rem;
-    padding: 0.35rem 0.65rem;
-    background: rgba(15, 23, 42, 0.7);
-    border-left: 2px solid #10B981;
-    font-size: 0.775rem;
-    color: #6EE7B7;
-    font-style: italic;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-/* ---------------- Sidebar Styling ---------------- */
+/* ---------------- Sidebar Styling (#06172F, Compact ~260px) ---------------- */
+section[data-testid="stSidebar"],
 [data-testid="stSidebar"] {
-    background-color: #0F172A !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    min-width: 250px !important;
+    max-width: 265px !important;
+    width: 260px !important;
+    background-color: #071A33 !important;
+    border-right: 1px solid #1D3D67 !important;
 }
 
-[data-testid="stSidebar"] .block-container {
-    padding-top: 1.25rem !important;
+section[data-testid="stSidebar"] > div {
+    width: 260px !important;
+}
+
+[data-testid="stSidebar"] .block-container,
+[data-testid="stSidebarUserContent"] {
+    padding-top: 0.85rem !important;
     padding-bottom: 1.5rem !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
 }
 
 .sidebar-brand {
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    margin-bottom: 1rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid #1D3D67;
+    margin-bottom: 0.85rem;
+}
+
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: 7px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #9EB5D8;
+    margin-bottom: 0.25rem;
+    transition: all 0.15s ease;
+}
+
+.sidebar-nav-item:hover, .sidebar-nav-item.active {
+    background: #102746;
+    color: #F2F6FF;
+    border-left: 3px solid #0875FF;
+}
+
+/* Status Banner */
+.status-banner {
+    padding: 0.65rem 0.95rem;
+    border-radius: 8px;
+    margin-bottom: 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-banner.success {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    color: #10B981;
+}
+
+.status-banner.failed {
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    color: #EF4444;
+}
+
+.status-banner.ready {
+    background: #102746;
+    border: 1px solid #1D3D67;
+    color: #9EB5D8;
 }
 
 /* Compact alerts */
 .stAlert {
-    padding: 0.6rem 0.9rem !important;
+    padding: 0.55rem 0.85rem !important;
     border-radius: 8px !important;
 }
 </style>

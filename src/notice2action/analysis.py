@@ -14,6 +14,7 @@ from notice2action.schemas import (
     ExtractedFact,
     StructuredNotice,
     NOT_STATED_LABEL,
+    normalize_string_list,
 )
 from notice2action.llm.ollama_client import OllamaClient
 from notice2action.grounding import verify_structured_notice
@@ -39,8 +40,8 @@ Format:
   "contact_details": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
   "required_actions": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
   "important_conditions": {"value": "...", "status": "stated|not_stated|uncertain", "evidence_quote": "..."},
-  "missing_information": [],
-  "uncertain_or_conflicting_details": []
+  "missing_information": ["List of short strings describing critical aspects missing from the notice, e.g. 'Application fee', 'Selection criteria'"],
+  "uncertain_or_conflicting_details": ["List of short strings describing ambiguous or contradictory details in the notice"]
 }"""
 
 
@@ -82,25 +83,8 @@ def parse_fact_dict(field_name: str, data: Optional[Dict[str, Any]]) -> Extracte
 
 
 def _normalize_str_list(items: Any) -> List[str]:
-    """Ensures missing_information and uncertain_details are lists of strings."""
-    if not isinstance(items, list):
-        return []
-    res: List[str] = []
-    for it in items:
-        if isinstance(it, str):
-            clean = it.strip()
-            if clean:
-                res.append(clean)
-        elif isinstance(it, dict):
-            val = it.get("fact") or it.get("value") or it.get("description") or str(it)
-            clean = str(val).strip()
-            if clean:
-                res.append(clean)
-        elif it is not None:
-            clean = str(it).strip()
-            if clean:
-                res.append(clean)
-    return res
+    """Ensures missing_information and uncertain_details are lists of clean strings."""
+    return normalize_string_list(items)
 
 
 class NoticeAnalyzer:
@@ -122,6 +106,9 @@ class NoticeAnalyzer:
             user_prompt=user_prompt,
         )
 
+        if not isinstance(raw_json, dict):
+            raw_json = {}
+
         unverified = StructuredNotice(
             purpose=parse_fact_dict("purpose", raw_json.get("purpose")),
             eligibility=parse_fact_dict("eligibility", raw_json.get("eligibility")),
@@ -131,11 +118,12 @@ class NoticeAnalyzer:
             contact_details=parse_fact_dict("contact_details", raw_json.get("contact_details")),
             required_actions=parse_fact_dict("required_actions", raw_json.get("required_actions")),
             important_conditions=parse_fact_dict("important_conditions", raw_json.get("important_conditions")),
-            missing_information=_normalize_str_list(raw_json.get("missing_information", [])),
-            uncertain_or_conflicting_details=_normalize_str_list(raw_json.get("uncertain_or_conflicting_details", [])),
+            missing_information=normalize_string_list(raw_json.get("missing_information", [])),
+            uncertain_or_conflicting_details=normalize_string_list(raw_json.get("uncertain_or_conflicting_details", [])),
             raw_notice_text=notice_text,
         )
 
         # Apply evidence grounding verification
         verified = verify_structured_notice(unverified, notice_text)
         return verified
+

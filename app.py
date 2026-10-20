@@ -15,6 +15,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 import time
+import json
 import streamlit as st
 from PIL import Image
 
@@ -36,10 +37,14 @@ from notice2action.followup import FollowUpAssistant
 from notice2action.ui.styles import THEME_CSS
 from notice2action.ui.components import (
     render_platform_header,
+    render_intro_workflow_panel,
     render_notice_overview,
     render_analysis_banner,
     render_recovery_box,
     render_fact_card,
+    render_quick_summary_card,
+    render_checklist_widget,
+    render_qa_shortcut,
     render_summary_section,
     render_checklist_section,
     render_qa_item,
@@ -92,23 +97,38 @@ with st.sidebar:
     st.markdown(
         """
         <div class="sidebar-brand">
-            <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; display: flex; align-items: center; gap: 0.45rem;">
-                <span>Notice2Action</span>
-                <span style="font-size: 0.65rem; background: #3B82F6; color: white; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-family: monospace;">PS02</span>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #F2F6FF; display: flex; align-items: center; gap: 0.45rem;">
+                <span style="color: #0875FF;">Notice2Action</span>
+                <span>AI</span>
+                <span style="font-size: 0.65rem; background: #0875FF; color: white; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-family: monospace;">PS02</span>
             </div>
-            <div style="font-size: 0.75rem; color: #94A3B8; margin-top: 3px;">
+            <div style="font-size: 0.75rem; color: #9EB5D8; margin-top: 3px;">
                 Notice-to-Action Accessibility Assistant
             </div>
             <div style="font-size: 0.7rem; color: #64748B; margin-top: 2px;">
-                HackDay@Meerut × E-Cell IIMTU | Gemma 4
+                HackDay@Meerut &bull; Best Use of Gemma 4
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Diagnostics Drawer
-    st.markdown("##### ⚡ Service Status")
+    # Navigation Guide
+    st.markdown("<span class='card-label'>🧭 Navigation</span>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div style="margin-bottom: 0.85rem;">
+            <div class="sidebar-nav-item active">📥 1. Process Notice</div>
+            <div class="sidebar-nav-item">🔍 2. Extracted Facts</div>
+            <div class="sidebar-nav-item">📋 3. Summary & Actions</div>
+            <div class="sidebar-nav-item">💬 4. Follow-Up Q&A</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Diagnostics Drawer & System Status
+    st.markdown("<span class='card-label'>⚡ System Status</span>", unsafe_allow_html=True)
     diag = run_preflight_diagnostics()
     if diag.overall_status == "ok":
         st.success(f"System Ready • {config.ollama_model}", icon="✅")
@@ -128,10 +148,10 @@ with st.sidebar:
     st.markdown("---")
 
     # Quick-load Synthetic Demo Fixtures
-    st.markdown("##### 🧪 Quick-Load Samples")
+    st.markdown("<span class='card-label'>🧪 Quick-Load Samples</span>", unsafe_allow_html=True)
     fixtures_dir = config.synthetic_fixtures_dir
 
-    if st.button("🎯 Test Notice: TEST-SCH-2026-001", type="primary", use_container_width=True):
+    if st.button("🎯 Competition Demo (TEST-SCH-2026-001)", type="secondary", use_container_width=True):
         p = fixtures_dir / "synthetic_scholarship_notice.txt"
         if p.is_file():
             st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
@@ -141,50 +161,31 @@ with st.sidebar:
             st.session_state.followup_history = []
             st.rerun()
 
-    c_s1, c_s2 = st.columns(2)
-    with c_s1:
-        if st.button("📄 Sample 1", use_container_width=True, help="Full Scholarship Notice"):
-            p = fixtures_dir / "sample_scholarship_notice.txt"
-            if p.is_file():
-                st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
-                st.session_state.uploaded_image = None
-                st.session_state.structured_notice = None
-                st.session_state.analysis_error = None
-                st.session_state.followup_history = []
-                st.rerun()
-    with c_s2:
-        if st.button("🇮🇳 Sample 2", use_container_width=True, help="Hindi Notice"):
-            p = fixtures_dir / "sample_hindi_notice.txt"
-            if p.is_file():
-                st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
-                st.session_state.uploaded_image = None
-                st.session_state.structured_notice = None
-                st.session_state.analysis_error = None
-                st.session_state.followup_history = []
+    sample_dict = {
+        "📄 Scholarship Notice (EN)": "sample_scholarship_notice.txt",
+        "🏛️ College Circular (EN)": "synthetic_scholarship_notice.txt",
+        "🇮🇳 Notice (Hindi)": "sample_hindi_notice.txt",
+        "⚠️ Tentative Dates Notice": "sample_uncertain_notice.txt",
+        "❓ Missing Fields Notice": "sample_missing_fields_notice.txt",
+    }
+    selected_sample_key = st.selectbox(
+        "Other Notice Fixtures",
+        options=list(sample_dict.keys()),
+        index=0,
+        label_visibility="collapsed",
+    )
+    if st.button("📥 Load Selected Sample", use_container_width=True):
+        fname = sample_dict[selected_sample_key]
+        p = fixtures_dir / fname
+        if p.is_file():
+            st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
+            st.session_state.uploaded_image = None
+            st.session_state.structured_notice = None
+            st.session_state.analysis_error = None
+            st.session_state.followup_history = []
+            if "Hindi" in selected_sample_key:
                 st.session_state.selected_lang = "hi"
-                st.rerun()
-
-    c_s3, c_s4 = st.columns(2)
-    with c_s3:
-        if st.button("⚠️ Sample 3", use_container_width=True, help="Tentative Notice"):
-            p = fixtures_dir / "sample_uncertain_notice.txt"
-            if p.is_file():
-                st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
-                st.session_state.uploaded_image = None
-                st.session_state.structured_notice = None
-                st.session_state.analysis_error = None
-                st.session_state.followup_history = []
-                st.rerun()
-    with c_s4:
-        if st.button("❓ Sample 4", use_container_width=True, help="Missing Fields Notice"):
-            p = fixtures_dir / "sample_missing_fields_notice.txt"
-            if p.is_file():
-                st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
-                st.session_state.uploaded_image = None
-                st.session_state.structured_notice = None
-                st.session_state.analysis_error = None
-                st.session_state.followup_history = []
-                st.rerun()
+            st.rerun()
 
     st.markdown("---")
 
@@ -210,9 +211,22 @@ with st.sidebar:
         st.session_state.followup_history = []
         st.rerun()
 
+    st.markdown(
+        """
+        <div style="font-size: 0.68rem; color: #64748B; margin-top: 1.5rem; text-align: center; border-top: 1px solid #1D3D67; padding-top: 0.75rem;">
+            <strong>About PS02</strong><br/>
+            Notice-to-Action Accessibility Assistant.<br/>
+            100% on-device local AI for student privacy.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 # ----------------- MAIN INTERFACE -----------------
-render_platform_header(status=diag.overall_status, model_name=config.ollama_model)
+render_platform_header(status=diag.overall_status, model_name=config.ollama_model, ocr_status="ok")
+step_val = 3 if st.session_state.structured_notice else (2 if st.session_state.raw_notice_text else 1)
+render_intro_workflow_panel(current_step=step_val)
 
 tab_input, tab_structured, tab_summary, tab_followup = st.tabs([
     "📥 Notice Ingestion & OCR",
@@ -225,23 +239,31 @@ tab_input, tab_structured, tab_summary, tab_followup = st.tabs([
 with tab_input:
     st.markdown(
         """
-        <div style="margin-bottom: 0.85rem;">
-            <div style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF;">1. Supply Notice Document</div>
-            <div style="font-size: 0.8rem; color: #94A3B8;">Upload a photo, scan, or digital notice, or paste raw text into the workspace below.</div>
+        <div class="panel-header">
+            <div class="panel-title">1 Add Your Notice</div>
+            <div class="panel-subtitle">Upload a document or paste the text of the notice.</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    col_img, col_paste = st.columns([1, 1], gap="medium")
+    col_upload, col_paste = st.columns([1, 1.25], gap="medium")
 
-    with col_img:
-        st.markdown("<span class='card-label'>📁 Upload Notice Document</span>", unsafe_allow_html=True)
+    with col_upload:
+        st.markdown(
+            """
+            <div style="margin-bottom: 0.35rem;">
+                <span class="card-label" style="margin-bottom: 0;">📁 1. Upload Notice Document</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         uploaded_file = st.file_uploader(
             "Upload Notice Document",
             type=["png", "jpg", "jpeg", "webp", "txt"],
             help="Supported formats: PNG, JPG, JPEG, WEBP, TXT. Max size: 10 MB.",
             label_visibility="collapsed",
+            key="file_uploader_widget",
         )
         if uploaded_file is not None:
             bytes_data = uploaded_file.read()
@@ -251,7 +273,7 @@ with tab_input:
             else:
                 size_kb = len(bytes_data) / 1024
                 st.markdown(
-                    f"<div style='font-size: 0.75rem; color: #34D399; font-family: monospace; margin-top: 0.25rem;'>"
+                    f"<div style='font-size: 0.75rem; color: #34D399; font-family: monospace; margin: 0.25rem 0 0.5rem 0;'>"
                     f"✓ Selected: {uploaded_file.name} ({size_kb:.1f} KB)"
                     f"</div>",
                     unsafe_allow_html=True,
@@ -264,82 +286,107 @@ with tab_input:
                     with c_ocr1:
                         ocr_lang = st.selectbox("OCR Language", ["eng (English)", "hin (Hindi)", "eng+hin (Bilingual)"], index=0)
                     with c_ocr2:
-                        apply_prep = st.checkbox("Preprocess & Enhance", value=True)
+                        apply_prep = st.checkbox("Enhance Contrast", value=True)
 
-                    if st.button("⚙️ Run Tesseract OCR", use_container_width=True):
-                        with st.spinner("Extracting text via Tesseract OCR..."):
-                            lang_code = "hin" if "hin" in ocr_lang and "+" not in ocr_lang else ("eng+hin" if "+" in ocr_lang else "eng")
-                            ocr_res = extract_text_from_image(ingest_res.image, target_lang=lang_code, apply_preprocessing=apply_prep)
-                            if ocr_res.error:
-                                st.error(ocr_res.error)
-                            else:
-                                st.session_state.raw_notice_text = ocr_res.extracted_text
-                                st.session_state.ocr_confidence = ocr_res.confidence_score
-                                if ocr_res.warning:
-                                    st.warning(ocr_res.warning)
-                                st.success(f"Extracted {ocr_res.line_count} lines (Confidence: {ocr_res.confidence_score}%)")
-                                st.rerun()
+                    c_btn_ocr1, c_btn_ocr2 = st.columns([1.5, 1])
+                    with c_btn_ocr1:
+                        if st.button("⚙️ Run Tesseract OCR", use_container_width=True):
+                            with st.spinner("Extracting text via Tesseract OCR..."):
+                                lang_code = "hin" if "hin" in ocr_lang and "+" not in ocr_lang else ("eng+hin" if "+" in ocr_lang else "eng")
+                                ocr_res = extract_text_from_image(ingest_res.image, target_lang=lang_code, apply_preprocessing=apply_prep)
+                                if ocr_res.error:
+                                    st.error(ocr_res.error)
+                                else:
+                                    st.session_state.raw_notice_text = ocr_res.extracted_text
+                                    st.session_state.ocr_confidence = ocr_res.confidence_score
+                                    st.session_state.structured_notice = None
+                                    st.session_state.analysis_error = None
+                                    if ocr_res.warning:
+                                        st.warning(ocr_res.warning)
+                                    st.success(f"Extracted {ocr_res.line_count} lines (Confidence: {ocr_res.confidence_score}%)")
+                                    st.rerun()
+                    with c_btn_ocr2:
+                        if st.button("🗑️ Reset Image", use_container_width=True):
+                            st.session_state.uploaded_image = None
+                            st.session_state.raw_notice_text = ""
+                            st.rerun()
 
                 elif ingest_res.source_type == "text":
                     st.session_state.raw_notice_text = ingest_res.raw_text
+                    st.session_state.uploaded_image = None
+                    st.session_state.structured_notice = None
+                    st.session_state.analysis_error = None
                     st.success(f"Loaded text file '{ingest_res.filename}' ({ingest_res.char_count} chars).")
+                    st.rerun()
 
     with col_paste:
-        st.markdown("<span class='card-label'>✍️ Paste Raw Text</span>", unsafe_allow_html=True)
-        pasted = st.text_area(
-            "Paste Notice Text",
-            height=200,
-            placeholder="Paste text of the circular, announcement, or poster here...",
-            label_visibility="collapsed",
+        char_count = len(st.session_state.raw_notice_text)
+        line_count = len(st.session_state.raw_notice_text.splitlines()) if st.session_state.raw_notice_text else 0
+        buf_color = "#34D399" if char_count > 0 else "#64748B"
+
+        st.markdown(
+            f"""
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <span class="card-label" style="margin-bottom: 0;">✍️ 2. Notice Content / Ground-Truth Buffer</span>
+                <span style="font-size: 0.725rem; font-family: monospace; color: {buf_color}; font-weight: 600;">
+                    {char_count} chars &bull; {line_count} lines
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
-        if st.button("📥 Load Pasted Content", use_container_width=True):
-            ingest_res = ingest_pasted_text(pasted)
-            if ingest_res.error:
-                st.error(ingest_res.error)
-            else:
-                st.session_state.raw_notice_text = ingest_res.raw_text
-                st.session_state.uploaded_image = None
-                st.session_state.structured_notice = None
-                st.session_state.analysis_error = None
-                st.success("Pasted notice loaded into session!")
-                st.rerun()
 
-    st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
-    st.markdown("<span class='card-label'>📝 Review & Edit Extracted Notice Content</span>", unsafe_allow_html=True)
+        edited_text = st.text_area(
+            "Notice Content for Analysis",
+            value=st.session_state.raw_notice_text,
+            height=200,
+            label_visibility="collapsed",
+            placeholder="Paste notice text here, or upload a notice image/file on the left. You can also click '⚡ Load Demo Notice' below.",
+            help="This buffer serves as the authoritative ground truth for all evidence citations and grounding checks.",
+        )
+        if edited_text != st.session_state.raw_notice_text:
+            st.session_state.raw_notice_text = edited_text
 
-    char_count = len(st.session_state.raw_notice_text)
-    line_count = len(st.session_state.raw_notice_text.splitlines()) if st.session_state.raw_notice_text else 0
-
-    st.markdown(
-        f"<div style='font-size: 0.725rem; color: #64748B; font-family: monospace; margin-bottom: 0.25rem;'>"
-        f"BUFFER: {char_count} characters &bull; {line_count} lines"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-
-    edited_text = st.text_area(
-        "Notice Content for Analysis",
-        value=st.session_state.raw_notice_text,
-        height=180,
-        label_visibility="collapsed",
-        help="This text serves as the ground truth for all evidence quotes and fact verification.",
-    )
-    if edited_text != st.session_state.raw_notice_text:
-        st.session_state.raw_notice_text = edited_text
-
-    col_btn1, col_btn2 = st.columns([1.2, 1])
-    with col_btn1:
-        analyze_btn = st.button("🚀 Analyze Notice with Gemma 4", type="primary", use_container_width=True)
-    with col_btn2:
-        if st.button("⚡ Load Demo Notice (TEST-SCH-2026-001)", use_container_width=True):
-            p = fixtures_dir / "synthetic_scholarship_notice.txt"
-            if p.is_file():
-                st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
+        col_act1, col_act2 = st.columns([1.5, 1])
+        with col_act1:
+            if st.button("⚡ Load Demo Notice (TEST-SCH-2026-001)", type="secondary", use_container_width=True):
+                p = fixtures_dir / "synthetic_scholarship_notice.txt"
+                if p.is_file():
+                    st.session_state.raw_notice_text = p.read_text(encoding="utf-8")
+                    st.session_state.uploaded_image = None
+                    st.session_state.structured_notice = None
+                    st.session_state.analysis_error = None
+                    st.session_state.followup_history = []
+                    st.rerun()
+        with col_act2:
+            if st.button("🗑️ Clear Buffer", use_container_width=True):
+                st.session_state.raw_notice_text = ""
                 st.session_state.uploaded_image = None
                 st.session_state.structured_notice = None
                 st.session_state.analysis_error = None
                 st.session_state.followup_history = []
                 st.rerun()
+
+    # Dominant Primary Analyze Button spanning below both columns
+    st.markdown("<div style='margin-top: 0.75rem;'></div>", unsafe_allow_html=True)
+    analyze_btn = st.button("🚀 Analyze Notice with Gemma 4", type="primary", use_container_width=True)
+
+    # Success Banner if notice has been analyzed
+    if st.session_state.structured_notice is not None:
+        dur = f"{st.session_state.analysis_duration:.2f}s" if st.session_state.analysis_duration else "complete"
+        st.markdown(
+            f"""
+            <div style="margin-top: 0.65rem; padding: 0.55rem 0.85rem; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 0.8rem; font-weight: 600; color: #34D399;">
+                    ✅ Notice Analyzed ({dur}) &bull; 8 Key Fields Grounded
+                </div>
+                <div style="font-size: 0.75rem; color: #94A3B8;">
+                    View Tab 2 & 3 &rarr;
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     # Recovery box if previous analysis failed
     if st.session_state.analysis_error:
@@ -354,16 +401,22 @@ with tab_input:
         else:
             with st.status("Analyzing notice with local Gemma 4...", expanded=True) as status_box:
                 start_t = time.time()
-                st.write("🔍 **Phase 1/3:** Validating notice content and security boundaries...")
-                time.sleep(0.05)
+                st.write("🔍 **Phase 1/5:** Validating notice input and security boundaries...")
+                time.sleep(0.04)
+
+                st.write("📄 **Phase 2/5:** Inspecting document format and OCR text normalization...")
+                time.sleep(0.04)
 
                 analyzer = NoticeAnalyzer()
                 try:
-                    st.write("🤖 **Phase 2/3:** Extracting 8 grounded key fields with Gemma 4...")
+                    st.write("🤖 **Phase 3/5:** Calling local Gemma 4 for structured fact extraction...")
                     structured = analyzer.analyze_notice(st.session_state.raw_notice_text)
                     st.session_state.structured_notice = structured
 
-                    st.write("📋 **Phase 3/3:** Synthesizing plain-language summary & action checklist...")
+                    st.write("🔬 **Phase 4/5:** Validating structured output and verbatim evidence quotes...")
+                    time.sleep(0.04)
+
+                    st.write("📋 **Phase 5/5:** Synthesizing plain-language summary & action checklist...")
                     st.session_state.summary_en = generate_deterministic_summary(structured)
                     st.session_state.checklist_en = generate_action_checklist(structured)
 
@@ -381,6 +434,45 @@ with tab_input:
                     st.session_state.analysis_error = str(e)
                     status_box.update(label="❌ Analysis Failed", state="error", expanded=True)
                     st.error(f"Analysis failed: {e}")
+
+    # Two-column assistance dashboard (approx 65% / 35%) when notice is analyzed
+    if st.session_state.structured_notice is not None:
+        st.markdown("<hr style='border: none; border-top: 1px solid #1D3D67; margin: 1.5rem 0;'>", unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div style="margin-bottom: 0.75rem;">
+                <div style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF;">⚡ Fast Assistance & Overview</div>
+                <div style="font-size: 0.8rem; color: #94A3B8;">Immediate extraction results. Full grounded breakdown and interactive checklist are available in Tabs 2, 3, and 4.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        col_res_main, col_res_side = st.columns([1.6, 1], gap="medium")
+        with col_res_main:
+            render_notice_overview(st.session_state.structured_notice)
+            c_f1, c_f2 = st.columns(2)
+            with c_f1:
+                render_fact_card(st.session_state.structured_notice.purpose, key_prefix="dash_purpose")
+                render_fact_card(st.session_state.structured_notice.deadline, key_prefix="dash_deadline")
+            with c_f2:
+                render_fact_card(st.session_state.structured_notice.eligibility, key_prefix="dash_elig")
+                render_fact_card(st.session_state.structured_notice.required_actions, key_prefix="dash_act")
+        with col_res_side:
+            if st.session_state.summary_en:
+                render_quick_summary_card(st.session_state.summary_en, config.ollama_model)
+            if st.session_state.checklist_en:
+                render_checklist_widget(st.session_state.checklist_en, key_prefix="dash_widget")
+            render_qa_shortcut()
+
+            # Export structured data options
+            st.download_button(
+                "💾 Download Structured Notice (JSON)",
+                data=json.dumps(st.session_state.structured_notice.model_dump(), indent=2),
+                file_name="structured_notice.json",
+                mime="application/json",
+                use_container_width=True,
+                key="dash_json_download",
+            )
 
 
 # ----------------- TAB 2: STRUCTURED BREAKDOWN -----------------

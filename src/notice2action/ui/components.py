@@ -1,6 +1,6 @@
 """
 Modern Accessible UI Components for Notice2Action AI (Streamlit).
-Designed for high contrast, dark SaaS aesthetic, keyboard accessibility, and clear status visualization.
+Designed for high contrast, dark SaaS aesthetic (#071225, #0A1B35, #0E2342, #0875FF).
 """
 
 from __future__ import annotations
@@ -21,26 +21,26 @@ from notice2action.tts import generate_audio_bytes, get_web_speech_js
 STATUS_STYLES = {
     CertaintyStatus.STATED: {
         "bg": "rgba(16, 185, 129, 0.15)",
-        "text": "#34D399",
+        "text": "#10B981",
         "border": "rgba(16, 185, 129, 0.35)",
         "label": "✓ Stated",
     },
     CertaintyStatus.NOT_STATED: {
-        "bg": "rgba(148, 163, 184, 0.12)",
-        "text": "#94A3B8",
-        "border": "rgba(148, 163, 184, 0.25)",
+        "bg": "rgba(158, 181, 216, 0.12)",
+        "text": "#9EB5D8",
+        "border": "rgba(158, 181, 216, 0.25)",
         "label": "✕ Not Stated",
     },
     CertaintyStatus.UNCERTAIN: {
         "bg": "rgba(245, 158, 11, 0.15)",
-        "text": "#FBBF24",
+        "text": "#F59E0B",
         "border": "rgba(245, 158, 11, 0.35)",
         "label": "⚠ Needs Confirmation",
     },
     CertaintyStatus.CONFLICTING: {
-        "bg": "rgba(239, 68, 68, 0.15)",
+        "bg": "rgba(248, 113, 113, 0.15)",
         "text": "#F87171",
-        "border": "rgba(239, 68, 68, 0.35)",
+        "border": "rgba(248, 113, 113, 0.35)",
         "label": "⚡ Conflicting",
     },
     CertaintyStatus.UNREADABLE: {
@@ -73,8 +73,8 @@ def render_status_badge(status: CertaintyStatus) -> str:
     )
 
 
-def render_platform_header(status: str = "ok", model_name: str = "gemma4:latest"):
-    """Renders the executive top header with brand identity and live AI status pill."""
+def render_platform_header(status: str = "ok", model_name: str = "gemma4:latest", ocr_status: str = "ok"):
+    """Renders the executive top header with brand identity, live AI status, and OCR status."""
     if status == "ok":
         pill_class = "status-pill"
         dot_color = "#10B981"
@@ -86,21 +86,31 @@ def render_platform_header(status: str = "ok", model_name: str = "gemma4:latest"
     else:
         pill_class = "status-pill error"
         dot_color = "#EF4444"
-        status_text = "Ollama / Model Unavailable"
+        status_text = "Ollama / Model Offline"
+
+    ocr_badge = (
+        '<div class="status-pill">'
+        '<div style="width: 7px; height: 7px; background-color: #10B981; border-radius: 50%;"></div>'
+        '<span>Tesseract OCR Active</span>'
+        '</div>'
+        if ocr_status == "ok"
+        else '<div class="status-pill warning"><span>OCR Not Configured</span></div>'
+    )
 
     header_html = f"""
     <div class="platform-header">
         <div>
             <div class="brand-title">
-                <span style="color: #3B82F6;">Notice2Action</span>
-                <span style="color: #94A3B8; font-weight: 400;">AI</span>
-                <span style="font-size: 0.65rem; background: rgba(59, 130, 246, 0.2); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.4); padding: 2px 7px; border-radius: 4px; font-weight: 700; font-family: monospace; vertical-align: middle;">PS02</span>
+                <span style="color: #0875FF;">Notice2Action</span>
+                <span style="color: #F2F6FF; font-weight: 500;">AI</span>
+                <span style="font-size: 0.65rem; background: rgba(8, 117, 255, 0.2); color: #60A5FA; border: 1px solid rgba(8, 117, 255, 0.4); padding: 2px 7px; border-radius: 4px; font-weight: 700; font-family: monospace; vertical-align: middle;">PS02</span>
             </div>
             <div class="brand-subtitle">
                 Notice-to-Action Accessibility Assistant &bull; HackDay@Meerut &bull; Best Use of Gemma 4
             </div>
         </div>
-        <div>
+        <div class="header-status-group">
+            {ocr_badge}
             <div class="{pill_class}">
                 <div style="width: 7px; height: 7px; background-color: {dot_color}; border-radius: 50%; box-shadow: 0 0 8px {dot_color};"></div>
                 <span>{status_text}</span>
@@ -109,6 +119,46 @@ def render_platform_header(status: str = "ok", model_name: str = "gemma4:latest"
     </div>
     """
     st.markdown(header_html, unsafe_allow_html=True)
+
+
+def render_intro_workflow_panel(current_step: int = 1):
+    """Renders the top wide introduction panel with the 3-stage horizontal workflow stepper."""
+    s1_class = "active" if current_step >= 1 else ""
+    s2_class = "active" if current_step >= 2 else ""
+    s3_class = "active" if current_step >= 3 else ""
+
+    panel_html = f"""
+    <div class="intro-panel">
+        <div class="intro-left">
+            <div class="intro-icon-box">
+                📄
+            </div>
+            <div>
+                <div class="intro-title">Make Every Notice Actionable</div>
+                <div class="intro-desc">
+                    Upload a notice or paste its text, extract key information with evidence, and receive accessible next steps.
+                </div>
+            </div>
+        </div>
+        <div class="workflow-stepper">
+            <div class="workflow-step {s1_class}">
+                <span class="workflow-badge">1</span>
+                <span>Upload</span>
+            </div>
+            <span class="workflow-arrow">&rarr;</span>
+            <div class="workflow-step {s2_class}">
+                <span class="workflow-badge">2</span>
+                <span>Extract &amp; Verify</span>
+            </div>
+            <span class="workflow-arrow">&rarr;</span>
+            <div class="workflow-step {s3_class}">
+                <span class="workflow-badge">3</span>
+                <span>Summary &amp; Actions</span>
+            </div>
+        </div>
+    </div>
+    """
+    st.markdown(panel_html, unsafe_allow_html=True)
 
 
 def render_notice_overview(sn: StructuredNotice):
@@ -147,24 +197,14 @@ def render_notice_overview(sn: StructuredNotice):
 def render_analysis_banner(elapsed_seconds: float, model_name: str = "gemma4:latest", field_count: int = 8):
     """Renders a verified analysis summary banner with real timing and status."""
     banner_html = f"""
-    <div style="
-        background: linear-gradient(90deg, rgba(16, 185, 129, 0.12) 0%, rgba(59, 130, 246, 0.1) 100%);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        border-radius: 8px;
-        padding: 0.6rem 0.95rem;
-        margin-bottom: 0.85rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.825rem;
-    ">
-        <div style="display: flex; align-items: center; gap: 0.5rem; color: #34D399; font-weight: 600;">
+    <div class="status-banner success">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
             <span>✓</span>
             <span>Gemma 4 Semantic Analysis Complete</span>
-            <span style="color: #94A3B8; font-weight: 400;">&bull; {field_count} Grounded Fields Verified</span>
+            <span style="color: #9EB5D8; font-weight: 400;">&bull; {field_count} Grounded Fields Verified</span>
         </div>
-        <div style="font-family: monospace; color: #94A3B8; font-size: 0.775rem;">
-            Latency: <strong style="color: #F8FAFC;">{elapsed_seconds:.2f}s</strong> &bull; Engine: {model_name}
+        <div style="font-family: monospace; color: #9EB5D8; font-size: 0.775rem;">
+            Latency: <strong style="color: #F2F6FF;">{elapsed_seconds:.2f}s</strong> &bull; Engine: {model_name}
         </div>
     </div>
     """
@@ -173,11 +213,11 @@ def render_analysis_banner(elapsed_seconds: float, model_name: str = "gemma4:lat
 
 def render_recovery_box(error_msg: str, remedy: Optional[str] = None):
     """Renders a structured recovery guidance card when inference encounters an issue."""
-    remedy_html = f"<div style='margin-top: 0.35rem; color: #F8FAFC; font-size: 0.8rem;'><strong>Action:</strong> {remedy}</div>" if remedy else ""
+    remedy_html = f"<div style='margin-top: 0.35rem; color: #F2F6FF; font-size: 0.8rem;'><strong>Action:</strong> {remedy}</div>" if remedy else ""
     recovery_html = f"""
     <div style="
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.35);
+        background: rgba(248, 113, 113, 0.12);
+        border: 1px solid rgba(248, 113, 113, 0.35);
         border-radius: 8px;
         padding: 0.85rem 1.1rem;
         margin-top: 0.75rem;
@@ -195,22 +235,21 @@ def render_recovery_box(error_msg: str, remedy: Optional[str] = None):
     st.markdown(recovery_html, unsafe_allow_html=True)
 
 
-
 def render_fact_card(fact: ExtractedFact, key_prefix: str = "fact"):
     """Renders an elevated dark fact card with quotation citation and confirmation controls."""
     badge_html = render_status_badge(fact.status)
     display_title = fact.field_name.replace("_", " ").title()
 
     card_header = f"""
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
-        <span style="font-size: 0.8rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">{display_title}</span>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-size: 0.75rem; font-weight: 700; color: #9EB5D8; text-transform: uppercase; letter-spacing: 0.05em;">{display_title}</span>
         {badge_html}
     </div>
     """
 
     with st.container(border=True):
         st.markdown(card_header, unsafe_allow_html=True)
-        st.markdown(f"<div style='font-size: 1rem; font-weight: 600; color: #F8FAFC; line-height: 1.5;'>{fact.value}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size: 0.95rem; font-weight: 600; color: #F2F6FF; line-height: 1.45;'>{fact.value}</div>", unsafe_allow_html=True)
 
         if fact.evidence_quote:
             loc_str = f"<span class='source-line'>Source: {fact.source_location}</span>" if fact.source_location else ""
@@ -234,6 +273,89 @@ def render_fact_card(fact: ExtractedFact, key_prefix: str = "fact"):
                     fact.user_confirmed = True
                     fact.requires_confirmation = False
                     st.rerun()
+
+
+def render_quick_summary_card(summary: PlainLanguageSummary, model_name: str = "gemma4:latest"):
+    """Renders the Quick Summary assistance card for the right-hand dashboard region."""
+    with st.container(border=True):
+        st.markdown(
+            f"""
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                <span class="card-label" style="margin-bottom: 0;">📌 Quick Summary</span>
+                <span style="font-size: 0.65rem; background: rgba(8, 117, 255, 0.15); color: #60A5FA; border: 1px solid rgba(8, 117, 255, 0.3); padding: 1px 6px; border-radius: 4px; font-family: monospace;">{model_name}</span>
+            </div>
+            <div style="font-size: 0.85rem; font-weight: 600; color: #F2F6FF; margin-bottom: 0.4rem;">
+                {summary.about}
+            </div>
+            <div style="font-size: 0.775rem; color: #9EB5D8; margin-bottom: 0.35rem;">
+                <strong style="color: #F2F6FF;">Deadline:</strong> {summary.deadline}
+            </div>
+            <div style="font-size: 0.775rem; color: #9EB5D8; margin-bottom: 0.35rem;">
+                <strong style="color: #F2F6FF;">Eligibility:</strong> {summary.eligible}
+            </div>
+            <div style="font-size: 0.775rem; color: #9EB5D8;">
+                <strong style="color: #F2F6FF;">Documents:</strong> {summary.documents}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def render_checklist_widget(checklist: ActionChecklist, key_prefix: str = "widget"):
+    """Renders the Action Checklist assistance card for the right-hand dashboard region."""
+    with st.container(border=True):
+        total_steps = len(checklist.items)
+        completed_count = sum(1 for item in checklist.items if item.is_completed)
+
+        st.markdown(
+            f"""
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                <span class="card-label" style="margin-bottom: 0;">⚡ Action Checklist</span>
+                <span style="font-size: 0.7rem; color: #10B981; font-weight: 700; font-family: monospace;">{completed_count}/{total_steps} Done</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        for item in checklist.items:
+            is_checked = st.checkbox(
+                f"Step {item.step_number}: {item.action}",
+                value=item.is_completed,
+                key=f"{key_prefix}_check_{item.step_number}",
+            )
+            item.is_completed = is_checked
+
+        st.markdown("<div style='margin-top: 0.45rem;'></div>", unsafe_allow_html=True)
+        if hasattr(checklist, "to_ics_bytes"):
+            ics_bytes = checklist.to_ics_bytes()
+        else:
+            ics_bytes = b"BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Notice2Action AI//EN\r\nEND:VCALENDAR"
+        st.download_button(
+            "📅 Download Calendar (.ics)",
+            data=ics_bytes,
+            file_name="notice_deadline.ics",
+            mime="text/calendar",
+            use_container_width=True,
+            key=f"{key_prefix}_ics_download",
+        )
+
+
+def render_qa_shortcut():
+    """Renders the Follow-Up Q&A assistance shortcut card."""
+    with st.container(border=True):
+        st.markdown(
+            """
+            <div class="card-label">💬 Follow-Up Assistant</div>
+            <div style="font-size: 0.8rem; color: #9EB5D8; margin-bottom: 0.45rem;">
+                Have questions about fees, submission rooms, or eligibility?
+            </div>
+            <div style="font-size: 0.75rem; color: #60A5FA;">
+                &bull; "Is there an application fee?"<br/>
+                &bull; "Where is Room 204 located?"
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def render_summary_section(summary: PlainLanguageSummary, lang: str = "en"):
@@ -269,7 +391,7 @@ def render_summary_section(summary: PlainLanguageSummary, lang: str = "en"):
 
         with st.container(border=True):
             st.markdown("<span class='card-label'>❓ Missing Information:</span>", unsafe_allow_html=True)
-            missing_color = "#FBBF24" if "missing" in summary.missing.lower() else "#94A3B8"
+            missing_color = "#F59E0B" if "missing" in summary.missing.lower() else "#9EB5D8"
             st.markdown(f"<div class='card-value' style='color: {missing_color};'>{summary.missing}</div>", unsafe_allow_html=True)
 
     # Read Aloud Audio
@@ -321,7 +443,7 @@ def render_checklist_section(checklist: ActionChecklist):
                 cat_badge = f"<span class='badge-tag badge-category'>{item.category}</span>"
                 mand_badge = "<span class='badge-tag badge-mandatory'>MANDATORY</span>" if item.is_mandatory else "<span class='badge-tag badge-advisory'>ADVISORY</span>"
 
-                action_style = "text-decoration: line-through; color: #64748B;" if is_checked else "color: #F8FAFC; font-weight: 600;"
+                action_style = "text-decoration: line-through; color: #64748B;" if is_checked else "color: #F2F6FF; font-weight: 600;"
                 st.markdown(
                     f"<div style='display: flex; align-items: center; justify-content: space-between;'>"
                     f"<span style='{action_style} font-size: 0.95rem;'>Step {item.step_number}: {item.action}</span>"
@@ -353,4 +475,4 @@ def render_qa_item(item):
                 st.markdown(f"<div class='qa-evidence'>&ldquo;{item.evidence_quote}&rdquo;</div>", unsafe_allow_html=True)
         else:
             st.markdown(f"<div class='qa-answer'><strong style='color: #F87171;'>A:</strong> {item.answer}</div>", unsafe_allow_html=True)
-            st.markdown("<span style='color: #F87171; font-size: 11px; font-weight: bold; background: rgba(239, 68, 68, 0.15); padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);'>⚠️ Information not stated in the supplied notice</span>", unsafe_allow_html=True)
+            st.markdown("<span style='color: #F87171; font-size: 11px; font-weight: bold; background: rgba(248, 113, 113, 0.15); padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(248, 113, 113, 0.3);'>⚠️ Information not stated in the supplied notice</span>", unsafe_allow_html=True)
