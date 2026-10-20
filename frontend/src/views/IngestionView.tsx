@@ -100,25 +100,25 @@ export const IngestionView: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
             <button
-              onClick={() => setActiveTab(1)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-slate-200 bg-[#0D1528] hover:bg-[#152244] border border-[#1D2D4E] hover:border-blue-500 transition"
+              onClick={() => setActiveTab(2)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-slate-200 bg-[#0D1528] hover:bg-[#152244] border border-[#1D2D4E] hover:border-blue-500 transition cursor-pointer"
             >
               <Search className="w-3.5 h-3.5 text-blue-400" />
-              View Grounded Facts (Tab 2)
-            </button>
-            <button
-              onClick={() => setActiveTab(2)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-slate-200 bg-[#0D1528] hover:bg-[#152244] border border-[#1D2D4E] hover:border-blue-500 transition"
-            >
-              <ListTodo className="w-3.5 h-3.5 text-blue-400" />
-              View Summary & Actions (Tab 3)
+              View Grounded Facts
             </button>
             <button
               onClick={() => setActiveTab(3)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-slate-200 bg-[#0D1528] hover:bg-[#152244] border border-[#1D2D4E] hover:border-blue-500 transition"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-slate-200 bg-[#0D1528] hover:bg-[#152244] border border-[#1D2D4E] hover:border-blue-500 transition cursor-pointer"
+            >
+              <ListTodo className="w-3.5 h-3.5 text-blue-400" />
+              View Summary & Actions
+            </button>
+            <button
+              onClick={() => setActiveTab(4)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-slate-200 bg-[#0D1528] hover:bg-[#152244] border border-[#1D2D4E] hover:border-blue-500 transition cursor-pointer"
             >
               <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
-              Ask Follow-Up Q&A (Tab 4)
+              Ask Follow-Up Q&A
             </button>
           </div>
         </div>

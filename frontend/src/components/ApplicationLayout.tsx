@@ -2,10 +2,13 @@ import React from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
+import { DashboardView } from '../views/DashboardView';
 import { IngestionView } from '../views/IngestionView';
 import { GroundedFactsView } from '../views/GroundedFactsView';
 import { SummaryActionsView } from '../views/SummaryActionsView';
 import { FollowUpQAView } from '../views/FollowUpQAView';
+import { NoticeHistoryView } from '../views/NoticeHistoryView';
+import { SettingsView } from '../views/SettingsView';
 import { AnalysisProgressModal } from './AnalysisProgressModal';
 import { ConfirmationModal } from './ConfirmationModal';
 import { OriginalNoticeViewerModal } from './OriginalNoticeViewerModal';
@@ -16,15 +19,21 @@ export const ApplicationLayout: React.FC = () => {
   const renderActiveView = () => {
     switch (activeTab) {
       case 0:
-        return <IngestionView />;
+        return <DashboardView />;
       case 1:
-        return <GroundedFactsView />;
-      case 2:
-        return <SummaryActionsView />;
-      case 3:
-        return <FollowUpQAView />;
-      default:
         return <IngestionView />;
+      case 2:
+        return <GroundedFactsView />;
+      case 3:
+        return <SummaryActionsView />;
+      case 4:
+        return <FollowUpQAView />;
+      case 5:
+        return <NoticeHistoryView />;
+      case 6:
+        return <SettingsView />;
+      default:
+        return <DashboardView />;
     }
   };
 
@@ -33,7 +42,7 @@ export const ApplicationLayout: React.FC = () => {
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full">
           {renderActiveView()}
         </main>
       </div>

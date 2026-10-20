@@ -12,6 +12,17 @@ import type {
 } from '../types/api';
 import { apiClient } from '../services/apiClient';
 
+export interface HistoryRecord {
+  id: string;
+  title: string;
+  referenceNumber: string;
+  authority: string;
+  deadline: string;
+  timestamp: string;
+  charCount: number;
+  rawText: string;
+}
+
 interface NoticeContextType {
   sessionId: string | null;
   rawNoticeText: string;
@@ -53,6 +64,9 @@ interface NoticeContextType {
   samples: SampleFixture[];
   activeTab: number;
   setActiveTab: (tab: number) => void;
+  history: HistoryRecord[];
+  loadFromHistory: (item: HistoryRecord) => void;
+  clearHistory: () => void;
   // Actions
   loadSampleFixture: (filename: string) => Promise<void>;
   clearBuffer: () => void;
@@ -99,6 +113,26 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [activeProvider, setActiveProvider] = useState<string>('ollama');
   const [samples, setSamples] = useState<SampleFixture[]>([]);
   const [activeTab, setActiveTab] = useState<number>(0);
+  const [history, setHistory] = useState<HistoryRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('notice2action_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const loadFromHistory = useCallback((item: HistoryRecord) => {
+    setRawNoticeText(item.rawText);
+    setActiveTab(2); // Jump to Notice Analysis view
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    setHistory([]);
+    try {
+      localStorage.removeItem('notice2action_history');
+    } catch {}
+  }, []);
 
   // Compute SHA-256 hash using Web Crypto API
   useEffect(() => {
@@ -220,7 +254,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (filename.includes('hindi')) {
         setSelectedLang('hi');
       }
-      setActiveTab(0);
+      setActiveTab(1);
     } catch (err: any) {
       setAnalysisError(`Failed to load fixture: ${err.message}`);
     }
@@ -262,6 +296,32 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setAnalyzedFingerprint(res.fingerprint);
       setAnalysisDuration(res.duration_seconds);
       setAnalysisPhase(5);
+
+      // Record to recent notice history
+      const historyItem: HistoryRecord = {
+        id: res.session_id || res.fingerprint || `hist_${Date.now()}`,
+        title:
+          res.structured_notice?.main_subject?.value ||
+          res.structured_notice?.purpose?.value ||
+          'Official Notice',
+        referenceNumber: res.structured_notice?.notice_reference_number?.value || 'Not specified',
+        authority: res.structured_notice?.issuing_authority?.value || 'Authority Unspecified',
+        deadline: res.structured_notice?.deadline?.value || 'No deadline specified',
+        timestamp:
+          new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
+          ' · ' +
+          new Date().toLocaleDateString(),
+        charCount: rawNoticeText.length,
+        rawText: rawNoticeText,
+      };
+      setHistory((prev) => {
+        const filtered = prev.filter((h) => h.id !== historyItem.id);
+        const updated = [historyItem, ...filtered].slice(0, 15);
+        try {
+          localStorage.setItem('notice2action_history', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
     } catch (err: any) {
       setAnalysisError(err.message || 'Analysis failed. Please verify provider configuration or local Ollama.');
     } finally {
@@ -408,6 +468,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         samples,
         activeTab,
         setActiveTab,
+        history,
+        loadFromHistory,
+        clearHistory,
         loadSampleFixture,
         clearBuffer,
         resetSession,

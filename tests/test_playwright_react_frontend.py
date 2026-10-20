@@ -100,7 +100,7 @@ def test_react_frontend_full_workflow_and_tabs():
 
         # Step 4: Switch to Tab 2 (Grounded Facts)
         page.locator("button:has-text('2. Grounded Facts')").click()
-        page.wait_for_selector("text=Notice Purpose & Program Name", timeout=5000)
+        page.wait_for_selector("text=Six Core Notice Fields", timeout=5000)
         page.wait_for_selector("text=Stated", timeout=5000)
         page.screenshot(path=str(SCREENSHOT_DIR / "react_workflow_02_grounded_facts.png"))
 

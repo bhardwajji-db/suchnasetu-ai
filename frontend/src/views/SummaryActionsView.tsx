@@ -19,8 +19,8 @@ export const SummaryActionsView: React.FC = () => {
           Analyze a notice in the Ingestion tab first to synthesize an accessible plain-language summary and sequential action steps.
         </p>
         <button
-          onClick={() => setActiveTab(0)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition shadow-sm"
+          onClick={() => setActiveTab(1)}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition shadow-sm cursor-pointer"
         >
           <span>Go to Ingestion & OCR</span>
           <ArrowRight className="w-3.5 h-3.5" />
