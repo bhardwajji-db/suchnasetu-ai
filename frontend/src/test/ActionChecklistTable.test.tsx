@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ActionChecklistTable } from '../components/ActionChecklistTable';
 import { NoticeProvider } from '../context/NoticeContext';
 import * as NoticeContextModule from '../context/NoticeContext';
-import type { ActionChecklist, StructuredNotice } from '../types/api';
+import type { ActionChecklist } from '../types/api';
 
 describe('ActionChecklistTable Component', () => {
   const mockChecklist: ActionChecklist = {

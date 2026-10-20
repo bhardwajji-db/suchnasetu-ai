@@ -51,8 +51,12 @@ $ItemsToCopy = @(
     "TEST_RESULTS.md",
     "BUG_FIX_LOG.md",
     "FINAL_FUNCTIONALITY_AUDIT.md",
+    "FINAL_AUDIT_PLAN.md",
     "FINAL_TEST_RESULTS.md",
     "FINAL_BUG_FIX_LOG.md",
+    "FINAL_UI_VERIFICATION.md",
+    "FINAL_SECURITY_PRIVACY_AUDIT.md",
+    "FINAL_COMPLETION_REPORT.md",
     "frontend",
     ".env.example",
     ".gitignore"

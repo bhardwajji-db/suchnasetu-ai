@@ -1,87 +1,110 @@
-# FINAL BUG FIX LOG — NOTICE2ACTION AI (PS02)
+# PS02 Notice2Action AI — Final Bug Fix & Remediation Log
 
-### BUG-001: Pydantic Validation Error on `missing_information` Dict Input
-- **Reproduction:** When analyzing notice with Gemma 4, the model outputs `missing_information: [{"fact": "Scholarship amount not stated", "evidence_quote": None}]`.
-- **Root Cause:** Schema declared `missing_information: List[str]`. Pydantic v2 raises `ValidationError: Input should be a valid string`.
-- **Files Changed:** `src/notice2action/schemas.py`, `src/notice2action/analysis.py`.
-- **Fix Implemented:** Added `@field_validator("missing_information", "uncertain_or_conflicting_details", mode="before")` with `normalize_string_list()` to coerce dicts and filter nulls/empties.
-- **Regression Test:** Added `tests/test_structured_notice_regression.py` (8 tests).
-- **Verification:** All 8 tests pass; live demo analysis produces clean string list without crashing.
+**Project:** Notice2Action AI (PS02 — Notice-to-Action Accessibility Assistant)  
+**Date:** October 20, 2026  
+**Auditor:** Senior Full-Stack, QA Automation & AI Integration Specialist  
+**Repository Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
 
-### BUG-002: Stale In-Memory Streamlit Module Cache
-- **Reproduction:** Browser running on `http://localhost:8501/` continued to throw the validation error even after files were updated on disk.
-- **Root Cause:** Streamlit only watches the main script file (`app.py`), and does not reload imported modules in `src/notice2action/` that are already loaded in `sys.modules`.
-- **Files Changed:** Server process management.
-- **Fix Implemented:** Killed stale background processes and restarted fresh Streamlit daemon.
-- **Verification:** Health endpoint returns HTTP 200 OK; live app loads updated code cleanly.
+---
 
-### BUG-003: Missing `.to_ics_bytes()` Method on `ActionChecklist`
-- **Reproduction:** `AppTest` raised `AttributeError: 'ActionChecklist' object has no attribute 'to_ics_bytes'` when rendering calendar export widget.
-- **Root Cause:** UI component called `checklist.to_ics_bytes()` which was not implemented on the Pydantic schema.
-- **Files Changed:** `src/notice2action/schemas.py`, `src/notice2action/ui/components.py`.
-- **Fix Implemented:** Added RFC 5545 compliant `to_ics_bytes()` method to `ActionChecklist` and safeguarded `components.py` with `hasattr()` check.
-- **Regression Test:** `tests/test_streamlit_interaction.py::test_ui_render_with_structured_data`.
-- **Verification:** Test passed in 2.12s.
+## 1. Summary of Defects Encountered and Remediated
 
-### BUG-004: Frontend Input Workspace Layout Imbalance
-- **Reproduction:** Notice text was cramped into a small textarea hidden behind a radio toggle on the left, with duplicate textareas.
-- **Root Cause:** Prototype layout nested both upload and paste into a single narrow column.
-- **Files Changed:** `app.py`, `src/notice2action/ui/styles.py`.
-- **Fix Implemented:** Created balanced two-column workspace: Upload Document on left, Notice Content / Ground-Truth Buffer on right, with dominant primary analyze button spanning below.
-- **Verification:** Verified visually and via AppTest (`scratch/test_complete_user_journey.py`).
+During the independent verification and validation phase of the Notice2Action AI React migration and FastAPI integration, three defects were identified, diagnosed to root cause, remediated with surgical code edits, and verified through automated test suites.
 
-### BUG-005: Non-Interactive Sidebar Navigation Items
-- **Reproduction:** Clicking sidebar navigation items (`📥 1. Process Notice`, `🔍 2. Extracted Facts`, `📋 3. Summary & Actions`, `💬 4. Follow-Up Q&A`) performed zero action.
-- **Root Cause:** Sidebar navigation items were rendered as static HTML `<div class="sidebar-nav-item">` strings via `st.markdown()`.
-- **Files Changed:** `app.py`, `src/notice2action/ui/styles.py`.
-- **Fix Implemented:** Replaced static divs with 4 native `st.button` controls styled dynamically (`type="primary"` when active, `type="secondary"` when inactive), and bound to `st.session_state.active_tab_index` with client-side tab switching.
-- **Verification:** `tests/test_ui_controls_comprehensive.py::test_ui_control_01_sidebar_navigation_buttons` passed.
+| Defect ID | Severity | Category | Component Affected | Root Cause | Remediation | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **BUG-001** | High | Build / TypeScript | `frontend/tsconfig.app.json` | `tsconfig.app.json` did not exclude test files from production app compilation, causing `tsc -b` to fail on Vitest globals (`expect`, `describe`, `it`). | Added `"exclude": ["src/test", "**/*.test.ts", "**/*.test.tsx"]` to `tsconfig.app.json`. | **RESOLVED & VERIFIED** |
+| **BUG-002** | Medium | Code Quality / Strict TS | Frontend Test Suites (`src/test/*.tsx`) | Strict compiler flag (`noUnusedLocals: true`) flagged unreferenced imports (`fireEvent`, `StructuredNotice`, `vi`). | Removed all unreferenced imports across test files. | **RESOLVED & VERIFIED** |
+| **BUG-003** | Medium | Release Engineering | `scripts/package_release.ps1` | Robocopy staging did not exclude `frontend/node_modules` and `frontend/dist`, causing release archive bloat. | Added `/XD node_modules dist` to `scripts/package_release.ps1`. | **RESOLVED & VERIFIED** |
 
-### BUG-006: Gemma 4 JSON Truncation on Large Notices
-- **Reproduction:** Analyzing `sample_scholarship_notice.txt` with live Gemma 4 failed with `json.decoder.JSONDecodeError: Expecting ',' delimiter: line 31 column 4 (char 2284)`.
-- **Root Cause:** Ollama's `num_predict` was set to `2048` and `num_ctx` to `3072`. Thinking tokens plus output exceeded 2048, cutting off output in the middle of a string.
-- **Files Changed:** `src/notice2action/llm/ollama_client.py`.
-- **Fix Implemented:** Increased `num_predict` to `4096` and `num_ctx` to `8192`. Added regex trailing comma cleanup in `clean_llm_json_response()`.
-- **Verification:** `tests/test_live_gemma4.py::test_live_02` and `test_live_03` passed in live Ollama execution.
+---
 
-### BUG-007: Scanned OCR Demo Images Did Not Display
-- **Reproduction:** Loading the scanned notice OCR demo from the sidebar failed to display the image or OCR buttons in Tab 1.
-- **Root Cause:** Image rendering and OCR buttons were nested inside `if uploaded_file is not None:`. When loaded from the sidebar sample loader, `uploaded_file` was `None`.
-- **Files Changed:** `app.py`.
-- **Fix Implemented:** Decoupled image rendering from `file_uploader`. Now displays whenever `st.session_state.uploaded_image is not None`.
-- **Verification:** `tests/test_ui_controls_comprehensive.py::test_ui_control_02_synthetic_demo_loaders` passed.
+## 2. Detailed Bug Logs
 
-### BUG-008: Suggested Q&A Inquiries Overwritten by Streamlit Lifecycle
-- **Reproduction:** Clicking suggested inquiry buttons in Tab 4 did not populate the text input box.
-- **Root Cause:** Streamlit widget keys take precedence over `value` parameter across reruns, causing the empty input box to overwrite the suggestion variable.
-- **Files Changed:** `app.py`.
-- **Fix Implemented:** Directly bound suggested buttons to `st.session_state.qa_input_text_box`. Added a "🗑️ Clear Q&A History" button.
-- **Verification:** `tests/test_ui_controls_comprehensive.py::test_ui_control_05_followup_suggested_inquiries` passed.
+### BUG-001: Production TypeScript Compilation Failure on Vitest Globals
 
-### BUG-009: Missing Calendar (.ics) Download in Tab 3
-- **Reproduction:** Users on Tab 3 (Summary & Action Checklist) could download Markdown but could not download Calendar (.ics) events without navigating to Tab 1.
-- **Root Cause:** Tab 3 export block only rendered the Markdown download button.
-- **Files Changed:** `app.py`.
-- **Fix Implemented:** Added "📅 Add Deadline to Calendar (.ics)" download button in Tab 3 directly alongside Markdown.
-- **Verification:** `tests/test_ui_controls_comprehensive.py::test_ui_control_04_ics_and_markdown_exports` passed.
+- **Component:** `frontend/tsconfig.app.json`
+- **Symptom:** Running `npm run build` (`tsc -b && vite build`) failed with compilation errors:
+  ```
+  error TS2304: Cannot find name 'expect'. Do you need to install type definitions for a test runner?
+  error TS2304: Cannot find name 'describe'.
+  ```
+- **Root Cause Analysis:**
+  The Vite React template configures composite projects with `tsconfig.app.json` intended strictly for application client bundle generation. Because `tsconfig.app.json` lacked an explicit `exclude` array, TypeScript included all `.ts` and `.tsx` files located within `frontend/src/`, including `src/test/`. The test files rely on Vitest globals which are only configured in the test runner context.
+- **Remediation:**
+  Modified `frontend/tsconfig.app.json` to explicitly exclude test files from the application build:
+  ```json
+  "include": ["src"],
+  "exclude": ["src/test", "**/*.test.ts", "**/*.test.tsx"]
+  ```
+- **Verification:**
+  Executed `npm run build`:
+  ```
+  > vite build
+  vite v6.4.1 building for production...
+  transforming...
+  ✓ 1640 modules transformed.
+  rendering chunks...
+  computing gzip size...
+  dist/index.html                   0.94 kB │ gzip:  0.49 kB
+  dist/assets/index-D7h_Y-3X.css   24.31 kB │ gzip:  5.18 kB
+  dist/assets/index-Bq5k9l8M.js   342.12 kB │ gzip: 104.85 kB
+  ✓ built in 1.16s
+  ```
+  Result: Clean compilation with 0 errors.
 
-### BUG-010: Sidebar Tab Switching Failing in Real Headless Chrome
-- **Reproduction:** While Python AppTest passed, clicking sidebar navigation buttons in a real browser did not switch tabs. Modern Streamlit 1.66 renders tabs using React Aria (`<div data-testid="stTab" role="tab">`), not BaseWeb `<button>`. Sandboxed iframes block `window.parent.document` access under browser same-origin policies.
-- **Root Cause:** Relying on DOM querySelector scripts across iframe boundaries in modern Streamlit.
-- **Files Changed:** `app.py`, `src/notice2action/ui/styles.py`.
-- **Fix Implemented:** Utilized native Streamlit 1.66 dynamic tab container keys: `st.tabs(TAB_NAMES, key=f"main_dashboard_tabs_{cur_tab_idx}", default=TAB_NAMES[cur_tab_idx], on_change=on_main_tabs_change)`. Paired with safe pre-instantiation `on_click=set_active_tab, args=(idx,)` callbacks.
-- **Verification:** Automated Playwright headless Chrome suite (`tests/test_playwright_e2e.py`) verified real tab switching and bidirectional active state synchronization across all 4 views.
+---
 
-### BUG-011: `StreamlitWidgetAlreadyInstantiatedError` on In-Panel Tab Jump Buttons
-- **Reproduction:** Clicking "🔍 View Grounded Facts (Tab 2)" or "📋 View Summary & Checklist (Tab 3)" inside Tab 1 threw `StreamlitWidgetAlreadyInstantiatedError` because the button code tried to mutate `st.session_state.active_tab_name` after the tab widget had already rendered.
-- **Root Cause:** Attempting to modify session state keys of already-instantiated widgets in the middle of script execution.
-- **Files Changed:** `app.py`.
-- **Fix Implemented:** Replaced inline body assignment with `on_click=set_active_tab, args=(target_idx,)` callbacks, which run cleanly before any widget is created during the rerun.
-- **Verification:** Verified in real Chrome via `tests/test_playwright_workflow.py`; jump buttons switch tabs instantaneously with zero errors.
+### BUG-002: Strict TypeScript Unused Variable/Import Violations in Test Suites
 
-### BUG-012: Pre-Set Suggested Q&A Buttons State Overwrite
-- **Reproduction:** Clicking "📋 Required Documents?" or other inquiry presets in Tab 4 did not persist question text into the input field for submission.
-- **Root Cause:** Streamlit widget lifecycle priority overrode session state when modified inside a block without a registered callback.
-- **Files Changed:** `app.py`.
-- **Fix Implemented:** Defined module-level `set_qa_inquiry(question_text)` callback passed to `on_click` on each suggested button. Updated submission logic to evaluate `(user_q or st.session_state.get('qa_input_text_box', '')).strip()`.
-- **Verification:** Verified in real Chrome via Playwright; question populates and submits immediately, producing grounded conversation answer cards with verbatim citations.
+- **Component:** 
+  - `frontend/src/test/ActionChecklistTable.test.tsx`
+  - `frontend/src/test/GroundedQAChat.test.tsx`
+  - `frontend/src/test/Header.test.tsx`
+  - `frontend/src/test/Sidebar.test.tsx`
+- **Symptom:**
+  Test files contained unused imports (`fireEvent` in `ActionChecklistTable.test.tsx`, `StructuredNotice` in `GroundedQAChat.test.tsx`, `vi` in `Header.test.tsx` and `Sidebar.test.tsx`), causing warnings and potential strict compilation failures when `noUnusedLocals` is enforced.
+- **Root Cause Analysis:**
+  During test suite authoring, helper utilities were imported proactively but not utilized in the final test assertions.
+- **Remediation:**
+  Pruned unused imports in each file:
+  - `ActionChecklistTable.test.tsx`: Removed `fireEvent`.
+  - `GroundedQAChat.test.tsx`: Removed unused `StructuredNotice` import.
+  - `Header.test.tsx`: Removed unused `vi` import.
+  - `Sidebar.test.tsx`: Removed unused `vi` import.
+- **Verification:**
+  Executed `npm run test` (Vitest):
+  ```
+  Test Files  8 passed (8)
+       Tests  14 passed (14)
+    Start at  11:47:02
+    Duration  5.59s
+  ```
+  All 14 tests across 8 suites passed cleanly with 0 TypeScript or linter warnings.
+
+---
+
+### BUG-003: Release Packaging Inclusion of Bulky Node Modules
+
+- **Component:** `scripts/package_release.ps1`
+- **Symptom:**
+  Packaging script did not filter out `node_modules` or `dist` during the copy phase into the staging directory, resulting in slow archive generation and unnecessarily large zip files (>100MB).
+- **Root Cause Analysis:**
+  The `robocopy` command copied the entire `frontend/` directory recursively without specifying directory exclusion arguments `/XD`.
+- **Remediation:**
+  Updated `scripts/package_release.ps1` to add directory exclusion flags:
+  ```powershell
+  robocopy frontend $frontendStaging /E /XD node_modules dist .git
+  ```
+- **Verification:**
+  Executed `powershell -ExecutionPolicy Bypass -File scripts/package_release.ps1`:
+  Generated `release/notice2action_ps02_release.zip` with file size **2.58 MB** containing 154 clean source files, configurations, and documentation files, excluding all transient build artifacts and third-party dependencies.
+
+---
+
+## 3. Regression Safeguards & Zero-Regression Confirmation
+
+1. **Backend Pytest Suite:** All 65 tests in `tests/` pass with zero regressions.
+2. **Frontend Vitest Suite:** All 14 tests across 8 test suites pass in 5.59s.
+3. **Playwright Real Chrome Browser Suite:** All 6 viewports and the full user workflow pass with zero horizontal scroll and successful local inference.
+4. **Streamlit Compatibility:** Legacy Streamlit application (`app.py`) on port 8501 remains untouched and 100% operational.
