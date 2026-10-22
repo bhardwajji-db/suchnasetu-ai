@@ -29,6 +29,7 @@ export const NoticeBuffer: React.FC = () => {
       <textarea
         value={rawNoticeText}
         onChange={(e) => setRawNoticeText(e.target.value)}
+        aria-label="Official notice text content"
         rows={8}
         placeholder="Paste official notice text here, or upload a document/scanned image on the left. You can also select a synthetic demo notice below."
         className="w-full bg-[#070B14] border border-[#1D2D4E] rounded-lg p-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 font-sans resize-y leading-relaxed"

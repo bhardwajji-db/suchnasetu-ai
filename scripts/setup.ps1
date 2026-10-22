@@ -1,10 +1,10 @@
-# Setup Script for Notice2Action AI (PS02)
+# Setup Script for SochnaSetu AI (PS02)
 # Windows PowerShell compatible
 
 $ErrorActionPreference = "Stop"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " Notice2Action AI — Local Environment Setup" -ForegroundColor Cyan
+Write-Host " SochnaSetu AI — Local Environment Setup" -ForegroundColor Cyan
 Write-Host " Hacktoberfest 2026 HackDay@Meerut (PS02)" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 

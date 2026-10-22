@@ -305,10 +305,26 @@ def test_api_providers_endpoints(client):
     bad_res = client.post("/api/providers/select", json={"provider": "fake_cloud"})
     assert bad_res.status_code == 400
 
-    # 3. Select valid provider
-    ok_res = client.post("/api/providers/select", json={"provider": "ollama"})
-    assert ok_res.status_code == 200
-    assert ok_res.json()["active_provider"] == "ollama"
+    # 3. Select valid provider (mocked health check for deterministic unit test isolation)
+    with patch("notice2action.llm.ollama_client.OllamaClient.check_health") as mock_health:
+        mock_health.return_value = {
+            "provider": "ollama",
+            "connected": True,
+            "models": ["gemma4:latest"],
+            "has_target_model": True,
+            "target_model": "gemma4:latest",
+        }
+        ok_res = client.post("/api/providers/select", json={"provider": "ollama"})
+        assert ok_res.status_code == 200
+        assert ok_res.json()["active_provider"] == "ollama"
+
+    # 4. Verify provider error handling when provider health check fails with connection error
+    with patch("notice2action.llm.ollama_client.OllamaClient.check_health") as mock_health_fail:
+        from notice2action.llm.base import OllamaConnectionError
+        mock_health_fail.side_effect = OllamaConnectionError("Cannot connect to Ollama daemon.")
+        fail_res = client.post("/api/providers/select", json={"provider": "ollama"})
+        assert fail_res.status_code == 503
+        assert "Cannot connect to Ollama" in fail_res.json()["detail"]
 
 
 def test_api_evidence_search_endpoint(client):

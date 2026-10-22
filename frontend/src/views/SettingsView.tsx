@@ -189,7 +189,7 @@ export const SettingsView: React.FC = () => {
           <div className="flex items-start gap-2.5">
             <Lock className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <p>
-              <strong>Zero Secret Exposure:</strong> Notice2Action AI strictly loads credentials on the backend via
+              <strong>Zero Secret Exposure:</strong> SochnaSetu AI strictly loads credentials on the backend via
               the process environment (<code className="font-mono text-blue-300">.env</code>). API keys are never
               transmitted to, requested by, or stored inside the client browser.
             </p>

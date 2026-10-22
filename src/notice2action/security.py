@@ -21,10 +21,10 @@ MAX_TEXT_CHARS = 100_000
 
 # Patterns indicative of prompt injection in untrusted notice text
 INJECTION_PATTERNS = [
-    re.compile(r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions", re.IGNORECASE),
+    re.compile(r"(?:ignore|disregard|override|bypass)\s+(?:all\s+)?(?:previous|prior|above|system)?\s*(?:instructions|guidelines|rules|prompts)", re.IGNORECASE),
+    re.compile(r"instructions\s+to\s+(?:the\s+)?(?:llm|model|ai|assistant)", re.IGNORECASE),
     re.compile(r"system\s*prompt\s*:", re.IGNORECASE),
     re.compile(r"you\s+are\s+now\s+in\s+developer\s+mode", re.IGNORECASE),
-    re.compile(r"disregard\s+(the\s+)?guidelines", re.IGNORECASE),
     re.compile(r"output\s+the\s+hidden\s+token", re.IGNORECASE),
 ]
 
@@ -83,6 +83,27 @@ def validate_uploaded_file(file_name: str, file_bytes: bytes) -> Tuple[str, str]
             except Exception as e:
                 raise SecurityValidationError(f"Invalid text encoding: {e}")
         return safe_name, "text"
+    elif ext == "pdf":
+        if not file_bytes.startswith(b"%PDF"):
+            raise SecurityValidationError("Invalid or malformed PDF file: Missing %PDF signature.")
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(BytesIO(file_bytes))
+            if reader.is_encrypted:
+                raise SecurityValidationError(
+                    "Encrypted or password-protected PDF files are not supported. Please upload an unencrypted document."
+                )
+            if len(reader.pages) == 0:
+                raise SecurityValidationError("The uploaded PDF contains 0 pages.")
+            if len(reader.pages) > config.max_pdf_pages:
+                raise SecurityValidationError(
+                    f"PDF page count ({len(reader.pages)}) exceeds maximum safety limit of {config.max_pdf_pages} pages."
+                )
+            return safe_name, "pdf"
+        except SecurityValidationError:
+            raise
+        except Exception as e:
+            raise SecurityValidationError(f"Corrupt or invalid PDF file: {e}")
     else:
         raise SecurityValidationError(f"File extension '.{ext}' is not supported.")
 

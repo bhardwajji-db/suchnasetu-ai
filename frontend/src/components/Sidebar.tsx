@@ -114,6 +114,7 @@ export const Sidebar: React.FC = () => {
             <select
               value={selectedSample}
               onChange={(e) => setSelectedSample(e.target.value)}
+              aria-label="Select sample notice fixture"
               className="w-full bg-[#111A33] border border-[#1D2D4E] rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
             >
               {samples.map((s) => (

@@ -1,4 +1,4 @@
-# Launch Script for Notice2Action AI (PS02)
+# Launch Script for SochnaSetu AI (PS02)
 # Windows PowerShell compatible
 # Launches the FastAPI Backend and React 19 Frontend
 
@@ -15,7 +15,7 @@ if (-not (Test-Path $PythonExe)) {
 }
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " Launching Notice2Action AI Full-Stack Application (PS02)" -ForegroundColor Cyan
+Write-Host " Launching SochnaSetu AI Full-Stack Application (PS02)" -ForegroundColor Cyan
 Write-Host " React Frontend:  http://127.0.0.1:5173" -ForegroundColor Green
 Write-Host " FastAPI Backend: http://127.0.0.1:8000" -ForegroundColor Green
 Write-Host " API Docs:        http://127.0.0.1:8000/docs" -ForegroundColor Green
@@ -26,7 +26,7 @@ Write-Host "Starting FastAPI backend server on port 8000..." -ForegroundColor Cy
 $BackendJob = Start-Job -ScriptBlock {
     param($root, $py)
     Set-Location $root
-    & $py -m uvicorn notice2action.api.server:app --host 127.0.0.1 --port 8000
+    & $py -m uvicorn notice2action.api.server:app --app-dir src --host 127.0.0.1 --port 8000
 } -ArgumentList $ProjectRoot, $PythonExe
 
 # Start Vite frontend

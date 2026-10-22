@@ -42,6 +42,23 @@ def _find_tesseract_cmd() -> Optional[str]:
     return None
 
 
+def _find_tessdata_dir() -> Optional[str]:
+    """Auto-detects project or system tessdata directory with Hindi/English language packs."""
+    env_dir = os.getenv("TESSDATA_PREFIX")
+    if env_dir and Path(env_dir).is_dir():
+        return env_dir
+
+    candidates = [
+        PROJECT_ROOT / "assets" / "tessdata",
+        Path(r"C:\Program Files\Tesseract-OCR\tessdata"),
+        Path(r"C:\Program Files (x86)\Tesseract-OCR\tessdata"),
+    ]
+    for c in candidates:
+        if (c / "hin.traineddata").is_file() or (c / "eng.traineddata").is_file():
+            return str(c)
+    return None
+
+
 @dataclass
 class AppConfig:
     # LLM Provider selection: "ollama", "openrouter", "gemini", "huggingface"
@@ -68,6 +85,7 @@ class AppConfig:
     # OCR Engine
     ocr_engine: str = os.getenv("OCR_ENGINE", "tesseract").lower()
     tesseract_cmd: Optional[str] = _find_tesseract_cmd()
+    tessdata_dir: Optional[str] = _find_tessdata_dir()
 
     # Session Storage
     session_storage_dir: Path = PROJECT_ROOT / os.getenv("SESSION_STORAGE_DIR", ".sessions")
@@ -76,13 +94,18 @@ class AppConfig:
     # Ingestion & Limits
     max_upload_size_mb: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
     max_image_dimension: int = int(os.getenv("MAX_IMAGE_DIMENSION", "4096"))
+    max_pdf_pages: int = int(os.getenv("MAX_PDF_PAGES", "30"))
     allowed_extensions: List[str] = field(
-        default_factory=lambda: os.getenv("ALLOWED_EXTENSIONS", "png,jpg,jpeg,webp,txt").split(",")
+        default_factory=lambda: [e.strip().lower() for e in os.getenv("ALLOWED_EXTENSIONS", "png,jpg,jpeg,webp,txt,pdf").split(",") if e.strip()]
     )
     synthetic_fixtures_dir: Path = PROJECT_ROOT / "tests" / "fixtures"
 
 
 config = AppConfig()
+
+# Configure environment for Tesseract if local tessdata directory detected
+if config.tessdata_dir and "TESSDATA_PREFIX" not in os.environ:
+    os.environ["TESSDATA_PREFIX"] = config.tessdata_dir
 
 
 @dataclass
@@ -194,7 +217,27 @@ def run_preflight_diagnostics(cfg: Optional[AppConfig] = None) -> PreflightRepor
             )
         )
 
-    # 3. LLM Provider Diagnostics
+    # 3. Document Processing (PDF Support)
+    try:
+        import pypdf
+        report.items.append(
+            DiagnosticItem(
+                "PDF Engine (pypdf)",
+                "ok",
+                f"Digital & scanned PDF extraction active (pypdf v{pypdf.__version__}).",
+            )
+        )
+    except Exception as e:
+        report.items.append(
+            DiagnosticItem(
+                "PDF Engine (pypdf)",
+                "warning",
+                f"pypdf library not available: {e}",
+                "Run pip install pypdf",
+            )
+        )
+
+    # 4. LLM Provider Diagnostics
     provider = cfg.llm_provider
     report.items.append(
         DiagnosticItem("Configured LLM Provider", "ok", f"Active provider: '{provider}'")

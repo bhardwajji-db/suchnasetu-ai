@@ -22,7 +22,7 @@ export const FileDropzone: React.FC = () => {
 
     try {
       const res = await apiClient.uploadFile(file);
-      if (res.source_type === 'text') {
+      if (res.source_type === 'text' || res.source_type === 'pdf') {
         setRawNoticeText(res.raw_text);
         setUploadedImage(null, null);
       } else if (res.source_type === 'image') {
@@ -65,8 +65,9 @@ export const FileDropzone: React.FC = () => {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".png,.jpg,.jpeg,.webp,.txt"
+          accept=".png,.jpg,.jpeg,.webp,.txt,.pdf,application/pdf"
           className="hidden"
+          aria-label="Upload notice image or document"
           onChange={(e) => handleFiles(e.target.files)}
         />
         <div className="flex flex-col items-center justify-center gap-2">
@@ -75,10 +76,10 @@ export const FileDropzone: React.FC = () => {
           </div>
           <div>
             <div className="text-sm font-bold text-slate-200">
-              Drag & Drop notice image or document
+              Drag & Drop notice document, image, or PDF
             </div>
             <div className="text-xs text-slate-400 mt-1">
-              Supports <span className="text-blue-400 font-mono">PNG, JPG, WEBP, TXT</span> up to 10MB
+              Supports <span className="text-blue-400 font-mono">PDF (Digital/Scanned), PNG, JPG, WEBP, TXT</span> up to 10MB
             </div>
           </div>
         </div>

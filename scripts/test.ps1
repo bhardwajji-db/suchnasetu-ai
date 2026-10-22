@@ -1,4 +1,4 @@
-# Automated Test Execution Script for Notice2Action AI (PS02)
+# Automated Test Execution Script for SochnaSetu AI (PS02)
 # Windows PowerShell compatible
 
 param (
@@ -18,10 +18,10 @@ if (-not (Test-Path $PytestExe)) {
 }
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " Running Notice2Action AI Backend Test Suites (pytest)" -ForegroundColor Cyan
+Write-Host " Running SochnaSetu AI Backend Test Suites (pytest)" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-& $PytestExe tests\test_unit_pipeline.py tests\test_api_endpoints.py tests\test_services_and_six_fields.py tests\test_multi_provider_llm.py tests\test_negative_and_edge_cases.py tests\test_structured_notice_regression.py -v
+& $PytestExe -m "not live" -v
 
 if ($IncludeFrontend) {
     Write-Host "`n==========================================================" -ForegroundColor Cyan
@@ -29,7 +29,7 @@ if ($IncludeFrontend) {
     Write-Host "==========================================================" -ForegroundColor Cyan
     Push-Location (Join-Path $ProjectRoot "frontend")
     try {
-        npm run test
+        npm run test -- --run
     } finally {
         Pop-Location
     }

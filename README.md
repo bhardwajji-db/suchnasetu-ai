@@ -5,7 +5,7 @@
 > **Track:** Track 1 — Best Use of Gemma 4  
 > **Theme:** "AI Belongs to Everyone"  
 > **Official Challenge Reference:** [events2026.co.in/problem-statements](https://events2026.co.in/problem-statements)  
-> **License:** Apache License 2.0 (See [LICENSE](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/LICENSE))  
+> **License:** Apache License 2.0 (See [LICENSE](LICENSE))  
 
 ---
 
@@ -68,9 +68,9 @@ Inspects and extracts the six essential fields required to understand any legal 
 
 ### 9. Three Dedicated Fictional Demo Notices
 Clearly labeled **DEMO / FICTIONAL** notices ready for one-click evaluation without file upload:
-- 📋 **Demo 1 (Compliance):** Missing mandatory enrollment certificates with a 14-day cure deadline ([`demo_missing_compliance.txt`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/tests/fixtures/demo_missing_compliance.txt)).
-- 💰 **Demo 2 (Outstanding Dues):** Municipal water and sewerage demand assessment with penalty surcharge date ([`demo_outstanding_dues.txt`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/tests/fixtures/demo_outstanding_dues.txt)).
-- ⚖️ **Demo 3 (Administrative Hearing):** Environmental air emission compliance show-cause notice and statutory personal hearing schedule ([`demo_response_hearing.txt`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/tests/fixtures/demo_response_hearing.txt)).
+- 📋 **Demo 1 (Compliance):** Missing mandatory enrollment certificates with a 14-day cure deadline ([`demo_missing_compliance.txt`](tests/fixtures/demo_missing_compliance.txt)).
+- 💰 **Demo 2 (Outstanding Dues):** Municipal water and sewerage demand assessment with penalty surcharge date ([`demo_outstanding_dues.txt`](tests/fixtures/demo_outstanding_dues.txt)).
+- ⚖️ **Demo 3 (Administrative Hearing):** Environmental air emission compliance show-cause notice and statutory personal hearing schedule ([`demo_response_hearing.txt`](tests/fixtures/demo_response_hearing.txt)).
 
 ---
 
@@ -109,7 +109,9 @@ cp .env.example .env
 ## ⚡ Quickstart Runbook
 
 Execute all commands from the project root:
-`C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`
+``powershell
+cd ps2
+``
 
 ### 1. Start Local Ollama Server (Terminal 1)
 ```powershell

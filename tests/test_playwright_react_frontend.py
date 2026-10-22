@@ -5,12 +5,15 @@ Tests real browser rendering, layout overflow, and complete end-to-end workflow 
 
 import sys
 import time
+import subprocess
+import urllib.request
 from pathlib import Path
 import pytest
 from playwright.sync_api import sync_playwright
 
 CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 FRONTEND_URL = "http://127.0.0.1:5173"
+BACKEND_URL = "http://127.0.0.1:8000"
 SCREENSHOT_DIR = Path("assets/screenshots")
 SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -24,8 +27,91 @@ VIEWPORTS = [
 ]
 
 
+def _probe_url(url: str, timeout: float = 1.0) -> bool:
+    """Probes whether a URL responds with an active HTTP status."""
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as resp:
+            return resp.status in [200, 404]
+    except Exception:
+        return False
+
+
+def _is_ollama_active() -> bool:
+    """Checks whether local Ollama inference daemon is responsive."""
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=1.5) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+@pytest.fixture(scope="module", autouse=True)
+def ensure_servers_running():
+    """
+    Automated lifecycle management for E2E tests:
+    - Verifies backend (port 8000) and frontend (port 5173) readiness.
+    - If either is not running, launches it as a background subprocess.
+    - Waits up to 20 seconds for readiness.
+    - Cleans up and terminates ONLY the subprocesses spawned by this test run.
+    """
+    spawned = []
+    backend_up = _probe_url(f"{BACKEND_URL}/api/health")
+    frontend_up = _probe_url(FRONTEND_URL)
+
+    if not backend_up:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "notice2action.api.server:app", "--port", "8000", "--host", "127.0.0.1"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        spawned.append(proc)
+
+    if not frontend_up:
+        proc = subprocess.Popen(
+            ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173"],
+            cwd="frontend",
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        spawned.append(proc)
+
+    deadline = time.time() + 20
+    ready = False
+    while time.time() < deadline:
+        if _probe_url(f"{BACKEND_URL}/api/health") and _probe_url(FRONTEND_URL):
+            ready = True
+            break
+        time.sleep(1)
+
+    try:
+        if not ready:
+            pytest.skip(f"Servers at {BACKEND_URL} or {FRONTEND_URL} could not be initialized.")
+        yield
+    finally:
+        for p in spawned:
+            try:
+                p.terminate()
+                p.wait(timeout=3)
+            except Exception:
+                try:
+                    p.kill()
+                except Exception:
+                    pass
+
+
+def is_frontend_running() -> bool:
+    """Checks if the React frontend dev server is active."""
+    return _probe_url(FRONTEND_URL)
+
+
 def test_react_frontend_multi_viewport_and_no_overflow():
     """Verifies that the React frontend renders with zero horizontal overflow across 6 viewports."""
+    if not is_frontend_running():
+        pytest.skip(f"Frontend dev server not reachable at {FRONTEND_URL}")
+    if not _is_ollama_active():
+        pytest.skip("Local Ollama daemon is not active. Run 'ollama serve' to execute full live workflow.")
+
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
@@ -37,7 +123,7 @@ def test_react_frontend_multi_viewport_and_no_overflow():
             page = context.new_page()
 
             page.goto(FRONTEND_URL, wait_until="networkidle")
-            page.wait_for_selector("text=Notice2Action AI", timeout=10000)
+            page.wait_for_selector("text=PS02", timeout=10000)
 
             # Assert zero horizontal overflow
             scroll_width, client_width = page.evaluate("() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]")
@@ -66,6 +152,11 @@ def test_react_frontend_full_workflow_and_tabs():
     6. Suggested Q&A inquiry and grounded answer verification
     7. Stale buffer detection
     """
+    if not is_frontend_running():
+        pytest.skip(f"Frontend dev server not reachable at {FRONTEND_URL}")
+    if not _is_ollama_active():
+        pytest.skip("Local Ollama daemon is not active. Run 'ollama serve' to execute full live workflow.")
+
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
@@ -76,7 +167,7 @@ def test_react_frontend_full_workflow_and_tabs():
 
         # Step 1: Ingestion view
         page.goto(FRONTEND_URL, wait_until="networkidle")
-        page.wait_for_selector("text=Notice2Action AI", timeout=10000)
+        page.wait_for_selector("text=PS02", timeout=10000)
 
         # Step 2: Load Competition Demo
         demo_btn = page.locator("button:has-text('Competition Demo (TEST-SCH)')").first

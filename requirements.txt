@@ -8,6 +8,7 @@ pillow>=10.0.0
 requests>=2.31.0
 python-dotenv>=1.0.0
 gTTS>=2.5.0
+pypdf>=4.0.0
 
 # Optional OCR Engine (Alternative to Tesseract)
 # rapidocr-onnxruntime>=1.3.0

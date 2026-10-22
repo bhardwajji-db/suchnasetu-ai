@@ -91,6 +91,7 @@ export const GroundedQAChat: React.FC = () => {
           type="text"
           value={inputQuestion}
           onChange={(e) => setInputQuestion(e.target.value)}
+          aria-label="Ask a question about the notice"
           placeholder="e.g. Is there any application fee required?"
           className="flex-1 bg-[#070B14] border border-[#1D2D4E] rounded-lg px-3.5 py-2.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
         />

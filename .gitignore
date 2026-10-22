@@ -56,6 +56,27 @@ temp/
 scratch/
 .sessions/
 
+# Personal experiments & media (not part of SochnaSetu AI)
+friend.jpg
+friend_ascii_preview.png
+ascii_data.json
+frame_*.png
+code_crop.png
+code_frame.png
+term_window_crop.png
+sphere_window_crop.png
+ascii_*.py
+eye.py
+eye_cute.py
+build_player.py
+
+# Local audit output snapshots
+audit_report/
+
+# Legacy Streamlit UI Screenshots (preserved locally, excluded from git)
+assets/screenshots/viewport_*.png
+assets/screenshots/workflow_tab*.png
+
 # Frontend
 frontend/node_modules/
 frontend/dist/

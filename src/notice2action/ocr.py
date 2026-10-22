@@ -37,6 +37,8 @@ def get_available_tesseract_languages() -> List[str]:
     """Returns the list of installed language packs in Tesseract."""
     if not config.tesseract_cmd or not Path(config.tesseract_cmd).is_file():
         return []
+    if config.tessdata_dir and Path(config.tessdata_dir).is_dir():
+        os.environ["TESSDATA_PREFIX"] = str(Path(config.tessdata_dir).resolve())
     try:
         pytesseract.pytesseract.tesseract_cmd = config.tesseract_cmd
         langs = pytesseract.get_languages(config="")
@@ -120,17 +122,38 @@ class TesseractOCREngine(BaseOCREngine):
 
         pytesseract.pytesseract.tesseract_cmd = config.tesseract_cmd
 
+        if config.tessdata_dir and Path(config.tessdata_dir).is_dir():
+            os.environ["TESSDATA_PREFIX"] = str(Path(config.tessdata_dir).resolve())
+
         # Validate requested language against installed languages
         available_langs = get_available_tesseract_languages()
         chosen_lang = target_lang
         warning_msg = None
 
         if "hin" in target_lang and "hin" not in available_langs:
-            chosen_lang = "eng"
-            warning_msg = (
-                "Hindi OCR language pack ('hin.traineddata') is not installed in Tesseract. "
-                "Falling back to English OCR ('eng'). To enable Hindi OCR, place 'hin.traineddata' in tessdata."
-            )
+            if target_lang == "hin":
+                return OCRResult(
+                    extracted_text="",
+                    confidence_score=0.0,
+                    languages_used="hin",
+                    line_count=0,
+                    char_count=0,
+                    is_preprocessed=apply_preprocessing,
+                    is_uncertain=True,
+                    uncertainty_reason="Hindi OCR model ('hin.traineddata') is not installed.",
+                    engine_used="tesseract",
+                    error=(
+                        "Hindi OCR language pack ('hin.traineddata') is not installed in Tesseract. "
+                        "English OCR cannot transcribe Devanagari text accurately. "
+                        "To enable Hindi OCR, place 'hin.traineddata' in assets/tessdata/."
+                    ),
+                )
+            else:
+                chosen_lang = "eng"
+                warning_msg = (
+                    "Hindi OCR language pack ('hin.traineddata') is not installed in Tesseract. "
+                    "Only English text could be recognized. Devanagari sections may be unreadable."
+                )
 
         # Process image
         processed_img = preprocess_image_for_ocr(image) if apply_preprocessing else image

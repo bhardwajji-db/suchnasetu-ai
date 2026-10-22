@@ -60,12 +60,12 @@ from notice2action.services.session_store import session_store, SessionState
 
 
 app = FastAPI(
-    title="Notice2Action AI API",
+    title="SochnaSetu AI API",
     version="2.0.0",
-    description="REST backend for Notice-to-Action Accessibility Assistant (PS02)",
+    description="REST backend for SochnaSetu AI Notice-to-Action Accessibility Assistant (PS02)",
 )
 
-# Enable CORS for local Vite dev and frontend clients
+# Enable CORS for local Vite dev and frontend clients (explicit origins for credential safety)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -75,12 +75,18 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://localhost:8501",
         "http://127.0.0.1:8501",
-        "*",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------
+# Analysis Cache (Avoids redundant LLM inference)
+# ---------------------------------------------------------
+_ANALYSIS_CACHE: Dict[str, StructuredNotice] = {}
+_MAX_CACHE_ENTRIES = 64
 
 
 # ---------------------------------------------------------
@@ -428,12 +434,12 @@ async def ingest_upload_endpoint(file: UploadFile = File(...)):
     if res.error:
         raise HTTPException(status_code=400, detail=res.error)
 
-    if res.source_type == "text":
+    if res.source_type in ["text", "pdf"]:
         raw_text = res.raw_text or ""
         fp = hashlib.sha256(raw_text.strip().encode("utf-8")).hexdigest()
         evidence_service.index_notice(raw_text)
         return {
-            "source_type": "text",
+            "source_type": res.source_type,
             "filename": res.filename,
             "raw_text": raw_text,
             "char_count": len(raw_text),
@@ -543,9 +549,18 @@ def analyze_endpoint(payload: AnalyzeRequest):
     try:
         # Index document in EvidenceService
         evidence_service.index_notice(text)
+        fp = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        cache_key = f"{fp}:{payload.provider or config.llm_provider}"
 
-        # Structured extraction & deterministic verification
-        structured = analyzer.analyze_notice(text)
+        # Structured extraction & deterministic verification (with LRU cache check)
+        if cache_key in _ANALYSIS_CACHE:
+            structured = _ANALYSIS_CACHE[cache_key].model_copy(deep=True)
+        else:
+            structured = analyzer.analyze_notice(text)
+            if len(_ANALYSIS_CACHE) >= _MAX_CACHE_ENTRIES:
+                _ANALYSIS_CACHE.pop(next(iter(_ANALYSIS_CACHE)))
+            _ANALYSIS_CACHE[cache_key] = structured.model_copy(deep=True)
+
         six_core = structured.to_six_core_fields()
 
         # Summaries & Checklists
@@ -557,7 +572,6 @@ def analyze_endpoint(payload: AnalyzeRequest):
         checklist_hi = translate_checklist_to_hindi(checklist_en, client=None)
 
         duration = time.time() - start_time
-        fp = hashlib.sha256(text.encode("utf-8")).hexdigest()
 
         # Create or update session state
         s_id = payload.session_id or str(uuid.uuid4())
@@ -696,7 +710,7 @@ def export_markdown_endpoint(payload: ExportMarkdownRequest):
     cl = payload.checklist
 
     report = (
-        f"# Notice2Action AI — Action Report\n\n"
+        f"# SochnaSetu AI (Notice2Action AI) — Action Report\n\n"
         f"**Notice Purpose**: {sn.purpose.value}\n"
         f"**Issuing Authority**: {sn.issuing_authority.value}\n"
         f"**Reference Number**: {sn.notice_reference_number.value}\n"

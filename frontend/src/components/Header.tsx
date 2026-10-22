@@ -52,10 +52,10 @@ export const Header: React.FC = () => {
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 font-black text-white text-base">
-            N
+            S
           </div>
           <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
-            Notice<span className="text-blue-500">2Action</span> AI
+            Sochna<span className="text-blue-500">Setu</span> AI
             <span className="text-[10px] font-mono uppercase bg-blue-600/30 text-blue-400 border border-blue-500/40 px-1.5 py-0.5 rounded font-semibold ml-1">
               PS02
             </span>
@@ -93,6 +93,7 @@ export const Header: React.FC = () => {
             onChange={(e) => switchProvider(e.target.value)}
             className="bg-transparent text-slate-200 text-xs font-semibold outline-none cursor-pointer py-1"
             title="Select AI Inference Provider"
+            aria-label="Select AI Inference Provider"
           >
             {providers.length > 0 ? (
               providers.map((p) => (

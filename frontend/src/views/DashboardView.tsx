@@ -57,7 +57,7 @@ export const DashboardView: React.FC = () => {
               <span>{status.text}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Legal Notice-to-Action Accessibility Assistant
+              SochnaSetu AI — Notice-to-Action Assistant
             </h1>
             <p className="text-sm text-slate-300 leading-relaxed">
               Transform convoluted government notifications, court summonses, and institutional circulars into
@@ -166,7 +166,7 @@ export const DashboardView: React.FC = () => {
               <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition group-hover:translate-x-1" />
             </h3>
             <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Drag-and-drop document scans, images (.png, .jpg), or paste notice text directly into the ground-truth buffer.
+              Drag-and-drop document PDFs (digital or scanned), images (.png, .jpg), or paste notice text directly into the ground-truth buffer.
             </p>
           </div>
 

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "notice2action"
 version = "0.1.0"
-description = "Notice-to-Action Accessibility Assistant using Gemma 4 (PS02)"
+description = "SochnaSetu AI — Notice-to-Action Accessibility Assistant using Gemma 4 (PS02)"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
@@ -22,6 +22,7 @@ dependencies = [
     "requests>=2.31.0",
     "python-dotenv>=1.0.0",
     "gTTS>=2.5.0",
+    "pypdf>=4.0.0",
 ]
 
 [tool.setuptools.packages.find]
