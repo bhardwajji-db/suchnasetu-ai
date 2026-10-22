@@ -1,4 +1,4 @@
-# Notice2Action AI 📢
+# SochnaSetu AI 📢
 
 > **PS02 — Notice-to-Action Accessibility Assistant**  
 > **Event:** Hacktoberfest 2026 HackDay@Meerut × E-Cell IIMT University  
@@ -13,7 +13,7 @@
 
 Official college circulars, scholarship announcements, government notices, and application forms are frequently published as low-resolution image posters, cluttered scans, or dense bureaucratic legalese. Students and applicants routinely miss critical deadlines, overlook mandatory documents, or misinterpret eligibility criteria.
 
-**Notice2Action AI** transforms complex administrative communications into clear, structured, evidence-grounded action plans. By default, it operates **100% locally and air-gapped** using **Google Gemma 4** (`gemma4:latest`) via Ollama and **Tesseract OCR v5.4.0**, guaranteeing that no user documents ever leave the host machine. For users seeking cloud scalability, a modular multi-provider integration layer also supports **OpenRouter**, **Google Gemini**, and **Hugging Face Inference**.
+**SochnaSetu AI** (Notice-to-Action) transforms complex administrative communications into clear, structured, evidence-grounded action plans. By default, it operates **100% locally and air-gapped** using **Google Gemma 4** (`gemma4:latest`) via Ollama and **Tesseract OCR v5.4.0**, guaranteeing that no user documents ever leave the host machine. For users seeking cloud scalability, a modular multi-provider integration layer also supports **OpenRouter**, **Google Gemini**, and **Hugging Face Inference**.
 
 ---
 

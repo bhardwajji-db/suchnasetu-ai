@@ -2,7 +2,7 @@
 **Track 1: Best Use of Gemma 4 — "AI Belongs to Everyone"**  
 **Evaluation Date:** October 23, 2026  
 **Auditor:** Senior AI/ML Engineer, Accessibility Specialist & System Architect  
-**Project Workspace:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Project Workspace:** `.` (Repository Root)  
 **Execution Environment:** Windows 10/11 x64 | Python 3.11.15 (`.venv`) | Node.js v24+ | Tesseract v5.4.0 (`eng, hin, osd`) | Ollama v0.6+ (`gemma4:latest`)
 
 ---
@@ -185,8 +185,8 @@ Follow these exact steps to launch and evaluate SochnaSetu AI on Windows:
 ### Step 1: Preflight Verification
 Verify environment dependencies (Python 3.11+, Node.js, Tesseract with Hindi data, Ollama):
 ```powershell
-# Open PowerShell in project root:
-cd "C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2"
+# Navigate to project root:
+cd <project-root>
 
 # Run the automated preflight check:
 & .venv\Scripts\python scripts\preflight.py

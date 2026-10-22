@@ -72,6 +72,16 @@ build_player.py
 
 # Local audit output snapshots
 audit_report/
+reports/BASELINE_AUDIT.md
+reports/FINAL_TEST_COMPARISON.md
+reports/FINAL_VALIDATION_REPORT.md
+reports/FINAL_VERIFICATION.md
+reports/MANUAL_TEST_CHECKLIST.md
+reports/PRODUCT_IMPROVEMENT_REPORT.md
+reports/REMAINING_ISSUES.md
+reports/RESEARCH_REQUIREMENTS_MATRIX.md
+reports/SECURITY_REVIEW.md
+reports/TEST_RESULTS.md
 
 # Legacy Streamlit UI Screenshots (preserved locally, excluded from git)
 assets/screenshots/viewport_*.png
