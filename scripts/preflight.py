@@ -1,5 +1,5 @@
 """
-Preflight Diagnostics CLI for SochnaSetu AI.
+Preflight Diagnostics CLI for SuchnaSetu AI.
 """
 
 import sys

@@ -1,4 +1,4 @@
-# Automated Test Execution Script for SochnaSetu AI (PS02)
+# Automated Test Execution Script for SuchnaSetu AI (PS02)
 # Windows PowerShell compatible
 
 param (
@@ -18,7 +18,7 @@ if (-not (Test-Path $PytestExe)) {
 }
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " Running SochnaSetu AI Backend Test Suites (pytest)" -ForegroundColor Cyan
+Write-Host " Running SuchnaSetu AI Backend Test Suites (pytest)" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 & $PytestExe -m "not live" -v

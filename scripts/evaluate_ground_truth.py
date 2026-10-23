@@ -1,5 +1,5 @@
 """
-Executable Ground-Truth Evaluation Script for Notice2Action AI (PS02).
+Executable Ground-Truth Evaluation Script for SuchnaSetu AI (PS02).
 Executes end-to-end evaluation with live Gemma 4 and Tesseract OCR,
 comparing results against independent ground truth JSON.
 """
@@ -24,7 +24,7 @@ from notice2action.evaluator import evaluate_against_ground_truth
 
 def main():
     print("=" * 65)
-    print(" Notice2Action AI — Ground-Truth Evaluation Runner (PS02)")
+    print(" SuchnaSetu AI — Ground-Truth Evaluation Runner (PS02)")
     print(f" LLM: {config.ollama_model} | Ollama: {config.ollama_base_url}")
     print("=" * 65)
 

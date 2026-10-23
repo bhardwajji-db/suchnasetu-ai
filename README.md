@@ -1,10 +1,11 @@
-# SochnaSetu AI 📢
+# SuchnaSetu AI 📢
 
 > **PS02 — Notice-to-Action Accessibility Assistant**  
 > **Event:** Hacktoberfest 2026 HackDay@Meerut × E-Cell IIMT University  
 > **Track:** Track 1 — Best Use of Gemma 4  
 > **Theme:** "AI Belongs to Everyone"  
 > **Official Challenge Reference:** [events2026.co.in/problem-statements](https://events2026.co.in/problem-statements)  
+> **Repository:** [https://github.com/bhardwajji-db/suchnasetu-ai](https://github.com/bhardwajji-db/suchnasetu-ai)  
 > **License:** Apache License 2.0 (See [LICENSE](LICENSE))  
 
 ---
@@ -13,7 +14,7 @@
 
 Official college circulars, scholarship announcements, government notices, and application forms are frequently published as low-resolution image posters, cluttered scans, or dense bureaucratic legalese. Students and applicants routinely miss critical deadlines, overlook mandatory documents, or misinterpret eligibility criteria.
 
-**SochnaSetu AI** (Notice-to-Action) transforms complex administrative communications into clear, structured, evidence-grounded action plans. By default, it operates **100% locally and air-gapped** using **Google Gemma 4** (`gemma4:latest`) via Ollama and **Tesseract OCR v5.4.0**, guaranteeing that no user documents ever leave the host machine. For users seeking cloud scalability, a modular multi-provider integration layer also supports **OpenRouter**, **Google Gemini**, and **Hugging Face Inference**.
+**SuchnaSetu AI** (Notice-to-Action) transforms complex administrative communications into clear, structured, evidence-grounded action plans. By default, it operates **100% locally and air-gapped** using **Google Gemma 4** (`gemma4:latest`) via Ollama and **Tesseract OCR v5.4.0**, guaranteeing that no user documents ever leave the host machine. For users seeking cloud scalability, a modular multi-provider integration layer also supports **OpenRouter**, **Google Gemini**, and **Hugging Face Inference**.
 
 ---
 
@@ -78,7 +79,7 @@ Clearly labeled **DEMO / FICTIONAL** notices ready for one-click evaluation with
 
 All settings are configured via environment variables or a local `.env` file in the project root. Copy `.env.example` to get started:
 
-```powershell
+````powershell
 cp .env.example .env
 ```
 
@@ -109,26 +110,27 @@ cp .env.example .env
 ## ⚡ Quickstart Runbook
 
 Execute all commands from the project root:
-``powershell
-cd ps2
-``
+```powershell
+git clone https://github.com/bhardwajji-db/suchnasetu-ai.git
+cd suchnasetu-ai
+```
 
 ### 1. Start Local Ollama Server (Terminal 1)
-```powershell
+````powershell
 ollama serve
 ```
 
 ### 2. Start FastAPI REST Backend (Terminal 2)
-```powershell
+````powershell
 .\.venv\Scripts\python.exe -m uvicorn notice2action.api.server:app --host 127.0.0.1 --port 8000
 ```
 *Verify API health:*
-```powershell
+````powershell
 curl.exe -s http://127.0.0.1:8000/api/health
 ```
 
 ### 3. Start React 19 Frontend Dashboard (Terminal 3)
-```powershell
+````powershell
 cd frontend
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
@@ -138,7 +140,7 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 ## 🧪 Automated Testing Suite
 
-```powershell
+````powershell
 # 1. Run all backend unit, contract, multi-provider & pipeline tests
 .\.venv\Scripts\python.exe -m pytest tests/test_api_endpoints.py tests/test_multi_provider_llm.py tests/test_services_and_six_fields.py tests/test_unit_pipeline.py tests/test_structured_notice_regression.py tests/test_negative_and_edge_cases.py -v
 
@@ -169,8 +171,8 @@ ps2/
 ├── .env.example                   # Environment configuration template
 ├── ARCHITECTURE.md                # System architecture & OCR comparison
 ├── API.md                         # Complete REST API specification
-├── IMPLEMENTATION_REPORT.md       # Comprehensive implementation report
-├── TEST_REPORT.md                 # Full test ledger and execution log
+├── docs/                          # Comprehensive technical documentation & requirements
+├── reports/                       # Verification ledgers, gap audits & test comparisons
 │
 ├── frontend/                      # Modern React 19 Frontend
 │   ├── package.json               # Node dependencies & build scripts
@@ -211,7 +213,7 @@ ps2/
 │       ├── gemini_client.py       # Google Gemini cloud adapter
 │       └── huggingface_client.py  # Hugging Face cloud adapter
 │
-├── tests/                         # Pytest test suites (87+ tests)
+├── tests/                         # Pytest test suites (127 tests)
 │   ├── test_multi_provider_llm.py # Multi-provider & offline mock tests
 │   ├── test_services_and_six_fields.py # EvidenceService, SessionStore, 6 fields
 │   ├── test_api_endpoints.py      # FastAPI REST endpoint integration tests

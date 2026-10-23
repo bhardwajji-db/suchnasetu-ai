@@ -1,5 +1,5 @@
 """
-Notice Analysis Pipeline for Notice2Action AI.
+Notice Analysis Pipeline for SuchnaSetu AI.
 Guides the configured LLM (Ollama, OpenRouter, Gemini, or Hugging Face)
 to extract structured semantic facts, the Six Core Fields, quotation evidence,
 and uncertainty flags, followed by strict deterministic grounding verification.
@@ -24,7 +24,7 @@ from notice2action.grounding import verify_structured_notice
 from notice2action.security import wrap_untrusted_notice
 
 
-ANALYSIS_SYSTEM_PROMPT = """You are Notice2Action AI. Extract critical facts into strictly formatted JSON.
+ANALYSIS_SYSTEM_PROMPT = """You are SuchnaSetu AI. Extract critical facts into strictly formatted JSON.
 Do not include any preamble, thinking, reasoning, or markdown explanations. Output only valid JSON.
 
 RULES:

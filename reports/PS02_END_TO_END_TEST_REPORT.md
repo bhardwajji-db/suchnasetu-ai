@@ -3,7 +3,7 @@
 **Project:** Notice2Action AI — Notice-to-Action Accessibility Assistant  
 **Event:** Hacktoberfest 2026 HackDay@Meerut × E-Cell IIMT University  
 **Track:** Track 1 — Best Use of Gemma 4  
-**Project Path:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Project Path:** `.`  
 **Execution Date:** 20 October 2026  
 **Final Verdict:** **PASS** (100% Critical-Field Accuracy, 100% Coverage, 0 Unsupported Claims)  
 
@@ -82,7 +82,7 @@ This notice is synthetic test data. It is not an official announcement.
 
 ## 4. Expected vs. Actual Evaluation Matrix
 
-Evaluated via the independent ground-truth evaluator ([`src/notice2action/evaluator.py`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/src/notice2action/evaluator.py)):
+Evaluated via the independent ground-truth evaluator ([`src/notice2action/evaluator.py`](../src/notice2action/evaluator.py)):
 
 | Field Evaluated | Expected (Ground Truth) | Actual (Gemma 4 Live Output) | Grounded Evidence Quote | Status |
 |---|---|---|---|---|
@@ -136,7 +136,7 @@ Evaluated via the independent ground-truth evaluator ([`src/notice2action/evalua
 
 ## 7. Negative and Edge-Case Test Results
 
-Executed via [`tests/test_negative_and_edge_cases.py`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober fest/ps2/tests/test_negative_and_edge_cases.py):
+Executed via [`tests/test_negative_and_edge_cases.py`](../tests/test_negative_and_edge_cases.py):
 
 | Test Case | Scenario | Expected Behavior | Actual Behavior | Status |
 |---|---|---|---|---|
@@ -155,7 +155,7 @@ Executed via [`tests/test_negative_and_edge_cases.py`](file:///C:/Users/Avinash/
 ```text
 ============================= test session starts =============================
 platform win32 -- Python 3.11.15, pytest-9.1.1, pluggy-1.7.0
-rootdir: C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2
+rootdir: .
 configfile: pyproject.toml
 
 tests/test_unit_pipeline.py .........................                    [ 75%] (25 passed)

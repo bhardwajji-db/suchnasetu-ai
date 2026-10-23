@@ -1,5 +1,5 @@
 """
-Unit Test Suite for Notice2Action AI (PS02).
+Unit Test Suite for SuchnaSetu AI (PS02).
 Covers all 24 mandatory test scenarios deterministically without external API dependencies:
  1. Correct English notice extraction
  2. Hindi notice extraction

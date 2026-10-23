@@ -1,5 +1,5 @@
 """
-Plain-Language Summary Generator for Notice2Action AI.
+Plain-Language Summary Generator for SuchnaSetu AI.
 Transforms complex official notices into clear, simple answers to the 7 core questions.
 """
 

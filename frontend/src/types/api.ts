@@ -1,5 +1,5 @@
 /**
- * Notice2Action AI — Typed Domain Schemas & API Types
+ * SuchnaSetu AI — Typed Domain Schemas & API Types
  * Mirroring backend Pydantic models from notice2action.schemas
  */
 

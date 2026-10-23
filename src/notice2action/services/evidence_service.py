@@ -1,5 +1,5 @@
 """
-Evidence Service for Notice2Action AI.
+Evidence Service for SuchnaSetu AI.
 Stores, segments, searches, and verifies notice-derived evidence.
 Provides strictly grounded text snippets and line-numbered citations.
 """

@@ -2,7 +2,7 @@
 **Project:** Notice2Action AI (PS02 — Notice-to-Action Accessibility Assistant)  
 **Date:** October 20, 2026  
 **Auditor:** Senior Full-Stack, QA Automation & AI Integration Specialist  
-**Repository Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Repository Directory:** `.`  
 
 ---
 

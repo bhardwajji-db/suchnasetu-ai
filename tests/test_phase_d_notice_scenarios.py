@@ -1,5 +1,5 @@
 """
-Phase D — Comprehensive Synthetic OCR and Notice Understanding Test Suite for SochnaSetu AI.
+Phase D — Comprehensive Synthetic OCR and Notice Understanding Test Suite for SuchnaSetu AI.
 Strictly verifies all 15 required scenarios:
  1. Clear notice with an explicit deadline.
  2. Notice with no deadline.

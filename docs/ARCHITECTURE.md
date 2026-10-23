@@ -1,15 +1,15 @@
-# Notice2Action AI — Architecture & Design Document
+# SuchnaSetu AI — Architecture & Design Document
 
 **Problem Statement:** PS02 — Notice-to-Action Accessibility Assistant  
 **Event:** Hacktoberfest 2026 HackDay@Meerut × E-Cell IIMT University  
 **Track:** Best Use of Gemma 4  
-**Project Location:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Project Location:** `.`  
 
 ---
 
 ## 1. Executive Architecture Overview
 
-Notice2Action AI transforms dense, complex, or image-based campus circulars, scholarship notifications, and government announcements into **evidence-grounded, plain-language action checklists**.
+SuchnaSetu AI transforms dense, complex, or image-based campus circulars, scholarship notifications, and government announcements into **evidence-grounded, plain-language action checklists**.
 
 The architecture is built on six foundational engineering pillars:
 1. **Local-First & Zero-Cost:** Powered entirely by a local instance of Google's **Gemma 4** (`gemma4:latest`) via Ollama and local **Tesseract OCR v5.4.0**, eliminating cloud costs, API key requirements, and network dependencies.

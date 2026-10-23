@@ -1,5 +1,5 @@
 """
-Security and Privacy Helpers for Notice2Action AI.
+Security and Privacy Helpers for SuchnaSetu AI.
 Protects against prompt injection, malicious uploads, decompression bombs, and path traversal.
 """
 

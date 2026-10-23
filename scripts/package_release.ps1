@@ -1,4 +1,4 @@
-# Clean Release Packager for Notice2Action AI (PS02)
+# Clean Release Packager for SuchnaSetu AI (PS02)
 # Windows PowerShell compatible
 # Strictly excludes virtual environments, weights, caches, git, and secrets.
 

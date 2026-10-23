@@ -4,7 +4,7 @@
 - **Date:** 20 October 2026
 - **Tool:** Ponytail (`ponytail-audit`, `ponytail-review`, `ponytail`)
 - **Assumed Load:** Single-student laptop use; local Ollama inference on 6 GB RTX 4050 GPU + 16 GB RAM; zero paid cloud APIs.
-- **Repository:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`
+- **Repository:** `.`
 - **Application URL:** `http://localhost:8501/`
 
 ---
@@ -15,7 +15,7 @@ Notice2Action AI ingests college notices, scholarships, and exam circulars as im
 ---
 
 ## 2. Ponytail Tool Discovery & Utilization
-- **Discovery:** Verified Ponytail plugin installed at `C:\Users\Avinash\.gemini\config\plugins\ponytail`.
+- **Discovery:** Verified Ponytail plugin installed at `~/.gemini/config/plugins/ponytail`.
 - **Skills Used:**
   - `ponytail-audit`: Whole-repo architectural audit (correctness, safety, scale, tests, speed, lean).
   - `ponytail`: Applied lazy senior developer principles: minimal, robust changes; zero bloat; root-cause fixes in shared schemas; no redundant wrappers.

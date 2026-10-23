@@ -1,5 +1,5 @@
 """
-Strict Data Schemas for Notice2Action AI.
+Strict Data Schemas for SuchnaSetu AI.
 Enforces evidence grounding, uncertainty states, explicit missing-field tracking,
 and the Six Core Notice Fields (issuing authority, reference number, notice date,
 recipient, main subject, required action and deadline).
@@ -324,7 +324,7 @@ class ActionChecklist(BaseModel):
         lines = [
             "BEGIN:VCALENDAR",
             "VERSION:2.0",
-            "PRODID:-//Notice2Action AI//EN",
+            "PRODID:-//SuchnaSetu AI//EN",
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",
         ]

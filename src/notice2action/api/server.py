@@ -1,5 +1,5 @@
 """
-Notice2Action AI — FastAPI REST Backend
+SuchnaSetu AI — FastAPI REST Backend
 Modular REST layer supporting:
 - Multi-provider LLMs (Ollama, OpenRouter, Gemini, Hugging Face)
 - Evidence indexing and citation retrieval (EvidenceService)
@@ -60,9 +60,9 @@ from notice2action.services.session_store import session_store, SessionState
 
 
 app = FastAPI(
-    title="SochnaSetu AI API",
+    title="SuchnaSetu AI API",
     version="2.0.0",
-    description="REST backend for SochnaSetu AI Notice-to-Action Accessibility Assistant (PS02)",
+    description="REST backend for SuchnaSetu AI Notice-to-Action Accessibility Assistant (PS02)",
 )
 
 # Enable CORS for local Vite dev and frontend clients (explicit origins for credential safety)
@@ -710,7 +710,7 @@ def export_markdown_endpoint(payload: ExportMarkdownRequest):
     cl = payload.checklist
 
     report = (
-        f"# SochnaSetu AI (Notice2Action AI) — Action Report\n\n"
+        f"# SuchnaSetu AI — Action Report\n\n"
         f"**Notice Purpose**: {sn.purpose.value}\n"
         f"**Issuing Authority**: {sn.issuing_authority.value}\n"
         f"**Reference Number**: {sn.notice_reference_number.value}\n"

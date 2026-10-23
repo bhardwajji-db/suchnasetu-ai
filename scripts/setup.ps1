@@ -1,10 +1,10 @@
-# Setup Script for SochnaSetu AI (PS02)
+# Setup Script for SuchnaSetu AI (PS02)
 # Windows PowerShell compatible
 
 $ErrorActionPreference = "Stop"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " SochnaSetu AI — Local Environment Setup" -ForegroundColor Cyan
+Write-Host " SuchnaSetu AI — Local Environment Setup" -ForegroundColor Cyan
 Write-Host " Hacktoberfest 2026 HackDay@Meerut (PS02)" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 

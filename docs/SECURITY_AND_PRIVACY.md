@@ -1,4 +1,4 @@
-# Notice2Action AI — Security & Privacy Architecture
+# SuchnaSetu AI — Security & Privacy Architecture
 
 **Document Version:** 1.0.0  
 **Scope:** Input Validation, Prompt Injection Defense, Privacy Guarantees  
@@ -7,11 +7,11 @@
 
 ## 1. Threat Model & Security Principles
 
-Notice2Action AI processes user-uploaded images and documents that may originate from untrusted public bulletin boards, student groups, or external portals.
+SuchnaSetu AI processes user-uploaded images and documents that may originate from untrusted public bulletin boards, student groups, or external portals.
 
 ### Core Security Tenets:
 1. **Notice Content is Untrusted Passive Data:** The model must never treat uploaded text as instructions to follow.
-2. **Zero Cloud Exfiltration:** Notice contents, student names, and credentials never leave the user's local machine.
+2. **Local-First Privacy by Default:** When operating with the default local Ollama runtime, notice contents, student names, and credentials never leave the host machine. If an optional cloud provider is explicitly configured, communications are encrypted in transit via TLS to that provider.
 3. **No Code Execution:** Uploaded files are strictly decoded as pixel buffers or plain text; no script or macro execution is possible.
 4. **Guaranteed Ephemeral Cleanup:** Temporary files created during OCR or audio synthesis are unlinked immediately after use.
 
@@ -37,6 +37,6 @@ Notices could contain adversarial text designed to hijack model instructions (e.
 - **System Prompt Guardrails:** System prompts instruct Gemma 4 that enclosed text is passive data to be parsed into JSON, never instructions to execute.
 
 ### C. Session Isolation & Privacy
-- Streamlit `session_state` maintains isolated state per browser session.
-- No database or persistent file cache of uploaded notices is maintained.
-- Clicking **🔄 Reset / Clear Session** wipes all session memory, notices, and conversation history immediately.
+- FastAPI backend maintains session isolation via thread-safe SessionStore (.sessions/), preventing cross-session contamination.
+- The React frontend manages local UI state without storing API keys or credentials in client storage.
+- Clicking **Clear / Reset Session** wipes active session memory, cached evidence, and conversation history immediately.

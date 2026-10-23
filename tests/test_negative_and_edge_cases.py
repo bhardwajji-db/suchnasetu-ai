@@ -1,5 +1,5 @@
 """
-Negative and Edge-Case Tests for Notice2Action AI (PS02).
+Negative and Edge-Case Tests for SuchnaSetu AI (PS02).
 Covers the 7 controlled edge cases mandated in Step 6:
  1. Empty text validation
  2. Unrelated text processing

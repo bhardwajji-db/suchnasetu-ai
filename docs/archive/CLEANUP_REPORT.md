@@ -1,7 +1,7 @@
 # Notice2Action AI — Codebase Cleanup Report
 
 **Problem Statement:** PS02 — Notice-to-Action Accessibility Assistant  
-**Repository Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Repository Directory:** `.`  
 **Date of Execution:** October 20, 2026  
 **Auditor / Engineer:** Principal Software Architect & QA Lead  
 **Cleanup Status:** SUCCESSFULLY COMPLETED  

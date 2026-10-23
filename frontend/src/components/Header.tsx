@@ -55,7 +55,7 @@ export const Header: React.FC = () => {
             S
           </div>
           <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
-            Sochna<span className="text-blue-500">Setu</span> AI
+            Suchna<span className="text-blue-500">Setu</span> AI
             <span className="text-[10px] font-mono uppercase bg-blue-600/30 text-blue-400 border border-blue-500/40 px-1.5 py-0.5 rounded font-semibold ml-1">
               PS02
             </span>

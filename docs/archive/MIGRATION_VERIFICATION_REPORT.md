@@ -4,7 +4,7 @@
 
 **Evaluation Timestamp:** October 20, 2026  
 **Auditor / Team:** Senior Full-Stack Architect, Frontend Engineer & QA Automation Specialist  
-**Project Path:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Project Path:** `.`  
 **Frontend URL:** `http://127.0.0.1:5173/` (Vite + React)  
 **REST API URL:** `http://127.0.0.1:8000/` (FastAPI + Uvicorn)  
 **Streamlit URL (Preserved):** `http://localhost:8501/` (`app.py`)  

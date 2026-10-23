@@ -1,5 +1,5 @@
 """
-Comprehensive Integration Tests for Notice2Action AI FastAPI Endpoints.
+Comprehensive Integration Tests for SuchnaSetu AI FastAPI Endpoints.
 Verifies REST contract, schemas, error handling, security, and exports.
 """
 
@@ -231,7 +231,7 @@ def test_api_export_markdown(client):
     response = client.post("/api/export/markdown", json=payload)
     assert response.status_code == 200
     assert "text/markdown" in response.headers["content-type"]
-    assert "Notice2Action AI" in response.text
+    assert "SuchnaSetu AI" in response.text
     assert "Merit Scholarship Application 2026" in response.text
 
 

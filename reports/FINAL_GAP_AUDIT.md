@@ -1,4 +1,4 @@
-# SochnaSetu AI (PS02) — Final Gap Audit & Verification Report
+# SuchnaSetu AI (PS02) — Final Gap Audit & Verification Report
 **Track 1: Best Use of Gemma 4 — "AI Belongs to Everyone"**  
 **Evaluation Date:** October 23, 2026  
 **Auditor:** Senior AI/ML Engineer, Accessibility Specialist & System Architect  
@@ -11,7 +11,7 @@
 
 ### Final Verdict: **PRODUCTION & DEMO-READY (GRADE: A / 98%)**
 
-SochnaSetu AI has undergone a rigorous, multi-phase gap audit covering document ingestion, bilingual Hindi/English OCR, local Gemma 4 AI inference, adversarial security, web accessibility (WCAG 2.1 AA), responsive layouts, and end-to-end integration.
+SuchnaSetu AI has undergone a rigorous, multi-phase gap audit covering document ingestion, bilingual Hindi/English OCR, local Gemma 4 AI inference, adversarial security, web accessibility (WCAG 2.1 AA), responsive layouts, and end-to-end integration.
 
 All previously identified gaps—including digital/scanned PDF handling, Hindi OCR silent fallbacks, form accessibility attributes, test isolation, and runner lifecycle management—have been resolved with targeted, minimal changes that preserve existing architecture and offline-first design.
 
@@ -157,7 +157,7 @@ All benchmarks recorded on local x86_64 CPU workstation without external network
 ## 5. Confirmed Gaps Fixed in this Audit
 
 1. **Branding Consistency in Helper Scripts:**
-   - Updated `scripts/run.ps1` and `scripts/setup.ps1` to refer consistently to **SochnaSetu AI**.
+   - Updated `scripts/run.ps1` and `scripts/setup.ps1` to refer consistently to **SuchnaSetu AI**.
 2. **Accessible Form Labels Added:**
    - Injected missing `aria-label` tags into dropdown selectors, search input fields, notice textareas, and drag-and-drop file inputs to achieve full WCAG 2.1 AA compliance.
 3. **Automated Test Script Alignment (`scripts/test.ps1`):**
@@ -180,7 +180,7 @@ All benchmarks recorded on local x86_64 CPU workstation without external network
 
 ## 7. Windows PowerShell Quick-Start Guide (For Evaluators)
 
-Follow these exact steps to launch and evaluate SochnaSetu AI on Windows:
+Follow these exact steps to launch and evaluate SuchnaSetu AI on Windows:
 
 ### Step 1: Preflight Verification
 Verify environment dependencies (Python 3.11+, Node.js, Tesseract with Hindi data, Ollama):
@@ -199,7 +199,7 @@ cd <project-root>
 ollama serve
 
 # Verify Gemma 4 is installed and responsive:
-ollama run gemma4 "Hello, respond with: SochnaSetu AI ready."
+ollama run gemma4 "Hello, respond with: SuchnaSetu AI ready."
 ```
 
 ### Step 3: Run the Complete Automated Test Suite
@@ -227,4 +227,4 @@ ollama run gemma4 "Hello, respond with: SochnaSetu AI ready."
 * **Offline Readiness:** **Verified**
 * **Security & a11y Posture:** **Hardened & Validated**
 
-*SochnaSetu AI is fully primed and recommended for live demonstration.*
+*SuchnaSetu AI is fully primed and recommended for live demonstration.*

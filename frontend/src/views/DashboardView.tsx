@@ -57,7 +57,7 @@ export const DashboardView: React.FC = () => {
               <span>{status.text}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              SochnaSetu AI — Notice-to-Action Assistant
+              SuchnaSetu AI — Notice-to-Action Assistant
             </h1>
             <p className="text-sm text-slate-300 leading-relaxed">
               Transform convoluted government notifications, court summonses, and institutional circulars into

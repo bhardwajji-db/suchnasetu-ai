@@ -1,9 +1,9 @@
-# Notice2Action AI — REST API Specification
+# SuchnaSetu AI — REST API Specification
 
-**Project:** Notice2Action AI (PS02 — Notice-to-Action Accessibility Assistant)  
+**Project:** SuchnaSetu AI (PS02 — Notice-to-Action Accessibility Assistant)  
 **Date:** October 20, 2026  
 **Auditor / Engineer:** Senior Full-Stack Engineer, AI Architect & QA Automation Specialist  
-**Repository Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Repository Directory:** `.`  
 **Base URL:** `http://127.0.0.1:8000`  
 **API Version:** `2.0.0`  
 
@@ -11,7 +11,7 @@
 
 ## 1. Overview & Conventions
 
-The Notice2Action AI REST API is built on FastAPI and exposes all backend document ingestion, multi-engine OCR, multi-provider LLM extraction, evidence indexing, session management, and export services.
+The SuchnaSetu AI REST API is built on FastAPI and exposes all backend document ingestion, multi-engine OCR, multi-provider LLM extraction, evidence indexing, session management, and export services.
 
 ### General Conventions
 - All request and response bodies use JSON (`application/json`) unless handling file uploads (`multipart/form-data`) or exports (`text/markdown`, `text/calendar`, `audio/mpeg`).

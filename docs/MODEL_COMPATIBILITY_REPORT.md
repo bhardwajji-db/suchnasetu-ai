@@ -1,4 +1,4 @@
-# Notice2Action AI — Model Compatibility & Resource Report
+# SuchnaSetu AI — Model Compatibility & Resource Report
 
 **Target Model:** Google Gemma 4 (`gemma4:latest`)  
 **Deployment Platform:** Ollama (Local Daemon)  

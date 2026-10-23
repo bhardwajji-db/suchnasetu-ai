@@ -1,5 +1,5 @@
 /**
- * Notice2Action AI — Typed API Client
+ * SuchnaSetu AI — Typed API Client
  * Communicates with FastAPI backend (/api routes)
  */
 

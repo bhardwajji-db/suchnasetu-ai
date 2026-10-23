@@ -1,10 +1,10 @@
-# Preflight Diagnostic Script for SochnaSetu AI (PS02)
+# Preflight Diagnostic Script for SuchnaSetu AI (PS02)
 # Windows PowerShell compatible
 
 $ErrorActionPreference = "Continue"
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " SochnaSetu AI -- Preflight Diagnostic Check (PS02)" -ForegroundColor Cyan
+Write-Host " SuchnaSetu AI -- Preflight Diagnostic Check (PS02)" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot

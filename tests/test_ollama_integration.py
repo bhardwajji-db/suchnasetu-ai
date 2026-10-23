@@ -1,5 +1,5 @@
 """
-Integration Test Suite for Ollama Connection and Provider Lifecycle in Notice2Action AI (PS02).
+Integration Test Suite for Ollama Connection and Provider Lifecycle in SuchnaSetu AI (PS02).
 Tests real (unmocked) Ollama connectivity, model discovery, and verifies provider error handling.
 """
 

@@ -1,5 +1,5 @@
 """
-Text-to-Speech (TTS) and Accessibility Read-Aloud Engine for Notice2Action AI.
+Text-to-Speech (TTS) and Accessibility Read-Aloud Engine for SuchnaSetu AI.
 Provides audio read-aloud in English and Hindi for vision-impaired and accessibility users.
 Supports both gTTS audio generation and browser-native Web Speech API.
 """

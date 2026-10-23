@@ -1,5 +1,5 @@
 """
-OCR and Text Extraction Pipeline for Notice2Action AI.
+OCR and Text Extraction Pipeline for SuchnaSetu AI.
 Integrates Tesseract OCR with adaptive image preprocessing, reading order preservation,
 and multilingual (English and Hindi) support.
 Supports modular OCR engine architecture (Tesseract default, RapidOCR optional adapter).

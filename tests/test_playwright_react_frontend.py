@@ -1,5 +1,5 @@
 """
-Playwright Acceptance and Multi-Viewport Test Suite for Notice2Action AI (React + FastAPI).
+Playwright Acceptance and Multi-Viewport Test Suite for SuchnaSetu AI (React + FastAPI).
 Tests real browser rendering, layout overflow, and complete end-to-end workflow in headless Chrome.
 """
 

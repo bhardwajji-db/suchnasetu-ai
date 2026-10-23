@@ -1,5 +1,5 @@
 """
-Notice2Action AI — Domain Services
+SuchnaSetu AI — Domain Services
 Evidence indexing and retrieval service, and thread-safe session store.
 """
 

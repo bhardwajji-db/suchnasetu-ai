@@ -1,5 +1,5 @@
 """
-Test Suite for Hindi OCR and Language Pack Diagnostics in Notice2Action AI (PS02).
+Test Suite for Hindi OCR and Language Pack Diagnostics in SuchnaSetu AI (PS02).
 Verifies:
 - Auto-detection of Hindi trained data (hin.traineddata) in assets/tessdata
 - Clear diagnostics when Hindi language pack is absent

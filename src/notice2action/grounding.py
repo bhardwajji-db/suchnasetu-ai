@@ -1,5 +1,5 @@
 """
-Evidence Grounding Engine for Notice2Action AI.
+Evidence Grounding Engine for SuchnaSetu AI.
 Verifies quotations against source notice text, prevents hallucinated dates/fees/documents,
 and calibrates certainty states.
 """

@@ -1,5 +1,5 @@
 """
-Hugging Face Inference API Cloud Adapter for Notice2Action AI.
+Hugging Face Inference API Cloud Adapter for SuchnaSetu AI.
 Provides access to hosted open models via Hugging Face Inference Serverless router.
 """
 

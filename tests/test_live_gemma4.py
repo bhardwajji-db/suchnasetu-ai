@@ -1,5 +1,5 @@
 """
-Live Integration Test Suite for Notice2Action AI with Gemma 4.
+Live Integration Test Suite for SuchnaSetu AI with Gemma 4.
 Executes against local Ollama running 'gemma4:latest' and Tesseract OCR.
 Marked with @pytest.mark.live.
 """
@@ -25,7 +25,10 @@ pytestmark = pytest.mark.live
 @pytest.fixture(scope="module")
 def ollama_client():
     client = OllamaClient()
-    health = client.check_health()
+    try:
+        health = client.check_health()
+    except Exception as e:
+        pytest.skip(f"Live Ollama server not reachable at {config.ollama_base_url}: {e}")
     if not health.get("has_target_model"):
         pytest.skip(f"Live target model '{config.ollama_model}' not found in Ollama.")
     return client

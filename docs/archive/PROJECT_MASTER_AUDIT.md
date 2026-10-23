@@ -1,7 +1,7 @@
 # Notice2Action AI — Comprehensive Project Master Audit Report
 
 **Problem Statement:** PS02 — Notice-to-Action Accessibility Assistant  
-**Repository Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Repository Directory:** `.`  
 **Date of Audit:** October 20, 2026  
 **Auditor Roles:** Principal Software Architect, Senior Full-Stack Engineer, AI/ML Engineer, Backend Engineer, Frontend Engineer, API Engineer, OCR Specialist, Security Auditor, DevOps Engineer, QA Lead  
 **Audit Status:** COMPLETE & EMPIRICALLY VERIFIED (110 / 110 Automated Tests Passing)  
@@ -61,7 +61,7 @@ Notice2Action AI solves this by translating unstructured notices into verifiable
 ## 4. Repository Structure & File Inventory
 
 ```
-C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2
+.
 ├── .env.example                       # Provider configuration placeholders (zero secrets)
 ├── .gitignore                         # Strict exclusion of .env, .sessions/, __pycache__, release
 ├── API.md                             # API specifications and endpoint schemas
@@ -399,7 +399,7 @@ powershell -ExecutionPolicy Bypass -File scripts/start_all.ps1
 ### Manual Individual Commands:
 ```powershell
 # 1. Start Ollama Daemon
-& "C:\Users\Avinash\AppData\Local\Programs\Ollama\ollama.exe" serve
+& "ollama.exe" serve
 
 # 2. Start FastAPI Backend (Port 8000)
 .\.venv\Scripts\python.exe -m uvicorn notice2action.api.server:app --host 127.0.0.1 --port 8000

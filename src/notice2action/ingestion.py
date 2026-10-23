@@ -1,5 +1,5 @@
 """
-Notice Ingestion Module for Notice2Action AI.
+Notice Ingestion Module for SuchnaSetu AI.
 Handles user inputs from text pasting or file uploads safely.
 """
 

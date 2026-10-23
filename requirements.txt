@@ -1,4 +1,4 @@
-# Notice2Action AI Core Dependencies
+# SuchnaSetu AI Core Dependencies
 fastapi>=0.110.0
 uvicorn>=0.29.0
 python-multipart>=0.0.9

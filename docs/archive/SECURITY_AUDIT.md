@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-A forensic security and privacy audit was performed on the Notice2Action AI codebase (`C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`). The application processes potentially sensitive citizen legal notices, court summonses, tax assessments, and administrative directives.
+A forensic security and privacy audit was performed on the Notice2Action AI codebase (`.`). The application processes potentially sensitive citizen legal notices, court summonses, tax assessments, and administrative directives.
 
 The audit examined:
 1. Secret hygiene and credential exposure risks.

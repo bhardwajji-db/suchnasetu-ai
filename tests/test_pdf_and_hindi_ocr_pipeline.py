@@ -1,5 +1,5 @@
 """
-Test Suite for PDF Support (Digital & Scanned), Hindi OCR, and Analysis Caching (SochnaSetu AI).
+Test Suite for PDF Support (Digital & Scanned), Hindi OCR, and Analysis Caching (SuchnaSetu AI).
 Verifies:
  1. Digital PDF text extraction via pypdf.
  2. Scanned PDF extraction via embedded page image OCR.
@@ -173,36 +173,92 @@ def test_07_tesseract_hindi_ocr_support():
 
 # 8. Analysis cache hit verification (Performance Optimization)
 def test_08_analysis_cache_hit_optimization():
+    from unittest.mock import patch
+    from notice2action.schemas import StructuredNotice, ExtractedFact, CertaintyStatus
+
+    mock_notice = StructuredNotice(
+        purpose=ExtractedFact(
+            field_name="purpose",
+            value="Cache Test Notice",
+            status=CertaintyStatus.STATED,
+            evidence_quote="IIMT UNIVERSITY CACHE TEST NOTICE",
+        ),
+        deadline=ExtractedFact(
+            field_name="deadline",
+            value="18 November 2026",
+            status=CertaintyStatus.STATED,
+            evidence_quote="All scholarship candidates must submit documents by 18 November 2026.",
+        ),
+        eligibility=ExtractedFact(
+            field_name="eligibility",
+            value="All scholarship candidates",
+            status=CertaintyStatus.STATED,
+            evidence_quote="All scholarship candidates must submit documents by 18 November 2026.",
+        ),
+        fee_or_cost=ExtractedFact(
+            field_name="fee_or_cost",
+            value="Not stated in the notice.",
+            status=CertaintyStatus.NOT_STATED,
+            evidence_quote=None,
+        ),
+        required_documents=ExtractedFact(
+            field_name="required_documents",
+            value="documents",
+            status=CertaintyStatus.STATED,
+            evidence_quote="All scholarship candidates must submit documents by 18 November 2026.",
+        ),
+        contact_details=ExtractedFact(
+            field_name="contact_details",
+            value="dsw@iimtu.ac.in",
+            status=CertaintyStatus.STATED,
+            evidence_quote="Contact: dsw@iimtu.ac.in",
+        ),
+        required_actions=ExtractedFact(
+            field_name="required_actions",
+            value="Submit documents",
+            status=CertaintyStatus.STATED,
+            evidence_quote="All scholarship candidates must submit documents by 18 November 2026.",
+        ),
+        important_conditions=ExtractedFact(
+            field_name="important_conditions",
+            value="Not stated in the notice.",
+            status=CertaintyStatus.NOT_STATED,
+            evidence_quote=None,
+        ),
+        raw_notice_text="Mock notice",
+    )
+
     sample_text = (
         "IIMT UNIVERSITY CACHE TEST NOTICE\n"
         "All scholarship candidates must submit documents by 18 November 2026.\n"
         "Contact: dsw@iimtu.ac.in"
     )
 
-    # First call (cold execution)
-    res1 = client.post(
-        "/api/analyze",
-        json={"notice_text": sample_text, "reading_level": "standard", "target_language": "en"},
-    )
-    assert res1.status_code == 200
-    data1 = res1.json()
-    fp = data1["fingerprint"]
-    assert fp is not None
+    with patch("notice2action.api.server.NoticeAnalyzer.analyze_notice", return_value=mock_notice):
+        # First call (cold execution)
+        res1 = client.post(
+            "/api/analyze",
+            json={"notice_text": sample_text, "reading_level": "standard", "target_language": "en"},
+        )
+        assert res1.status_code == 200
+        data1 = res1.json()
+        fp = data1["fingerprint"]
+        assert fp is not None
 
-    # Second call with identical payload (cache hit)
-    start = time.time()
-    res2 = client.post(
-        "/api/analyze",
-        json={"notice_text": sample_text, "reading_level": "standard", "target_language": "en"},
-    )
-    elapsed = time.time() - start
-    assert res2.status_code == 200
-    data2 = res2.json()
+        # Second call with identical payload (cache hit)
+        start = time.time()
+        res2 = client.post(
+            "/api/analyze",
+            json={"notice_text": sample_text, "reading_level": "standard", "target_language": "en"},
+        )
+        elapsed = time.time() - start
+        assert res2.status_code == 200
+        data2 = res2.json()
 
-    # Cache hit must be sub-second (< 0.2s) and return identical structured data
-    assert elapsed < 0.2, f"Expected cache hit under 0.2s, got {elapsed:.3f}s"
-    assert data2["fingerprint"] == data1["fingerprint"]
-    assert data2["structured_notice"]["purpose"]["value"] == data1["structured_notice"]["purpose"]["value"]
+        # Cache hit must be sub-second (< 0.2s) and return identical structured data
+        assert elapsed < 0.2, f"Expected cache hit under 0.2s, got {elapsed:.3f}s"
+        assert data2["fingerprint"] == data1["fingerprint"]
+        assert data2["structured_notice"]["purpose"]["value"] == data1["structured_notice"]["purpose"]["value"]
 
 
 # 9. Ingest upload REST endpoint with PDF file

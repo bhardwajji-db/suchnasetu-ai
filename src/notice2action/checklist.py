@@ -1,5 +1,5 @@
 """
-Action Checklist Generator for Notice2Action AI.
+Action Checklist Generator for SuchnaSetu AI.
 Creates an ordered, grounded step-by-step checklist with uncertainty confirmation gates.
 """
 

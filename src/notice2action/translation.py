@@ -1,5 +1,5 @@
 """
-Bilingual (English and Hindi) Translation Engine for Notice2Action AI.
+Bilingual (English and Hindi) Translation Engine for SuchnaSetu AI.
 Strictly preserves critical entities (dates, fees, percentages, names, contact numbers)
 without alteration during translation.
 """

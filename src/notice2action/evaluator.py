@@ -1,5 +1,5 @@
 """
-Independent Ground-Truth Evaluation Engine for Notice2Action AI (PS02).
+Independent Ground-Truth Evaluation Engine for SuchnaSetu AI (PS02).
 Compares actual extraction output strictly against independently defined ground truth.
 """
 

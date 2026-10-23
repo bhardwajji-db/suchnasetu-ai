@@ -1,5 +1,5 @@
 """
-Configuration and Preflight Diagnostics for Notice2Action AI.
+Configuration and Preflight Diagnostics for SuchnaSetu AI.
 """
 
 from __future__ import annotations

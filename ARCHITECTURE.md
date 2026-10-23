@@ -1,16 +1,16 @@
-# Notice2Action AI — System Architecture & Design Specification
+# SuchnaSetu AI — System Architecture & Design Specification
 
-**Project:** Notice2Action AI (PS02 — Notice-to-Action Accessibility Assistant)  
+**Project:** SuchnaSetu AI (PS02 — Notice-to-Action Accessibility Assistant)  
 **Date:** October 20, 2026  
 **Auditor / Engineer:** Senior Full-Stack Engineer, AI Architect & QA Automation Specialist  
-**Repository Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Repository Directory:** `.`  
 **Classification:** PUBLIC / COMPETITION-READY  
 
 ---
 
 ## 1. System Overview & Philosophy
 
-Notice2Action AI addresses the accessibility gap in formal administrative communications. Bureaucratic circulars, scholarship announcements, exam schedules, and municipal advisories are frequently dense, legalistic, multi-column, or distributed as low-resolution scanned notices.
+SuchnaSetu AI addresses the accessibility gap in formal administrative communications. Bureaucratic circulars, scholarship announcements, exam schedules, and municipal advisories are frequently dense, legalistic, multi-column, or distributed as low-resolution scanned notices.
 
 The system is designed with four foundational principles:
 1. **Air-Gapped Local Privacy First:** Zero sensitive data leaves the host machine by default. Local Ollama (`gemma4:latest`) and local Tesseract OCR v5.4.0 provide 100% on-device operation.

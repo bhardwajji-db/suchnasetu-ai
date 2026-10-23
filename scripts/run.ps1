@@ -1,4 +1,4 @@
-# Launch Script for SochnaSetu AI (PS02)
+# Launch Script for SuchnaSetu AI (PS02)
 # Windows PowerShell compatible
 # Launches the FastAPI Backend and React 19 Frontend
 
@@ -15,7 +15,7 @@ if (-not (Test-Path $PythonExe)) {
 }
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " Launching SochnaSetu AI Full-Stack Application (PS02)" -ForegroundColor Cyan
+Write-Host " Launching SuchnaSetu AI Full-Stack Application (PS02)" -ForegroundColor Cyan
 Write-Host " React Frontend:  http://127.0.0.1:5173" -ForegroundColor Green
 Write-Host " FastAPI Backend: http://127.0.0.1:8000" -ForegroundColor Green
 Write-Host " API Docs:        http://127.0.0.1:8000/docs" -ForegroundColor Green

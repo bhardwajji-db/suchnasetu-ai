@@ -1,5 +1,5 @@
 """
-OpenRouter Cloud LLM Adapter for Notice2Action AI.
+OpenRouter Cloud LLM Adapter for SuchnaSetu AI.
 Provides unified access to open and proprietary models via OpenRouter's OpenAI-compatible API.
 """
 
@@ -109,8 +109,8 @@ class OpenRouterClient(BaseLLMClient):
 
         headers = {
             "Authorization": f"Bearer {self._api_key.strip()}",
-            "HTTP-Referer": "https://github.com/notice2action/notice2action",
-            "X-Title": "Notice2Action AI",
+            "HTTP-Referer": "https://github.com/bhardwajji-db/suchnasetu-ai",
+            "X-Title": "SuchnaSetu AI",
             "Content-Type": "application/json",
         }
 

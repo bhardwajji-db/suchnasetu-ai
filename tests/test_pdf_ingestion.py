@@ -1,5 +1,5 @@
 """
-Comprehensive Test Suite for Secure PDF Ingestion in Notice2Action AI (PS02).
+Comprehensive Test Suite for Secure PDF Ingestion in SuchnaSetu AI (PS02).
 Tests born-digital PDF extraction, scanned PDF OCR fallback, security validations,
 file corruption bounds, page limits, encryption rejection, and FastAPI endpoint contracts.
 """

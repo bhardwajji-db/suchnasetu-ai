@@ -1,6 +1,6 @@
-# Contributing to SochnaSetu AI 🤝
+# Contributing to SuchnaSetu AI 🤝
 
-Thank you for your interest in contributing to **SochnaSetu AI** (Notice-to-Action Accessibility Assistant — PS02)!
+Thank you for your interest in contributing to **SuchnaSetu AI** (Notice-to-Action Accessibility Assistant — PS02)!
 
 This guide outlines our development workflow, coding standards, testing requirements, and submission processes.
 
@@ -25,8 +25,8 @@ This guide outlines our development workflow, coding standards, testing requirem
 ### 2. Initial Setup
 ```powershell
 # Clone the repository
-git clone https://github.com/<your-username>/sochnasetu-ai.git
-cd sochnasetu-ai
+git clone https://github.com/bhardwajji-db/suchnasetu-ai.git
+cd suchnasetu-ai
 
 # Run automated setup
 .\scripts\setup.ps1
@@ -79,4 +79,4 @@ npm run build
 
 ## 📄 License
 
-By contributing to SochnaSetu AI, you agree that your contributions will be licensed under the project's [LICENSE](LICENSE) (Apache License 2.0).
+By contributing to SuchnaSetu AI, you agree that your contributions will be licensed under the project's [LICENSE](LICENSE) (Apache License 2.0).

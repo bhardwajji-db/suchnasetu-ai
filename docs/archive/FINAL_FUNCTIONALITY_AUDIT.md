@@ -2,7 +2,7 @@
 ## Notice2Action AI — PS02: Notice-to-Action Accessibility Assistant
 
 **Date:** 2026-10-20  
-**Project Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Project Directory:** `.`  
 **Application URL:** `http://localhost:8501/`  
 **Execution Environment:** Windows, Python 3.11.15 (.venv), Streamlit, Local Ollama (`gemma4:latest`), Local Tesseract OCR.  
 **Audit Purpose:** Thorough investigation, functional repair, and empirical verification of all UI controls, navigation elements, inference pipelines, and export features.
@@ -67,7 +67,7 @@
 ============================= test session starts =============================
 platform win32 -- Python 3.11.15, pytest-9.1.1, pluggy-1.7.0 -- .venv\Scripts\python.exe
 cachedir: .pytest_cache
-rootdir: C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2
+rootdir: .
 configfile: pyproject.toml
 plugins: anyio-4.15.1, cov-7.1.0
 collecting ... collected 55 items

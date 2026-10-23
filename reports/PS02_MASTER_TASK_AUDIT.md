@@ -9,7 +9,7 @@
 - **Problem Statement:** PS02 — Notice-to-Action Accessibility Assistant
 - **Event:** Hacktoberfest 2026 HackDay@Meerut × E-Cell IIMT University
 - **Track:** Track 1 — Best Use of Gemma 4
-- **Project Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`
+- **Project Directory:** `.`
 - **Audit Date:** 20 October 2026
 - **Auditor:** Antigravity Autonomous Pair-Programming Agent
 - **Final Verdict:** **READY FOR DEMO** (All 13 requirement areas verified; 34/34 tests passing; 100% ground-truth accuracy; 0 unsupported claims)

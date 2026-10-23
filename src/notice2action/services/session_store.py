@@ -1,5 +1,5 @@
 """
-Session Store for Notice2Action AI.
+Session Store for SuchnaSetu AI.
 Provides lightweight, thread-safe, local session isolation for notice analyses and Q&A history.
 Stores session state in-memory with optional local JSON persistence.
 """

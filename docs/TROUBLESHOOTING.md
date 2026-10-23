@@ -1,4 +1,4 @@
-# Notice2Action AI — Troubleshooting & Operations Guide
+# SuchnaSetu AI — Troubleshooting & Operations Guide
 
 This guide covers common setup, runtime, and environment issues on Windows.
 

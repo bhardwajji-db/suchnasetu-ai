@@ -3,7 +3,7 @@
 
 **Evaluation Timestamp:** October 20, 2026  
 **Auditor / Team:** Senior QA Automation Engineer, Frontend Layout Engineer & AI Evaluation Specialist  
-**Repository Location:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Repository Location:** `.`  
 **Application Endpoint:** `http://localhost:8501/`  
 **Execution Environment:** Windows, Python 3.11 (`.venv`), Streamlit 1.66.0, local Ollama (`gemma4:latest`), local Tesseract OCR v5.4.0, Google Chrome 145.0 (Headless).  
 

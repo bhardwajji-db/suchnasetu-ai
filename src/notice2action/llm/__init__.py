@@ -1,5 +1,5 @@
 """
-Notice2Action AI — Multi-Provider LLM Package
+SuchnaSetu AI — Multi-Provider LLM Package
 Unified interfaces, local Ollama client, and cloud adapters for OpenRouter, Gemini, and Hugging Face.
 """
 

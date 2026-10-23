@@ -1,5 +1,5 @@
 """
-LLM Provider Factory and Discovery for Notice2Action AI.
+LLM Provider Factory and Discovery for SuchnaSetu AI.
 Instantiates the active client based on configuration, with fallback and status tracking.
 """
 

@@ -1,5 +1,5 @@
 """
-Google Gemini Cloud LLM Adapter for Notice2Action AI.
+Google Gemini Cloud LLM Adapter for SuchnaSetu AI.
 Provides direct integration with Google Generative AI REST API (Gemini 1.5/2.0).
 """
 
