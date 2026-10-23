@@ -9,6 +9,11 @@ import type {
   SampleFixture,
   OCRResponse,
   LLMProviderStatus,
+  ApplicantProfile,
+  EligibilityAssessment,
+  PersonalizedActionPlan,
+  TrustEvidence,
+  AccessibilityPreferences,
 } from '../types/api';
 import { apiClient } from '../services/apiClient';
 
@@ -21,6 +26,20 @@ export interface HistoryRecord {
   timestamp: string;
   charCount: number;
   rawText: string;
+}
+
+export interface EvidenceDrawerState {
+  isOpen: boolean;
+  evidence: TrustEvidence | null;
+  rawNoticeOverride?: string;
+  suggestedMatch?: string | null;
+}
+
+export interface SpeechGuidanceState {
+  isSpeaking: boolean;
+  isPaused: boolean;
+  currentText: string;
+  rate: number;
 }
 
 interface NoticeContextType {
@@ -38,8 +57,20 @@ interface NoticeContextType {
   summaryHi: PlainLanguageSummary | null;
   checklistEn: ActionChecklist | null;
   checklistHi: ActionChecklist | null;
-  selectedLang: 'en' | 'hi';
-  setSelectedLang: (lang: 'en' | 'hi') => void;
+  localizedSummary: PlainLanguageSummary | null;
+  localizedChecklist: ActionChecklist | null;
+  selectedLang: string;
+  setSelectedLang: (lang: string) => void;
+  outputLang: string;
+  setOutputLang: (lang: string) => void;
+  sourceLang: string;
+  setSourceLang: (lang: string) => void;
+  detectedLangMeta: { detected_language: string; confidence: number; is_mixed: boolean } | null;
+  setDetectedLangMeta: (meta: { detected_language: string; confidence: number; is_mixed: boolean } | null) => void;
+  documentId: string | null;
+  setDocumentId: (id: string | null) => void;
+  loadDemoItem: (demoId: string) => Promise<void>;
+  detectDocumentLanguage: () => Promise<void>;
   readingLevel: 'simple' | 'standard' | 'detailed';
   setReadingLevel: (level: 'simple' | 'standard' | 'detailed') => void;
   changeReadingLevel: (level: 'simple' | 'standard' | 'detailed') => Promise<void>;
@@ -67,6 +98,42 @@ interface NoticeContextType {
   history: HistoryRecord[];
   loadFromHistory: (item: HistoryRecord) => void;
   clearHistory: () => void;
+  clearAllData: () => void;
+
+  // Feature C: Saved Notices & Task Search
+  savedNoticeIds: string[];
+  toggleSaveNotice: (id: string) => void;
+  isNoticeSaved: (id: string) => boolean;
+
+  // Feature D: Accessibility Mode Preferences
+  accessibilityPrefs: AccessibilityPreferences;
+  updateAccessibilityPrefs: (prefs: Partial<AccessibilityPreferences>) => void;
+  resetAccessibilityPrefs: () => void;
+
+  // New Feature 1 & 3: Applicant Profile & Eligibility & Actions
+  applicantProfile: ApplicantProfile;
+  setApplicantProfile: React.Dispatch<React.SetStateAction<ApplicantProfile>>;
+  savedEligibility: EligibilityAssessment | null;
+  setSavedEligibility: (elig: EligibilityAssessment | null) => void;
+  actionPlan: PersonalizedActionPlan | null;
+  setActionPlan: (plan: PersonalizedActionPlan | null) => void;
+
+  // New Feature 2: Universal Evidence Trust Inspector
+  evidenceDrawer: EvidenceDrawerState;
+  openEvidenceInspector: (
+    evidenceOrQuote: TrustEvidence | { excerpt: string; claim?: string; docTitle?: string },
+    rawNoticeOverride?: string
+  ) => Promise<void>;
+  closeEvidenceInspector: () => void;
+
+  // New Feature 5: Accessibility-First Voice Guidance
+  speechState: SpeechGuidanceState;
+  speakText: (text: string, lang?: string) => void;
+  pauseSpeech: () => void;
+  resumeSpeech: () => void;
+  stopSpeech: () => void;
+  isVoiceInputSupported: boolean;
+
   // Actions
   loadSampleFixture: (filename: string) => Promise<void>;
   clearBuffer: () => void;
@@ -81,6 +148,25 @@ interface NoticeContextType {
 
 const NoticeContext = createContext<NoticeContextType | undefined>(undefined);
 
+const restoreCompletedSteps = (checklist: ActionChecklist | null, fp: string | null): ActionChecklist | null => {
+  if (!checklist || !fp) return checklist;
+  try {
+    const saved = localStorage.getItem('suchnasetu_checklist_completed_' + fp);
+    if (!saved) return checklist;
+    const completedSteps: number[] = JSON.parse(saved);
+    if (!Array.isArray(completedSteps)) return checklist;
+    return {
+      ...checklist,
+      items: checklist.items.map((it) => ({
+        ...it,
+        is_completed: completedSteps.includes(it.step_number) || it.is_completed,
+      })),
+    };
+  } catch {
+    return checklist;
+  }
+};
+
 export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [rawNoticeText, setRawNoticeText] = useState<string>('');
@@ -94,8 +180,34 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [summaryHi, setSummaryHi] = useState<PlainLanguageSummary | null>(null);
   const [checklistEn, setChecklistEn] = useState<ActionChecklist | null>(null);
   const [checklistHi, setChecklistHi] = useState<ActionChecklist | null>(null);
+  const [localizedSummary, setLocalizedSummary] = useState<PlainLanguageSummary | null>(null);
+  const [localizedChecklist, setLocalizedChecklist] = useState<ActionChecklist | null>(null);
 
-  const [selectedLang, setSelectedLang] = useState<'en' | 'hi'>('en');
+  const [selectedLang, setSelectedLangState] = useState<string>(() => {
+    try {
+      return localStorage.getItem('suchnasetu_user_language') || 'en';
+    } catch {
+      return 'en';
+    }
+  });
+
+  const setSelectedLang = useCallback((lang: string) => {
+    setSelectedLangState(lang);
+    try {
+      localStorage.setItem('suchnasetu_user_language', lang);
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
+    } catch {}
+  }, []);
+
+  const [outputLang, setOutputLang] = useState<string>('en');
+  const [sourceLang, setSourceLang] = useState<string>('auto');
+  const [detectedLangMeta, setDetectedLangMeta] = useState<{
+    detected_language: string;
+    confidence: number;
+    is_mixed: boolean;
+  } | null>(null);
+  const [documentId, setDocumentId] = useState<string | null>(null);
   const [readingLevel, setReadingLevel] = useState<'simple' | 'standard' | 'detailed'>('standard');
   const [isOriginalNoticeOpen, setIsOriginalNoticeOpen] = useState<boolean>(false);
   const [confirmingFact, setConfirmingFact] = useState<{ fieldName: string; displayName: string; fact: any } | null>(null);
@@ -122,9 +234,204 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
+  // Feature C: Saved Notices
+  const [savedNoticeIds, setSavedNoticeIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('suchnasetu_saved_notice_ids');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const toggleSaveNotice = useCallback((id: string) => {
+    setSavedNoticeIds((prev) => {
+      const updated = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      try {
+        localStorage.setItem('suchnasetu_saved_notice_ids', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save to localStorage', e);
+      }
+      return updated;
+    });
+  }, []);
+
+  const isNoticeSaved = useCallback(
+    (id: string) => savedNoticeIds.includes(id),
+    [savedNoticeIds]
+  );
+
+  // Feature D: Accessibility Mode Preferences
+  const DEFAULT_ACCESSIBILITY_PREFS: AccessibilityPreferences = {
+    textSize: 'normal',
+    lineSpacing: 'normal',
+    highContrast: false,
+    warmBackground: false,
+    highlightKeyInfo: false,
+    reducedMotion: false,
+  };
+
+  const [accessibilityPrefs, setAccessibilityPrefs] = useState<AccessibilityPreferences>(() => {
+    try {
+      const saved = localStorage.getItem('suchnasetu_accessibility_prefs');
+      return saved ? JSON.parse(saved) : DEFAULT_ACCESSIBILITY_PREFS;
+    } catch {
+      return DEFAULT_ACCESSIBILITY_PREFS;
+    }
+  });
+
+  const updateAccessibilityPrefs = useCallback((prefs: Partial<AccessibilityPreferences>) => {
+    setAccessibilityPrefs((prev) => {
+      const updated = { ...prev, ...prefs };
+      try {
+        localStorage.setItem('suchnasetu_accessibility_prefs', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save accessibility prefs', e);
+      }
+      return updated;
+    });
+  }, []);
+
+  const resetAccessibilityPrefs = useCallback(() => {
+    setAccessibilityPrefs(DEFAULT_ACCESSIBILITY_PREFS);
+    try {
+      localStorage.setItem('suchnasetu_accessibility_prefs', JSON.stringify(DEFAULT_ACCESSIBILITY_PREFS));
+    } catch (e) {
+      console.error('Failed to reset accessibility prefs', e);
+    }
+  }, []);
+
+  // Feature 1 & 3: Applicant Profile, Eligibility, Action Plan
+  const [applicantProfile, setApplicantProfile] = useState<ApplicantProfile>({
+    category: 'General',
+    marks_percentage: undefined,
+    degree: '',
+    date_of_birth: '',
+  });
+  const [savedEligibility, setSavedEligibility] = useState<EligibilityAssessment | null>(null);
+  const [actionPlan, setActionPlan] = useState<PersonalizedActionPlan | null>(null);
+
+  // Feature 2: Universal Evidence Trust Drawer
+  const [evidenceDrawer, setEvidenceDrawer] = useState<EvidenceDrawerState>({
+    isOpen: false,
+    evidence: null,
+  });
+
+  const openEvidenceInspector = useCallback(
+    async (
+      evidenceOrQuote: TrustEvidence | { excerpt: string; claim?: string; docTitle?: string },
+      rawNoticeOverride?: string
+    ) => {
+      if ('evidence_id' in evidenceOrQuote) {
+        setEvidenceDrawer({
+          isOpen: true,
+          evidence: evidenceOrQuote,
+          rawNoticeOverride,
+        });
+        return;
+      }
+
+      // Verify on the fly
+      const source = rawNoticeOverride || rawNoticeText;
+      try {
+        const res = await apiClient.verifyEvidence(
+          source,
+          evidenceOrQuote.excerpt,
+          evidenceOrQuote.claim,
+          evidenceOrQuote.docTitle
+        );
+        setEvidenceDrawer({
+          isOpen: true,
+          evidence: res.evidence,
+          rawNoticeOverride,
+          suggestedMatch: res.suggested_match,
+        });
+      } catch {
+        setEvidenceDrawer({
+          isOpen: true,
+          evidence: {
+            evidence_id: 'err',
+            claim_text: evidenceOrQuote.claim || '',
+            verbatim_excerpt: evidenceOrQuote.excerpt,
+            verification_status: 'UNVERIFIED',
+            confidence_rationale: 'Could not communicate with verification service.',
+            is_inert_safe: true,
+          },
+          rawNoticeOverride,
+        });
+      }
+    },
+    [rawNoticeText]
+  );
+
+  const closeEvidenceInspector = useCallback(() => {
+    setEvidenceDrawer((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
+  // Feature 5: Voice Guidance
+  const [speechState, setSpeechState] = useState<SpeechGuidanceState>({
+    isSpeaking: false,
+    isPaused: false,
+    currentText: '',
+    rate: 1.0,
+  });
+
+  const speakText = useCallback((text: string, lang: string = 'en') => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+    window.speechSynthesis.cancel();
+    if (!text || !text.trim()) {
+      setSpeechState((prev) => ({ ...prev, isSpeaking: false, isPaused: false, currentText: '' }));
+      return;
+    }
+
+    const clean = text.replace(/[*#_`]/g, '').trim();
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-IN';
+    utterance.rate = 0.95;
+
+    utterance.onstart = () => {
+      setSpeechState({ isSpeaking: true, isPaused: false, currentText: clean, rate: 0.95 });
+    };
+
+    utterance.onend = () => {
+      setSpeechState((prev) => ({ ...prev, isSpeaking: false, isPaused: false, currentText: '' }));
+    };
+
+    utterance.onerror = () => {
+      setSpeechState((prev) => ({ ...prev, isSpeaking: false, isPaused: false, currentText: '' }));
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const pauseSpeech = useCallback(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.pause();
+      setSpeechState((prev) => ({ ...prev, isPaused: true }));
+    }
+  }, []);
+
+  const resumeSpeech = useCallback(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.resume();
+      setSpeechState((prev) => ({ ...prev, isPaused: false }));
+    }
+  }, []);
+
+  const stopSpeech = useCallback(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setSpeechState({ isSpeaking: false, isPaused: false, currentText: '', rate: 1.0 });
+    }
+  }, []);
+
+  const isVoiceInputSupported = typeof window !== 'undefined' &&
+    Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
   const loadFromHistory = useCallback((item: HistoryRecord) => {
     setRawNoticeText(item.rawText);
-    setActiveTab(2); // Jump to Notice Analysis view
+    setActiveTab(2); // Jump to Grounded Facts view
   }, []);
 
   const clearHistory = useCallback(() => {
@@ -195,8 +502,22 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [refreshHealth]);
 
   useEffect(() => {
-    refreshHealth();
-    apiClient.getSamples().then(setSamples).catch(console.error);
+    let isMounted = true;
+    const initialize = async () => {
+      try {
+        await refreshHealth();
+        const sampleList = await apiClient.getSamples();
+        if (isMounted) {
+          setSamples(sampleList);
+        }
+      } catch (err) {
+        console.error('Initialization error:', err);
+      }
+    };
+    initialize();
+    return () => {
+      isMounted = false;
+    };
   }, [refreshHealth]);
 
   const clearBuffer = () => {
@@ -210,6 +531,16 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setSummaryHi(null);
     setChecklistEn(null);
     setChecklistHi(null);
+    setLocalizedSummary(null);
+    setLocalizedChecklist(null);
+    setDocumentId(null);
+    setDetectedLangMeta(null);
+    setSourceLang('auto');
+    if (analyzedFingerprint) {
+      try {
+        localStorage.removeItem(`suchnasetu_checklist_completed_${analyzedFingerprint}`);
+      } catch {}
+    }
     setAnalyzedFingerprint(null);
     setAnalysisDuration(null);
     setAnalysisError(null);
@@ -225,6 +556,16 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setSelectedLang('en');
     setActiveTab(0);
   };
+
+  const clearAllData = useCallback(() => {
+    clearBuffer();
+    setHistory([]);
+    try {
+      localStorage.removeItem('notice2action_history');
+    } catch {}
+    setSelectedLang('en');
+    setActiveTab(0);
+  }, []);
 
   const loadSampleFixture = async (filename: string) => {
     try {
@@ -275,9 +616,10 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, 1200);
 
     try {
+      const targetLang = outputLang || selectedLang || 'en';
       const res = await apiClient.analyzeNotice(
         rawNoticeText,
-        selectedLang,
+        targetLang,
         readingLevel,
         sessionId,
         activeProvider
@@ -289,10 +631,30 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (res.six_core_fields) {
         setSixCoreFields(res.six_core_fields);
       }
+      const fp = res.fingerprint || currentFingerprint;
       setSummaryEn(res.summary_en);
       setSummaryHi(res.summary_hi);
-      setChecklistEn(res.checklist_en);
-      setChecklistHi(res.checklist_hi);
+      setChecklistEn(restoreCompletedSteps(res.checklist_en, fp));
+      setChecklistHi(restoreCompletedSteps(res.checklist_hi, fp));
+      if (res.localized_summary) {
+        setLocalizedSummary(res.localized_summary);
+      }
+      if (res.localized_checklist) {
+        setLocalizedChecklist(restoreCompletedSteps(res.localized_checklist, fp));
+      }
+      if (res.document_id) {
+        setDocumentId(res.document_id);
+      }
+      if (res.detected_language) {
+        setDetectedLangMeta({
+          detected_language: res.detected_language,
+          confidence: res.language_confidence ?? 1.0,
+          is_mixed: res.is_mixed_language ?? false,
+        });
+        if (sourceLang === 'auto') {
+          setSourceLang(res.detected_language);
+        }
+      }
       setAnalyzedFingerprint(res.fingerprint);
       setAnalysisDuration(res.duration_seconds);
       setAnalysisPhase(5);
@@ -355,8 +717,8 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       setSummaryEn(res.summary_en);
       setSummaryHi(res.summary_hi);
-      setChecklistEn(res.checklist_en);
-      setChecklistHi(res.checklist_hi);
+      setChecklistEn(restoreCompletedSteps(res.checklist_en, analyzedFingerprint));
+      setChecklistHi(restoreCompletedSteps(res.checklist_hi, analyzedFingerprint));
     } catch {
       // Local fallback
       const updated = { ...structuredNotice };
@@ -386,28 +748,90 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!structuredNotice) return;
     const fact = (structuredNotice as any)[fieldName];
     if (fact) {
-      openConfirmationModal(fieldName, fieldName.replace('_', ' ').toUpperCase(), fact);
+      openConfirmationModal(fieldName, fieldName.replaceAll('_', ' ').toUpperCase(), fact);
     }
   };
 
   const toggleChecklistItem = (stepNumber: number) => {
+    const fp = analyzedFingerprint || currentFingerprint || 'active';
+    let newCompletedSteps: number[] = [];
     const updateChecklist = (cl: ActionChecklist | null) => {
       if (!cl) return null;
+      const updated = cl.items.map((it) =>
+        it.step_number === stepNumber ? { ...it, is_completed: !it.is_completed } : it
+      );
+      newCompletedSteps = updated.filter((it) => it.is_completed).map((it) => it.step_number);
       return {
         ...cl,
-        items: cl.items.map((it) =>
-          it.step_number === stepNumber ? { ...it, is_completed: !it.is_completed } : it
-        ),
+        items: updated,
       };
     };
     setChecklistEn(updateChecklist(checklistEn));
     setChecklistHi(updateChecklist(checklistHi));
+    try {
+      localStorage.setItem(`suchnasetu_checklist_completed_${fp}`, JSON.stringify(newCompletedSteps));
+      const stepItem = checklistEn?.items.find((it) => it.step_number === stepNumber);
+      if (stepItem) {
+        const itemId = `${fp}_step_${stepNumber}`;
+        apiClient.toggleChecklistItemPersistent(itemId, !stepItem.is_completed).catch(() => {});
+      }
+    } catch (e) {
+      console.error('Failed to save checklist state to localStorage', e);
+    }
   };
+
+  const detectDocumentLanguage = useCallback(async () => {
+    if (!rawNoticeText.trim()) return;
+    try {
+      const det = await apiClient.detectLanguage(rawNoticeText);
+      setDetectedLangMeta({
+        detected_language: det.detected_language,
+        confidence: det.confidence,
+        is_mixed: det.is_mixed,
+      });
+      if (sourceLang === 'auto') {
+        setSourceLang(det.detected_language);
+      }
+    } catch (e) {
+      console.error('Failed to detect language', e);
+    }
+  }, [rawNoticeText, sourceLang]);
+
+  const loadDemoItem = useCallback(async (demoId: string) => {
+    try {
+      const demo = await apiClient.loadDemoLibraryItem(demoId);
+      setRawNoticeText(demo.text);
+      setSourceLang(demo.language);
+      setDetectedLangMeta({
+        detected_language: demo.language,
+        confidence: 0.99,
+        is_mixed: false,
+      });
+      setUploadedImageState(null);
+      setUploadedFile(null);
+      setStructuredNotice(null);
+      setSixCoreFields(null);
+      setSummaryEn(null);
+      setSummaryHi(null);
+      setChecklistEn(null);
+      setChecklistHi(null);
+      setLocalizedSummary(null);
+      setLocalizedChecklist(null);
+      setAnalyzedFingerprint(null);
+      setAnalysisDuration(null);
+      setAnalysisError(null);
+      setFollowUpHistory([]);
+      setActiveTab(1); // Jump to Notice Ingestion tab
+    } catch (err: any) {
+      setAnalysisError(`Failed to load demo notice: ${err.message}`);
+    }
+  }, []);
 
   const askQuestion = async (question: string) => {
     if (!question.trim() || !rawNoticeText.trim()) return;
     try {
-      const answer = await apiClient.askFollowUp(question, rawNoticeText, sessionId, selectedLang);
+      const langForQuery = outputLang || selectedLang || 'en';
+      const answer = await apiClient.askFollowUp(question, rawNoticeText, sessionId, langForQuery);
       setFollowUpHistory((prev) => [answer, ...prev]);
     } catch (err: any) {
       setFollowUpHistory((prev) => [
@@ -442,8 +866,20 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         summaryHi,
         checklistEn,
         checklistHi,
+        localizedSummary,
+        localizedChecklist,
         selectedLang,
         setSelectedLang,
+        outputLang,
+        setOutputLang,
+        sourceLang,
+        setSourceLang,
+        detectedLangMeta,
+        setDetectedLangMeta,
+        documentId,
+        setDocumentId,
+        loadDemoItem,
+        detectDocumentLanguage,
         readingLevel,
         setReadingLevel,
         changeReadingLevel,
@@ -471,6 +907,28 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         history,
         loadFromHistory,
         clearHistory,
+        clearAllData,
+        savedNoticeIds,
+        toggleSaveNotice,
+        isNoticeSaved,
+        accessibilityPrefs,
+        updateAccessibilityPrefs,
+        resetAccessibilityPrefs,
+        applicantProfile,
+        setApplicantProfile,
+        savedEligibility,
+        setSavedEligibility,
+        actionPlan,
+        setActionPlan,
+        evidenceDrawer,
+        openEvidenceInspector,
+        closeEvidenceInspector,
+        speechState,
+        speakText,
+        pauseSpeech,
+        resumeSpeech,
+        stopSpeech,
+        isVoiceInputSupported,
         loadSampleFixture,
         clearBuffer,
         resetSession,
@@ -487,6 +945,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 };
 
+// oxlint-disable-next-line react/only-export-components
 export const useNotice = () => {
   const context = useContext(NoticeContext);
   if (!context) {

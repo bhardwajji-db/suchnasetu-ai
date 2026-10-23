@@ -1,94 +1,115 @@
-# SuchnaSetu AI — Architecture & Design Document
+# SuchnaSetu AI — System Architecture & Design Specification
 
-**Problem Statement:** PS02 — Notice-to-Action Accessibility Assistant  
-**Event:** Hacktoberfest 2026 HackDay@Meerut × E-Cell IIMT University  
-**Track:** Best Use of Gemma 4  
-**Project Location:** `.`  
-
----
-
-## 1. Executive Architecture Overview
-
-SuchnaSetu AI transforms dense, complex, or image-based campus circulars, scholarship notifications, and government announcements into **evidence-grounded, plain-language action checklists**.
-
-The architecture is built on six foundational engineering pillars:
-1. **Local-First & Zero-Cost:** Powered entirely by a local instance of Google's **Gemma 4** (`gemma4:latest`) via Ollama and local **Tesseract OCR v5.4.0**, eliminating cloud costs, API key requirements, and network dependencies.
-2. **Strict Evidence Grounding:** Anti-hallucination engine verifies that every single extracted fact (date, fee, eligibility rule, document) is backed by a verbatim quotation and line location from the source text.
-3. **Transparent Uncertainty Gates:** If a detail is provisional ("tentative", "subject to change", "TBD"), conflicting, or missing, it requires explicit user verification before becoming an actionable checklist task.
-4. **Accessible Multilingual Support:** First-class English and Hindi outputs with entity preservation auditing (dates and amounts remain strictly intact) plus dual-mode TTS (server-side MP3 and client-side Web Speech API).
-5. **Session Isolation & Privacy:** Untrusted notices are treated as passive data within strict isolation boundaries; no data leaves the local machine.
-6. **Single-Command Windows Experience:** Tailored for Windows PowerShell with automated preflight diagnostics and zero-friction setup.
+**Project:** SuchnaSetu AI (PS02 — Notice-to-Action Accessibility Assistant)
+**Date:** October 20, 2026
+**Auditor / Engineer:** Senior Full-Stack Engineer, AI Architect & QA Automation Specialist
+**Repository Directory:** `.`
+**Classification:** PUBLIC / COMPETITION-READY
 
 ---
 
-## 2. End-to-End Pipeline Architecture
+## 1. System Overview & Philosophy
 
-```mermaid
-flowchart TD
-    A["Notice Input (Photo / Scan / Pasted Text)"] --> B["Security Validation & Ingestion (Max 10MB, Format Check)"]
-    B --> C{"Input Type"}
-    
-    C -->|"Image"| D["Image Preprocessing (Grayscale, Autocontrast, Sharpening)"]
-    D --> E["Tesseract OCR Engine (psm 3, eng/hin)"]
-    E --> F["Editable Extracted Text Preview"]
-    
-    C -->|"Text"| F
-    
-    F --> G["Prompt Delimiter & Injection Defense Wrapper"]
-    G --> H["Local Gemma 4 (Ollama 127.0.0.1:11434)"]
-    
-    H --> I["Structured JSON Parsing & Thinking Token Stripper"]
-    I --> J["Evidence Grounding Engine (Verbatim Substring & Entity Audit)"]
-    
-    J --> K["Certainty Calibrator (stated, not_stated, uncertain, conflicting)"]
-    
-    K --> L["Plain-Language Summary (7 Core Questions)"]
-    K --> M["Action Checklist Generator (Confirmation Gates)"]
-    K --> N["Bilingual Engine (English / Hindi with Entity Audit)"]
-    K --> O["Notice-Grounded Follow-Up Assistant (Strict Truthfulness)"]
-    
-    L --> P["Streamlit Accessible UI & Read-Aloud Audio (TTS)"]
-    M --> P
-    N --> P
-    O --> P
+SuchnaSetu AI addresses the accessibility gap in formal administrative communications. Bureaucratic circulars, scholarship announcements, exam schedules, and municipal advisories are frequently dense, legalistic, multi-column, or distributed as low-resolution scanned notices.
+
+The system is designed with four foundational principles:
+1. **Air-Gapped Local Privacy First:** Zero sensitive data leaves the host machine by default. Local Ollama (`gemma4:latest`) and local Tesseract OCR v5.4.0 provide 100% on-device operation.
+2. **Modular Multi-Provider Extensibility:** A clean, unified LLM adapter interface supports optional cloud providers (OpenRouter, Google Gemini, Hugging Face) via user-configured environment variables, with strict credential protection and zero hardcoded secrets.
+3. **Deterministic Evidence Grounding:** All extracted facts cite verbatim quotations with line numbers. The Six Core Notice Fields are strictly verified, and missing information is explicitly tagged rather than hallucinated.
+4. **Isolated Session Management & Evidence Indexing:** Dedicated `EvidenceService` segments text into line-numbered units, and thread-safe `SessionStore` isolates conversation and analysis state without cross-session leakage.
+
+---
+
+## 2. System Architecture & Component Map
+
+```
++-----------------------------------------------------------------------------------------+
+|                                      HOST MACHINE                                       |
+|                                                                                         |
+|  +------------------------------------------------------------------------------------+ |
+|  |                 React 19 + TypeScript + Vite Frontend                              | |
+|  |                 (Port 5173 - Modern Accessible Dashboard)                          | |
+|  +------------------------------------------+-----------------------------------------+ |
+|                                             |                                           |
+|                                             | REST / JSON                               |
+|                                             v                                           |
+|  +------------------------------------------------------------------------------------+ |
+|  |                         FastAPI ASGI REST Backend Layer                            | |
+|  |                         (Port 8000 - server.py)                                    | |
+|  |                                                                                    | |
+|  |  [ Evidence Service ]    [ Session Store ]    [ OCR Engine Manager (Tess/Rapid) ]  | |
+|  |  Stores & indexes        Isolates session     Adaptive preprocessing,              | |
+|  |  line-level quotes       state on disk/RAM    word-level confidence                | |
+|  +------------------------------------+-----------------------------------------------+ |
+|                                       |                                                 |
+|                                       v                                                 |
+|  +------------------------------------------------------------------------------------+ |
+|  |                     Modular Multi-Provider LLM Integration Layer                   | |
+|  |                                                                                    | |
+|  |  +----------------------+  +---------------------+  +----------------------------+ | |
+|  |  | Ollama (Local)       |  | OpenRouter (Cloud)  |  | Google Gemini (Cloud)      | | |
+|  |  | gemma4:latest        |  | OpenAI compatible   |  | REST API v1beta            | | |
+|  |  +----------------------+  +---------------------+  +----------------------------+ | |
+|  |  +-----------------------------------------------+                               | |
+|  |  | Hugging Face Inference Router (Cloud)        |                               | |
+|  |  +-----------------------------------------------+                               | |
+|  +------------------------------------------------------------------------------------+ |
++-----------------------------------------------------------------------------------------+
 ```
 
----
+### Component Network Map
 
-## 3. Core Component Breakdown
-
-| Module | File Location | Responsibility |
-|---|---|---|
-| **Config & Diagnostics** | `src/notice2action/config.py` | Detects Windows paths for Tesseract, Ollama server status, installed models, and runs preflight checks. |
-| **Strict Data Schemas** | `src/notice2action/schemas.py` | Pydantic v2 data models defining `ExtractedFact`, `CertaintyStatus`, `StructuredNotice`, `PlainLanguageSummary`, `ChecklistItem`, and `FollowUpAnswer`. |
-| **Security & Ingestion** | `src/notice2action/security.py`, `ingestion.py` | Validates file types, sanitizes raw text, protects against decompression bombs, and wraps untrusted input in injection-proof delimiters. |
-| **OCR Pipeline** | `src/notice2action/ocr.py` | Image enhancement (upscaling low-res notices, autocontrast stretch), Tesseract layout preservation, confidence score computation. |
-| **Ollama Model Adapter** | `src/notice2action/llm/ollama_client.py` | Manages local inference with `gemma4:latest`, JSON-mode enforcement, `<thinking>` tag stripping, and timeout resilience. |
-| **Evidence Grounding** | `src/notice2action/grounding.py` | Validates every evidence quotation against the raw source text. Detects altered numbers/dates, tentative markers, and missing fields. |
-| **Notice Analysis** | `src/notice2action/analysis.py` | Orchestrates Gemma 4 structured extraction and passes model output through the deterministic grounding engine. |
-| **Plain-Language Summary** | `src/notice2action/summary.py` | Synthesizes simple, readable answers to the 7 core user questions. |
-| **Action Checklist** | `src/notice2action/checklist.py` | Converts verified facts into an ordered, categorized, interactive checklist with confirmation gating. |
-| **Translation Engine** | `src/notice2action/translation.py` | Translates summaries and checklists into Hindi while guaranteeing zero alteration of dates, amounts, and contact details. |
-| **Follow-Up Q&A** | `src/notice2action/followup.py` | Answers clarification questions strictly from notice text. If absent, truthfully states the information is missing. |
-| **Audio Accessibility** | `src/notice2action/tts.py` | Dual-mode TTS: MP3 audio generation via `gTTS` and client-side browser Web Speech API for offline access. |
-| **User Interface** | `app.py`, `src/notice2action/ui/components.py` | Streamlit interactive web application with high-contrast accessibility styling, fact cards, and live diagnostics. |
+| Component | Technology | Network Address | Primary Role |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS v4 | `http://127.0.0.1:5173/` | Modern accessible dashboard with language & provider selectors |
+| **Backend** | FastAPI, Uvicorn, Pydantic v2 | `http://127.0.0.1:8000/` | REST API, validation, session storage, evidence indexing |
+| **Evidence Service** | Python 3.11, Pydantic | In-Memory / Indexed | Line-level text segmenting, verbatim quote verification |
+| **Session Store** | Python 3.11, Thread-safe JSON | Local Disk / Memory | Session isolation, conversation history, user confirmations |
+| **Local LLM** | Ollama Daemon (`gemma4:latest`) | `http://127.0.0.1:11434/` | 100% on-device generative reasoning (default) |
+| **Cloud LLMs** | OpenRouter, Gemini, Hugging Face | Secure Outbound HTTPS | Optional cloud inference when credentials are provided |
+| **Vision / OCR** | Tesseract OCR v5.4.0 (Default) / RapidOCR | System Executable / ONNX | Local optical character recognition & layout preservation |
 
 ---
 
-## 4. OCR-First vs. Vision-First Architectural Decision
+## 3. Data Model: Six Core Notice Fields
 
-During Phase 1, we verified that the local Ollama `gemma4:latest` model accepts vision inputs. However, we selected an **OCR-First Pipeline with Tesseract** as the primary architecture for three vital reasons:
+Every analyzed notice is structured into the **Six Core Legal Fields** alongside procedural dimensions:
 
-1. **Human-in-the-Loop Verification (Feature A):** The official requirements mandate that users must be able to view and correct OCR errors before passing the text to semantic interpretation. A direct end-to-end vision model produces opaque outputs where the user cannot inspect what text was actually recognized.
-2. **Deterministic Evidence Grounding (Feature D):** Grounding requires exact quotation and line-number referencing. Text extraction provides character offsets and line numbers (`Line 4-5`), enabling exact substring audits.
-3. **Inference Latency & VRAM Efficiency:** High-resolution notice images take significant compute to tokenize in vision encoders (~11 seconds per image on laptop GPU). Tesseract preprocesses and extracts text in under 0.8 seconds on CPU, leaving 100% of GPU VRAM free for fast Gemma 4 reasoning and JSON generation.
+1. **`issuing_authority`**: Department, university, or municipal authority issuing the circular.
+2. **`notice_reference_number`**: Official serial or file reference identifier (e.g. `MTU/COMP/2026/8941`).
+3. **`notice_date`**: Exact statutory date of issuance.
+4. **`recipient`**: Target group, affected individuals, or concerned public.
+5. **`main_subject`**: Core allegation, administrative purpose, or regulatory mandate.
+6. **`required_action_and_deadline`**: Mandatory compliance action paired with its strict cutoff date/time.
+
+Each field is modeled as an `ExtractedFact` containing:
+- `value`: Extracted textual value or `"Not stated in the notice."`
+- `status`: `stated`, `not_stated`, `uncertain`, `conflicting`, `unreadable`
+- `evidence_quote`: Exact verbatim quotation from the document
+- `source_location`: Line number or section citation
+- `requires_confirmation`: Flagged when ambiguous, tentative, or low confidence
+- `uncertainty_type`: `"ocr_quality"`, `"document_ambiguity"`, `"missing_in_text"`, `"conflict"`
+- `user_confirmed`: True once verified or corrected by the user
+- `confirmed_value`: User-supplied override preserving original extracted ground truth
 
 ---
 
-## 5. Evidence Grounding & Anti-Hallucination Design
+## 4. OCR Engine Comparison: Tesseract vs RapidOCR
 
-The grounding engine (`grounding.py`) enforces strict verification rules:
-- **Verbatim Substring Matching:** The claimed `evidence_quote` must exist in the source notice text. If not found, the fact is automatically downgraded to `uncertain` and flagged with `"Quoted evidence not found in source text."`
-- **Critical Entity Audit:** Dates, years, amounts (e.g. ₹500), and percentages (e.g. 75%) in the extracted fact are verified against the source text. If a number or date was altered, status becomes `conflicting`.
-- **Tentative Detail Detection:** Phrases like "tentative", "provisional", "subject to change", "TBD" trigger `requires_confirmation = True`.
-- **Absent Fields:** Missing details are strictly assigned `Not stated in the notice.` and catalogued in `missing_information`.
+| Criteria | Tesseract OCR (Default) | RapidOCR (Optional Adapter) |
+| :--- | :--- | :--- |
+| **Maturity & Stability** | Industry standard, UB-Mannheim v5.4.0 binary | Modern PaddleOCR port |
+| **Installation Requirements** | Local binary executable in system PATH | Python package (`rapidocr-onnxruntime`), ONNX Runtime, visual C++ runtimes |
+| **Image Preprocessing** | Custom PIL pipeline: Lanczos DPI scaling, auto-contrast, edge sharpening | Internal preprocessing in ONNX pipeline |
+| **Confidence Scoring** | Word-level confidence extraction via `image_to_data` | Box-level detection score |
+| **Language Support** | Extensive traineddata packs (`eng`, `hin`, `osd`) | Language-specific ONNX models |
+| **System Recommendation** | **Selected as Primary Default** (zero external cloud dependencies, pre-installed, rock-solid) | Supported as optional plugin adapter via `OCR_ENGINE=rapidocr` |
+
+---
+
+## 5. Security & Privacy Model
+
+- **Zero Secret Ingestion:** API keys are never stored in the database, codebase, or logs. All credentials are read from environment variables or `.env` (strictly ignored by `.gitignore`).
+- **Data Boundary Control:** Notices are never transmitted to cloud providers unless the user explicitly switches the provider in the UI and sets the corresponding API key.
+- **Prompt Injection Defense:** Untrusted notice documents are encapsulated in XML tags (`<notice_document_data>`) and explicitly treated as inert data, never instructions.
+- **Session Isolation:** Analysis state and Q&A history are keyed to isolated session IDs, preventing cross-tenant data leakage.

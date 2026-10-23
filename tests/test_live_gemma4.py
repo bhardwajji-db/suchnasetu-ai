@@ -107,7 +107,9 @@ def test_live_04_followup_question_supported_and_unsupported(ollama_client):
     assert ans_unsupported.is_supported is False
     assert (
         "does not specify" in ans_unsupported.answer.lower()
+        or "not specified" in ans_unsupported.answer.lower()
         or "not stated" in ans_unsupported.answer.lower()
+        or "not found" in ans_unsupported.answer.lower()
         or "official contact" in ans_unsupported.answer.lower()
     )
 
@@ -123,3 +125,4 @@ def test_live_05_image_ocr_pipeline():
     assert res.confidence_score > 70.0
     assert "15 NOVEMBER 2026" in res.extracted_text.upper()
     assert "SCHOLARSHIP" in res.extracted_text.upper()
+

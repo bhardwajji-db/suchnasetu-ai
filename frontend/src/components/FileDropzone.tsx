@@ -14,9 +14,9 @@ export const FileDropzone: React.FC = () => {
     const file = files[0];
     setUploadError(null);
 
-    // Max 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError('File size exceeds the 10MB limit.');
+    // Max 25MB limit supported by backend
+    if (file.size > 25 * 1024 * 1024) {
+      setUploadError('File size exceeds the 25MB limit.');
       return;
     }
 
@@ -58,8 +58,8 @@ export const FileDropzone: React.FC = () => {
         onClick={() => fileInputRef.current?.click()}
         className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
           isDragging
-            ? 'border-blue-500 bg-blue-950/20 shadow-lg shadow-blue-500/10'
-            : 'border-[#1D2D4E] hover:border-blue-500/50 bg-[#0B1327]/60'
+            ? 'border-[#08785D] bg-[#E8F7F0] shadow-md shadow-[#08785D]/10'
+            : 'border-[#CBD5E1] hover:border-[#08785D] bg-[#F8FAFC]'
         }`}
       >
         <input
@@ -70,24 +70,24 @@ export const FileDropzone: React.FC = () => {
           aria-label="Upload notice image or document"
           onChange={(e) => handleFiles(e.target.files)}
         />
-        <div className="flex flex-col items-center justify-center gap-2">
-          <div className="w-12 h-12 rounded-xl bg-[#111A33] border border-[#1D2D4E] flex items-center justify-center text-blue-400">
+        <div className="flex flex-col items-center justify-center gap-2.5">
+          <div className="w-12 h-12 rounded-xl bg-[#E8F7F0] border border-[#B7E7D2] flex items-center justify-center text-[#08785D]">
             <UploadCloud className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-sm font-bold text-slate-200">
+            <div className="text-sm font-bold text-[#12233D]">
               Drag & Drop notice document, image, or PDF
             </div>
-            <div className="text-xs text-slate-400 mt-1">
-              Supports <span className="text-blue-400 font-mono">PDF (Digital/Scanned), PNG, JPG, WEBP, TXT</span> up to 10MB
+            <div className="text-xs text-[#526176] mt-1">
+              Supports <span className="text-[#08785D] font-mono font-semibold">PDF, PNG, JPG, WEBP, TXT</span> up to 25MB
             </div>
           </div>
         </div>
       </div>
 
       {uploadError && (
-        <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-800/40 text-xs text-rose-300 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+        <div className="p-3 rounded-xl bg-[#FEE8E7] border border-[#FCA5A5] text-xs text-[#B42318] flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-[#B42318] shrink-0" />
           <span>{uploadError}</span>
         </div>
       )}

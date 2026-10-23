@@ -1,0 +1,64 @@
+{
+  "doc_id": "DOC-21",
+  "filename": "DOC-21_dense_paragraph_actions.png",
+  "category": "Notice with dense paragraph and multiple action items",
+  "hash_sha256": "9bbba72e622a74a292cb35fd4f8189046ff7057cb6ddaf0cb5046b314f154a42",
+  "file_size_bytes": 26208,
+  "ocr_metrics": {
+    "cer": 1.0,
+    "wer": 1.0,
+    "duration_seconds": 0.5052530765533447,
+    "confidence": 94.5,
+    "critical_preserved": 1,
+    "critical_total": 3
+  },
+  "ai_metrics": {
+    "duration_seconds": 32.997902154922485,
+    "error": null
+  },
+  "field_evaluations": [
+    {
+      "field": "final_deadline",
+      "expected_value": "30 April 2026",
+      "expected_status": "PRESENT",
+      "source_quote": "before 30 April 2026",
+      "ocr_preserved": false,
+      "ai_value": "Not stated in the notice.",
+      "ai_status": "not_stated",
+      "ai_quote": null,
+      "verdict": "FAIL",
+      "root_cause": "OCR degradation / missing in OCR transcription"
+    },
+    {
+      "field": "application_fee",
+      "expected_value": "Rs. 250",
+      "expected_status": "PRESENT",
+      "source_quote": "processing fee of Rs. 250",
+      "ocr_preserved": false,
+      "ai_value": "Not stated in the notice.",
+      "ai_status": "not_stated",
+      "ai_quote": null,
+      "verdict": "FAIL",
+      "root_cause": "OCR degradation / missing in OCR transcription"
+    },
+    {
+      "field": "official_portal_url",
+      "expected_value": "https://nats.education.gov.in",
+      "expected_status": "PRESENT",
+      "source_quote": "https://nats.education.gov.in",
+      "ocr_preserved": true,
+      "ai_value": "Register profile on the NATS national apprenticeship Official Portal.",
+      "ai_status": "stated",
+      "ai_quote": "must first register their profile on the NATS national appre",
+      "verdict": "FAIL",
+      "root_cause": "AI extraction missed or formatted differently"
+    }
+  ],
+  "downstream_evaluations": {
+    "action_plan": {
+      "generated_count": 4,
+      "has_deadline": false,
+      "passed": true
+    }
+  }
+}

@@ -76,7 +76,6 @@ build_player.py
 audit_report/
 reports/BASELINE_AUDIT.md
 reports/FINAL_TEST_COMPARISON.md
-reports/FINAL_VALIDATION_REPORT.md
 reports/FINAL_VERIFICATION.md
 reports/MANUAL_TEST_CHECKLIST.md
 reports/PRODUCT_IMPROVEMENT_REPORT.md
@@ -100,3 +99,11 @@ frontend/.env.*
 *.log
 release/*.zip
 uploads/
+
+# Local SQLite Database & Uploads
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/uploads/*
+!data/uploads/.gitkeep
+!data/.gitkeep

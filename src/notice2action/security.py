@@ -60,7 +60,7 @@ def validate_uploaded_file(file_name: str, file_bytes: bytes) -> Tuple[str, str]
         )
 
     # 3. Format integrity
-    if ext in ["png", "jpg", "jpeg", "webp"]:
+    if ext in ["png", "jpg", "jpeg", "webp", "tif", "tiff"]:
         try:
             with Image.open(BytesIO(file_bytes)) as img:
                 # Decompression bomb and dimension checks
@@ -73,6 +73,19 @@ def validate_uploaded_file(file_name: str, file_bytes: bytes) -> Tuple[str, str]
             return safe_name, "image"
         except (UnidentifiedImageError, OSError) as e:
             raise SecurityValidationError(f"Corrupt or invalid image file: {e}")
+    elif ext == "docx":
+        import zipfile
+        try:
+            with zipfile.ZipFile(BytesIO(file_bytes)) as zf:
+                if "word/document.xml" not in zf.namelist():
+                    raise SecurityValidationError("Invalid DOCX file: missing document content.")
+            return safe_name, "docx"
+        except zipfile.BadZipFile:
+            raise SecurityValidationError("Invalid or corrupted DOCX archive.")
+        except SecurityValidationError:
+            raise
+        except Exception as e:
+            raise SecurityValidationError(f"Corrupt or invalid DOCX file: {e}")
     elif ext == "txt":
         try:
             # Try utf-8 first, fallback to latin-1

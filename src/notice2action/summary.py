@@ -12,7 +12,7 @@ from notice2action.schemas import (
     CertaintyStatus,
     NOT_STATED_LABEL,
 )
-from notice2action.llm.ollama_client import OllamaClient
+from notice2action.llm.base import BaseLLMClient
 
 
 def generate_deterministic_summary(
@@ -91,7 +91,7 @@ def generate_deterministic_summary(
 
 def generate_accessible_summary(
     notice: StructuredNotice,
-    client: Optional[OllamaClient] = None,
+    client: Optional[BaseLLMClient] = None,
 ) -> PlainLanguageSummary:
     """
     Uses Gemma 4 to polish the plain-language summary into simple, accessible English,

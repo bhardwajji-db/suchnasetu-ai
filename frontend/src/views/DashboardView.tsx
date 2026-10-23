@@ -1,327 +1,422 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { FileDropzone } from '../components/FileDropzone';
+import { OCRPanel } from '../components/OCRPanel';
+import { NoticeBuffer } from '../components/NoticeBuffer';
 import {
   UploadCloud,
   Sparkles,
   FileSearch,
   CheckSquare,
-  MessageSquare,
-  Activity,
-  History,
   CheckCircle2,
-  Clock,
-  Building,
   ShieldCheck,
-  ArrowRight,
-  FileText,
+  Volume2,
+  GitCompare,
+  ChevronDown,
+  ChevronUp,
+  Globe2,
 } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
   const {
     setActiveTab,
     loadSampleFixture,
-    structuredNotice,
     rawNoticeText,
     systemHealth,
     activeProvider,
-    history,
-    loadFromHistory,
+    runAnalysis,
+    isAnalyzing,
+    uploadedImage,
   } = useNotice();
+
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   const handleLoadDemo = () => {
     loadSampleFixture('synthetic_scholarship_notice.txt');
+    setActiveTab(1);
   };
 
   const getSystemStatus = () => {
-    if (!systemHealth) return { text: 'Checking system...', color: 'text-amber-400 bg-amber-950/40 border-amber-800' };
+    if (!systemHealth) {
+      return {
+        text: 'Checking system...',
+        color: 'text-[#92500A] bg-[#FFF4D6] border-[#FDE68A]',
+      };
+    }
     if (systemHealth.overall_status === 'ok') {
       return {
         text: `System Ready · ${activeProvider === 'ollama' ? 'Local Ollama' : activeProvider}`,
-        color: 'text-emerald-400 bg-emerald-950/40 border-emerald-800',
+        color: 'text-[#08785D] bg-[#E8F7F0] border-[#B7E7D2]',
       };
     }
-    return { text: 'Diagnostics Warning', color: 'text-amber-400 bg-amber-950/40 border-amber-800' };
+    return {
+      text: 'Diagnostics Warning',
+      color: 'text-[#92500A] bg-[#FFF4D6] border-[#FDE68A]',
+    };
   };
 
   const status = getSystemStatus();
 
+  const faqs = [
+    {
+      q: 'How does SuchnaSetu AI ensure extracted facts are accurate?',
+      a: 'SuchnaSetu AI employs a strict evidence-grounding engine. Every extracted deadline, fee, and requirement is matched against exact character offsets in the raw document text. If a detail cannot be verified with verbatim evidence, it is explicitly flagged as unstated or uncertain rather than hallucinated.',
+    },
+    {
+      q: 'Does completing the action checklist submit my official application?',
+      a: 'No. The action checklist is a personal preparation tool to help you organize documents, deadlines, and eligibility criteria. Official submissions must always be completed directly on the authorized government or institutional portal.',
+    },
+    {
+      q: 'Can SuchnaSetu AI operate completely offline?',
+      a: 'Yes. With a local Ollama instance (such as Gemma 4 or Qwen 2.5) and host Tesseract OCR installed, the entire ingestion, OCR, extraction, and Q&A pipeline runs 100% locally on your machine with zero cloud connectivity required.',
+    },
+    {
+      q: 'What document formats and file sizes are supported?',
+      a: 'The application supports digital and scanned PDFs, images (PNG, JPG, JPEG, WEBP), and plain text documents (TXT) up to 25MB in size.',
+    },
+    {
+      q: 'How does the Change Tracker compare revisions and corrigenda?',
+      a: 'The Change Tracker analyzes original notices alongside revised circulars or corrigenda, producing a field-by-field delta that highlights additions, modifications, cancellations, and extensions with exact source citations.',
+    },
+  ];
+
   return (
-    <div className="space-y-8 animate-fadeIn">
-      {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0C1733] via-[#0F1E42] to-[#0B132B] border border-[#1E325A] p-6 sm:p-8 shadow-xl">
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-blue-600/10 blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border backdrop-blur-sm ${status.color}">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>{status.text}</span>
+    <div className="space-y-12 animate-fadeIn pb-12">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden rounded-3xl bg-white border border-[#E1E7EE] p-6 sm:p-10 shadow-xs">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          {/* Left Column: Value Proposition & CTAs */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="space-y-3">
+              <div
+                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${status.color}`}
+              >
+                <span className="w-2 h-2 rounded-full bg-[#08785D] animate-pulse" />
+                <span>{status.text}</span>
+              </div>
+              <div className="text-xs font-bold uppercase tracking-wider text-[#08785D]">
+                Notice Intelligence for Everyone
+              </div>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#12233D] tracking-tight leading-tight">
+                From complex notices to <span className="text-[#08785D]">clear next steps.</span>
+              </h1>
+              <p className="text-base text-[#526176] leading-relaxed max-w-xl">
+                Transform convoluted government circulars, scholarships, public notifications, and legal summonses into source-grounded facts, plain-language summaries, and actionable personal checklists.
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              SuchnaSetu AI — Notice-to-Action Assistant
-            </h1>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              Transform convoluted government notifications, court summonses, and institutional circulars into
-              evidence-grounded facts, accessible summaries, and sequential action checklists.
+
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab(1)}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs cursor-pointer"
+              >
+                <UploadCloud className="w-4 h-4" />
+                <span>Analyze a Notice</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleLoadDemo}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm text-[#12233D] bg-[#F8FAFC] hover:bg-[#E8F7F0] hover:text-[#08785D] border border-[#CBD5E1] transition cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-[#08785D]" />
+                <span>Explore Demo Notice</span>
+              </button>
+            </div>
+
+            {/* 3 Compact Trust Statements */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-[#E1E7EE]">
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#08785D] shrink-0 mt-0.5" />
+                <div className="text-xs text-[#526176]">
+                  <strong className="text-[#12233D] block font-semibold">Source-Backed Facts</strong>
+                  Anchored to exact quotes
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#08785D] shrink-0 mt-0.5" />
+                <div className="text-xs text-[#526176]">
+                  <strong className="text-[#12233D] block font-semibold">Transparent Uncertainty</strong>
+                  Explicitly flags missing info
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Globe2 className="w-4 h-4 text-[#08785D] shrink-0 mt-0.5" />
+                <div className="text-xs text-[#526176]">
+                  <strong className="text-[#12233D] block font-semibold">Accessible Guidance</strong>
+                  Bilingual EN/HI & Read-Aloud
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Realistic Product Preview (Synthetic Demo) */}
+          <div className="lg:col-span-5">
+            <div className="bg-[#F8FAFC] border border-[#E1E7EE] rounded-2xl p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E1E7EE]">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-400" />
+                  <div className="w-3 h-3 rounded-full bg-amber-400" />
+                  <div className="w-3 h-3 rounded-full bg-emerald-400" />
+                  <span className="text-xs font-mono font-bold text-[#526176] ml-2">
+                    Notice Intelligence Preview
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono uppercase bg-[#FFF4D6] text-[#92500A] border border-[#FDE68A] px-2 py-0.5 rounded-md font-semibold">
+                  Synthetic Demonstration Data
+                </span>
+              </div>
+
+              {/* Sample Document Title & Badges */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-[#08785D] uppercase tracking-wider">
+                  National Merit Scholarship 2026
+                </span>
+                <h4 className="text-sm font-bold text-[#12233D] leading-snug">
+                  Department of Higher Education Circular #NMS-2026/88
+                </h4>
+              </div>
+
+              {/* Sample Verified Fact */}
+              <div className="p-3 rounded-xl bg-white border border-[#E1E7EE] space-y-1.5 shadow-2xs">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-[#526176]">Closing Deadline</span>
+                  <span className="px-2 py-0.2 rounded-md text-[10px] font-bold bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
+                    Stated (Verified)
+                  </span>
+                </div>
+                <div className="text-xs font-semibold text-[#12233D]">
+                  31 October 2026, 5:00 PM IST
+                </div>
+                <div className="text-[11px] text-[#68778B] font-mono italic bg-[#F8FAFC] p-1.5 rounded-md border-l-2 border-[#08785D]">
+                  "Last date for submission is 31st October 2026 up to 17:00 hrs."
+                </div>
+              </div>
+
+              {/* Sample Action Item */}
+              <div className="p-3 rounded-xl bg-white border border-[#E1E7EE] space-y-1.5 shadow-2xs">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-[#526176]">Action Plan Preview</span>
+                  <span className="px-2 py-0.2 rounded-md text-[10px] font-bold bg-[#EAF2FF] text-[#245DC1] border border-[#BFDBFE]">
+                    Step 1 of 4
+                  </span>
+                </div>
+                <div className="text-xs text-[#12233D] flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4 text-[#08785D]" />
+                  <span>Obtain Family Income Certificate (&lt; ₹2.5 Lakhs)</span>
+                </div>
+              </div>
+
+              <div className="text-[10px] text-center text-[#68778B] italic">
+                Demonstration output based on standard PS02 scholarship benchmark notice.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Main Analysis Entry Point: Upload & Buffer */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-[#12233D] tracking-tight">
+            Analyze a Notice Now
+          </h2>
+          <p className="text-xs text-[#526176] mt-0.5">
+            Drop an official document, scanned photo, or paste raw text to initiate local analysis.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+          <div className="bg-white border border-[#E1E7EE] rounded-xl p-5 space-y-4 shadow-xs">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#12233D] block">
+              📁 Option 1: Upload Document or Photo
+            </span>
+            <FileDropzone />
+            {uploadedImage && <OCRPanel />}
+          </div>
+
+          <div className="h-full">
+            <NoticeBuffer />
+          </div>
+        </div>
+
+        {/* Primary Action Button */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={runAnalysis}
+            disabled={!rawNoticeText.trim() || isAnalyzing}
+            className="w-full flex items-center justify-center gap-2.5 py-4 px-6 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#08785D] to-[#06664E] hover:from-[#06664E] hover:to-[#054E3C] transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4 text-white" />
+            <span>Analyze Notice with SuchnaSetu AI</span>
+          </button>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="bg-white border border-[#E1E7EE] rounded-2xl p-6 sm:p-8 space-y-6 shadow-xs">
+        <div>
+          <span className="text-xs font-bold uppercase tracking-wider text-[#08785D] block mb-1">
+            Methodology
+          </span>
+          <h2 className="text-xl font-bold text-[#12233D] tracking-tight">
+            How SuchnaSetu AI Works
+          </h2>
+          <p className="text-xs text-[#526176] mt-0.5">
+            From raw institutional publication to verifiable citizen action in four structured phases.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE] space-y-2">
+            <div className="w-8 h-8 rounded-lg bg-[#E8F7F0] text-[#08785D] flex items-center justify-center font-bold text-xs">
+              01
+            </div>
+            <h3 className="text-sm font-bold text-[#12233D]">Ingestion & OCR</h3>
+            <p className="text-xs text-[#526176] leading-relaxed">
+              Extracts text from digital PDFs or runs bilingual Tesseract OCR with adaptive contrast enhancement on photos.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={() => setActiveTab(1)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-500 transition shadow-lg shadow-blue-600/25 cursor-pointer"
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span>Upload Notice</span>
-            </button>
-            <button
-              onClick={handleLoadDemo}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-slate-200 bg-[#142347] hover:bg-[#1A2E5C] border border-[#233B6E] transition cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-blue-400" />
-              <span>Try Demo Notice</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Genuine Processing Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1 */}
-        <div className="bg-[#0B1327] border border-[#1D2D4E] rounded-xl p-4.5 space-y-1.5 shadow-sm">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
-            <span>Notice Buffer Status</span>
-            <FileText className="w-4 h-4 text-blue-400" />
-          </div>
-          <div className="text-lg font-bold text-white truncate">
-            {rawNoticeText ? (
-              <span className="text-emerald-400 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> Loaded ({rawNoticeText.length} chars)
-              </span>
-            ) : (
-              <span className="text-slate-500">No Document Loaded</span>
-            )}
-          </div>
-          <p className="text-[11px] text-slate-400">
-            {structuredNotice ? 'Analyzed and verified' : 'Ready for ingestion or demo load'}
-          </p>
-        </div>
-
-        {/* Metric 2 */}
-        <div className="bg-[#0B1327] border border-[#1D2D4E] rounded-xl p-4.5 space-y-1.5 shadow-sm">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
-            <span>Issuing Authority</span>
-            <Building className="w-4 h-4 text-blue-400" />
-          </div>
-          <div className="text-lg font-bold text-white truncate">
-            {structuredNotice?.issuing_authority?.value || (structuredNotice ? 'Unspecified' : '—')}
-          </div>
-          <p className="text-[11px] text-slate-400">
-            {structuredNotice ? 'From Six Core Notice Fields' : 'Awaiting document analysis'}
-          </p>
-        </div>
-
-        {/* Metric 3 */}
-        <div className="bg-[#0B1327] border border-[#1D2D4E] rounded-xl p-4.5 space-y-1.5 shadow-sm">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
-            <span>Closing Deadline</span>
-            <Clock className="w-4 h-4 text-blue-400" />
-          </div>
-          <div className="text-lg font-bold text-white truncate">
-            {structuredNotice?.deadline?.value || (structuredNotice ? 'None specified' : '—')}
-          </div>
-          <p className="text-[11px] text-slate-400">
-            {structuredNotice?.deadline?.status ? `Status: ${structuredNotice.deadline.status}` : 'Pending analysis'}
-          </p>
-        </div>
-
-        {/* Metric 4 */}
-        <div className="bg-[#0B1327] border border-[#1D2D4E] rounded-xl p-4.5 space-y-1.5 shadow-sm">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
-            <span>Local AI Model</span>
-            <ShieldCheck className="w-4 h-4 text-blue-400" />
-          </div>
-          <div className="text-lg font-bold text-white truncate">
-            {systemHealth?.model_name || 'gemma4:latest'}
-          </div>
-          <p className="text-[11px] text-slate-400">100% On-Device & Private</p>
-        </div>
-      </div>
-
-      {/* Quick Navigation Cards */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 px-1">
-          Application Workflows
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Card 1 */}
-          <div
-            onClick={() => setActiveTab(1)}
-            className="group bg-[#0B1327] hover:bg-[#0F1A36] border border-[#1D2D4E] hover:border-blue-500/50 rounded-xl p-5 cursor-pointer transition shadow-sm"
-          >
-            <div className="w-10 h-10 rounded-lg bg-blue-600/10 text-blue-400 flex items-center justify-center mb-3 group-hover:scale-105 transition">
-              <UploadCloud className="w-5 h-5" />
+          <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE] space-y-2">
+            <div className="w-8 h-8 rounded-lg bg-[#E8F7F0] text-[#08785D] flex items-center justify-center font-bold text-xs">
+              02
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-blue-400 transition flex items-center justify-between">
-              <span>1. Upload & Ingest Notice</span>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition group-hover:translate-x-1" />
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Drag-and-drop document PDFs (digital or scanned), images (.png, .jpg), or paste notice text directly into the ground-truth buffer.
+            <h3 className="text-sm font-bold text-[#12233D]">Evidence Grounding</h3>
+            <p className="text-xs text-[#526176] leading-relaxed">
+              Aligns extracted facts with exact character offsets. Discards unsupported claims or flags them as unstated.
             </p>
           </div>
 
-          {/* Card 2 */}
-          <div
-            onClick={() => setActiveTab(2)}
-            className="group bg-[#0B1327] hover:bg-[#0F1A36] border border-[#1D2D4E] hover:border-blue-500/50 rounded-xl p-5 cursor-pointer transition shadow-sm"
-          >
-            <div className="w-10 h-10 rounded-lg bg-indigo-600/10 text-indigo-400 flex items-center justify-center mb-3 group-hover:scale-105 transition">
+          <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE] space-y-2">
+            <div className="w-8 h-8 rounded-lg bg-[#E8F7F0] text-[#08785D] flex items-center justify-center font-bold text-xs">
+              03
+            </div>
+            <h3 className="text-sm font-bold text-[#12233D]">Plain Synthesis</h3>
+            <p className="text-xs text-[#526176] leading-relaxed">
+              Translates bureaucratic jargon into concise, accessible answers to 7 core citizen questions in English and Hindi.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE] space-y-2">
+            <div className="w-8 h-8 rounded-lg bg-[#E8F7F0] text-[#08785D] flex items-center justify-center font-bold text-xs">
+              04
+            </div>
+            <h3 className="text-sm font-bold text-[#12233D]">Action Planning</h3>
+            <p className="text-xs text-[#526176] leading-relaxed">
+              Synthesizes a prioritized checklist with deadline countdowns, required documentation, and calendar export (.ics).
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Key Capabilities Grid */}
+      <section className="space-y-4">
+        <div>
+          <span className="text-xs font-bold uppercase tracking-wider text-[#08785D] block mb-1">
+            Features
+          </span>
+          <h2 className="text-xl font-bold text-[#12233D] tracking-tight">
+            Key Capabilities Built for Public Service
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="bg-white border border-[#E1E7EE] rounded-xl p-5 space-y-3 shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-[#E8F7F0] text-[#08785D] flex items-center justify-center">
               <FileSearch className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-blue-400 transition flex items-center justify-between">
-              <span>2. Notice Analysis</span>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition group-hover:translate-x-1" />
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Inspect the Six Core Legal Notice Fields, certainty indicators, verbatim citations, and human-in-the-loop review.
+            <h3 className="text-sm font-bold text-[#12233D]">Ground-Truth Evidence Ledger</h3>
+            <p className="text-xs text-[#526176] leading-relaxed">
+              Every critical deadline, eligibility rule, fee, and quota is hyperlinked to its exact citation quote in the original notice.
             </p>
           </div>
 
-          {/* Card 3 */}
-          <div
-            onClick={() => setActiveTab(3)}
-            className="group bg-[#0B1327] hover:bg-[#0F1A36] border border-[#1D2D4E] hover:border-blue-500/50 rounded-xl p-5 cursor-pointer transition shadow-sm"
-          >
-            <div className="w-10 h-10 rounded-lg bg-emerald-600/10 text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-105 transition">
-              <CheckSquare className="w-5 h-5" />
+          <div className="bg-white border border-[#E1E7EE] rounded-xl p-5 space-y-3 shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-[#E8F7F0] text-[#08785D] flex items-center justify-center">
+              <GitCompare className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-blue-400 transition flex items-center justify-between">
-              <span>3. Action Center & Exports</span>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition group-hover:translate-x-1" />
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Explore sequential action items, completion states, plain summaries (Simple/Detailed), and RFC 5545 calendar export.
+            <h3 className="text-sm font-bold text-[#12233D]">Personal Impact Change Tracker</h3>
+            <p className="text-xs text-[#526176] leading-relaxed">
+              Compares base notices against amendments and corrigenda, tracking date extensions, fee revisions, and qualification changes.
             </p>
           </div>
 
-          {/* Card 4 */}
-          <div
-            onClick={() => setActiveTab(4)}
-            className="group bg-[#0B1327] hover:bg-[#0F1A36] border border-[#1D2D4E] hover:border-blue-500/50 rounded-xl p-5 cursor-pointer transition shadow-sm"
-          >
-            <div className="w-10 h-10 rounded-lg bg-sky-600/10 text-sky-400 flex items-center justify-center mb-3 group-hover:scale-105 transition">
-              <MessageSquare className="w-5 h-5" />
+          <div className="bg-white border border-[#E1E7EE] rounded-xl p-5 space-y-3 shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-[#E8F7F0] text-[#08785D] flex items-center justify-center">
+              <Volume2 className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-white group-hover:text-blue-400 transition flex items-center justify-between">
-              <span>4. Ask AI Assistant</span>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition group-hover:translate-x-1" />
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Ask follow-up questions answered strictly using verified notice facts in English or Hindi, with truthful absent reporting.
-            </p>
-          </div>
-
-          {/* Card 5 */}
-          <div
-            onClick={() => setActiveTab(5)}
-            className="group bg-[#0B1327] hover:bg-[#0F1A36] border border-[#1D2D4E] hover:border-blue-500/50 rounded-xl p-5 cursor-pointer transition shadow-sm"
-          >
-            <div className="w-10 h-10 rounded-lg bg-purple-600/10 text-purple-400 flex items-center justify-center mb-3 group-hover:scale-105 transition">
-              <History className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-bold text-white group-hover:text-blue-400 transition flex items-center justify-between">
-              <span>5. Notice History</span>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition group-hover:translate-x-1" />
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              View previously analyzed notices stored safely in isolated local sessions, with instant reload capability.
-            </p>
-          </div>
-
-          {/* Card 6 */}
-          <div
-            onClick={() => setActiveTab(6)}
-            className="group bg-[#0B1327] hover:bg-[#0F1A36] border border-[#1D2D4E] hover:border-blue-500/50 rounded-xl p-5 cursor-pointer transition shadow-sm"
-          >
-            <div className="w-10 h-10 rounded-lg bg-amber-600/10 text-amber-400 flex items-center justify-center mb-3 group-hover:scale-105 transition">
-              <Activity className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-bold text-white group-hover:text-blue-400 transition flex items-center justify-between">
-              <span>6. System Settings & Health</span>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 transition group-hover:translate-x-1" />
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Inspect live backend diagnostics, local Ollama connectivity, active provider selection, and cloud guides.
+            <h3 className="text-sm font-bold text-[#12233D]">Read-Aloud Accessibility</h3>
+            <p className="text-xs text-[#526176] leading-relaxed">
+              One-click bilingual audio playback with adjustable speech rate for citizens with visual impairments or reading difficulties.
             </p>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Recent Notices Snapshot */}
-      <div className="bg-[#0B1327] border border-[#1D2D4E] rounded-xl p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <History className="w-4 h-4 text-blue-400" />
-              <span>Recent Document Sessions</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Notices processed during your active session.
-            </p>
-          </div>
-          {history.length > 0 && (
-            <button
-              onClick={() => setActiveTab(5)}
-              className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition"
-            >
-              View All ({history.length})
-            </button>
-          )}
+      {/* Frequently Asked Questions */}
+      <section className="bg-white border border-[#E1E7EE] rounded-2xl p-6 sm:p-8 space-y-5 shadow-xs">
+        <div>
+          <span className="text-xs font-bold uppercase tracking-wider text-[#08785D] block mb-1">
+            Questions
+          </span>
+          <h2 className="text-xl font-bold text-[#12233D] tracking-tight">
+            Frequently Asked Questions
+          </h2>
         </div>
 
-        {history.length > 0 ? (
-          <div className="divide-y divide-slate-800">
-            {history.slice(0, 3).map((item) => (
-              <div key={item.id} className="py-3 flex items-center justify-between gap-4">
-                <div className="space-y-1 min-w-0">
-                  <div className="text-sm font-semibold text-white truncate">{item.title}</div>
-                  <div className="text-xs text-slate-400 flex items-center gap-3">
-                    <span>{item.authority}</span>
-                    <span>•</span>
-                    <span>Ref: {item.referenceNumber}</span>
-                    <span>•</span>
-                    <span>{item.timestamp}</span>
-                  </div>
-                </div>
+        <div className="space-y-2.5">
+          {faqs.map((faq, index) => {
+            const isExpanded = expandedFaq === index;
+            return (
+              <div
+                key={index}
+                className="border border-[#E1E7EE] rounded-xl overflow-hidden transition"
+              >
                 <button
-                  onClick={() => loadFromHistory(item)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-400 hover:text-white bg-blue-950/40 hover:bg-blue-600 border border-blue-900/60 transition shrink-0"
+                  type="button"
+                  onClick={() => setExpandedFaq(isExpanded ? null : index)}
+                  className="w-full flex items-center justify-between p-4 text-left font-semibold text-xs text-[#12233D] hover:bg-[#F8FAFC] cursor-pointer"
                 >
-                  Open Notice
+                  <span>{faq.q}</span>
+                  {isExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-[#08785D] shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[#68778B] shrink-0" />
+                  )}
                 </button>
+                {isExpanded && (
+                  <div className="px-4 pb-4 pt-1 text-xs text-[#526176] leading-relaxed bg-[#F8FAFC] border-t border-[#E1E7EE]">
+                    {faq.a}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="py-8 text-center text-slate-400 space-y-2">
-            <p className="text-xs">No notice documents analyzed in this session yet.</p>
-            <div className="flex justify-center gap-2">
-              <button
-                onClick={() => setActiveTab(1)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-400 bg-blue-950/40 hover:bg-blue-900/50 border border-blue-900/60 transition"
-              >
-                Upload a Notice
-              </button>
-              <button
-                onClick={handleLoadDemo}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700 transition"
-              >
-                Load Scholarship Demo
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="pt-6 border-t border-[#E1E7EE] text-center space-y-2 text-xs text-[#68778B]">
+        <div className="flex items-center justify-center gap-4 text-xs font-medium text-[#526176]">
+          <button type="button" onClick={() => setActiveTab(10)} className="hover:text-[#08785D] cursor-pointer">
+            Settings & Diagnostics
+          </button>
+          <span>•</span>
+          <button type="button" onClick={() => setActiveTab(1)} className="hover:text-[#08785D] cursor-pointer">
+            Notice Workspace
+          </button>
+          <span>•</span>
+          <button type="button" onClick={() => setActiveTab(4)} className="hover:text-[#08785D] cursor-pointer">
+            Revision Ledger
+          </button>
+        </div>
+        <p className="text-[11px]">
+          SuchnaSetu AI • HackDay 2026 PS02 • Open, Grounded, Accessible Civic Technology
+        </p>
+      </footer>
     </div>
   );
 };

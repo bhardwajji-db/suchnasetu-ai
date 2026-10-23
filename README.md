@@ -73,6 +73,39 @@ Clearly labeled **DEMO / FICTIONAL** notices ready for one-click evaluation with
 - 💰 **Demo 2 (Outstanding Dues):** Municipal water and sewerage demand assessment with penalty surcharge date ([`demo_outstanding_dues.txt`](tests/fixtures/demo_outstanding_dues.txt)).
 - ⚖️ **Demo 3 (Administrative Hearing):** Environmental air emission compliance show-cause notice and statutory personal hearing schedule ([`demo_response_hearing.txt`](tests/fixtures/demo_response_hearing.txt)).
 
+### 10. Multi-Notice Revision Ledger & Personal Impact Change Tracker
+- **Automatic Relationship Detection:** Detects whether a document is an `AMENDMENT`, `EXTENSION`, `CANCELLATION`, `REPLACEMENT`, or `RELATED` notice with verbatim legal evidence citations (e.g., *"This corrigendum modifies Advertisement No. 04/2026"*).
+- **Field-by-Field Semantic Diff:** Compares base notices against corrigenda across deadlines, application fees, eligibility criteria, and required documents.
+- **Personal Impact Tracker:** Evaluates personal impact directly against applicant profiles (detecting deadline extensions, category fee waivers, and marks relaxations).
+- **Side-by-Side Delta Comparison:** Visualizes exactly what changed, what was added, and what remains unchanged with old vs. new values and excerpt citations.
+- **Audit Markdown Export:** Single-click export of complete revision audit reports.
+
+### 11. Explainable Applicant Eligibility Engine
+- **Deterministic Rules Without Hallucination:** Extracts explicit criteria (Age cutoffs, Min Marks %, Academic Degrees, Category Quotas) and evaluates an applicant profile deterministically in Python.
+- **Category-Based Relaxations:** Automatically calculates and applies statutory relaxations (e.g. OBC +3 years, SC/ST +5 years) as of the exact notice cutoff date.
+- **Strict Boundary Check:** Mathematical verification ensures percentages (e.g. 59.8% vs 60.0%) are never rounded up or hallucinated.
+- **Transparent Verdicts:** Returns color-coded `PASS`, `FAIL`, or `UNKNOWN` statuses for each criterion paired with the exact verbatim notice quotation and explanation.
+
+### 12. Evidence-First Trust Engine & Verification Drawer
+- **Universal Evidence Drawer:** Slide-out evidence inspector with line-level citations, OCR fuzzy matching (handling character scan noise), and integrity badges.
+- **Ungrounded Claim Detection:** Flags assertions lacking verbatim backing in official notices.
+- **Prompt Injection Defense:** Wraps untrusted user content and scans for adversarial prompt overrides.
+
+### 13. Personalized Action Navigator
+- **Dependency-Ordered Roadmap:** Generates tailored action steps (Documentation, Submission, Verification, Fee Payment, Exam Prep).
+- **Prerequisite Blocking:** Automatically blocks downstream actions (e.g. "Submit Final Application") until prerequisites (e.g. "Obtain OBC Certificate") are completed.
+- **Interactive Management & Export:** Allows toggling statuses, filtering by category, and exporting as CSV or JSON.
+
+### 14. Cross-Notice Intelligence Workspace
+- **Multi-Document Registry:** Aggregates multiple circulars, addenda, and announcements into a unified workspace.
+- **Chronological Timeline:** Sequences all deadlines and publication dates across multiple documents.
+- **Contradiction & Conflict Engine:** Flags conflicting deadlines, fees, and instructions across circulars.
+
+### 15. Accessibility-First Voice Guidance & Speech Input
+- **Universal Voice Guidance Bar:** Floating audio player with playback speed control (0.8x - 1.5x) and real-time live captions.
+- **Air-Gapped Speech Synthesis:** Uses browser-native Web Speech API (`window.speechSynthesis`) by default with zero network transmission.
+- **Hands-Free Voice Recognition:** Speech-to-text mic input in Q&A chat for citizens with motor or typing impairments.
+
 ---
 
 ## ⚙️ Configuration & Environment Variables
@@ -109,6 +142,9 @@ cp .env.example .env
 
 ## ⚡ Quickstart Runbook
 
+> [!TIP]
+> **First-Time Setup on Windows?** See the complete step-by-step [SETUP.md](SETUP.md) for prerequisites, environment creation, Tesseract OCR, Ollama, and troubleshooting.
+
 Execute all commands from the project root:
 ```powershell
 git clone https://github.com/bhardwajji-db/suchnasetu-ai.git
@@ -116,21 +152,24 @@ cd suchnasetu-ai
 ```
 
 ### 1. Start Local Ollama Server (Terminal 1)
-````powershell
-ollama serve
+Make sure the Gemma 4 model is pulled and running locally:
+```powershell
+ollama run gemma4:latest
+# or start the background server:
+# ollama serve
 ```
 
 ### 2. Start FastAPI REST Backend (Terminal 2)
-````powershell
+```powershell
 .\.venv\Scripts\python.exe -m uvicorn notice2action.api.server:app --host 127.0.0.1 --port 8000
 ```
 *Verify API health:*
-````powershell
+```powershell
 curl.exe -s http://127.0.0.1:8000/api/health
 ```
 
 ### 3. Start React 19 Frontend Dashboard (Terminal 3)
-````powershell
+```powershell
 cd frontend
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
@@ -138,11 +177,52 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 ---
 
+## 🎯 Hackathon Demo Walkthrough (Live Scenario)
+
+Follow these steps to demonstrate SuchnaSetu AI's flagship features in under 5 minutes:
+
+### Scenario: UPSC Central Merit Scholarship Corrigendum & Eligibility Check
+
+#### Step 1: Ingest Original Notice
+1. Navigate to **Tab 1: Notice Ingestion & Analysis**.
+2. Click **"Load Demo Fixture"** or paste [`tests/fixtures/demo_upsc_scholarship.txt`](tests/fixtures/demo_upsc_scholarship.txt).
+3. Click **"Run Notice-to-Action Analysis"**.
+4. Observe the **Six Core Fields** extraction with confidence tags, line-level evidence citations, and interactive **Uncertain Fact Confirmation**.
+
+#### Step 2: Compare with Corrigendum in Revision Ledger
+1. Click on **Tab 4: Revision Ledger** in the sidebar.
+2. Notice 1 is automatically populated with the active notice.
+3. Click **"Load Corrigendum Sample"** (loads [`tests/fixtures/demo_upsc_corrigendum.txt`](tests/fixtures/demo_upsc_corrigendum.txt)).
+4. Click **"Compare Notice Revisions"**.
+5. Observe:
+   - **Relationship Badge:** `AMENDMENT` (Detected with 100% confidence).
+   - **Legal Citation:** *"This corrigendum modifies and supersedes specific clauses of Advertisement No. 04/2026..."*
+   - **Field Delta Cards:** Shows deadline extended from `October 15, 2026` to `November 05, 2026` and application fee reduced from `Rs. 500` to `Rs. 250`.
+   - Click **"Export Revision Report"** to download the clean markdown audit trail.
+
+#### Step 3: Check Candidate Qualification in Eligibility Engine
+1. Click on **Tab 5: Eligibility Check** in the sidebar.
+2. Click **"Extract Criteria from Current Notice"** (detects Min 60.0% marks, Age <= 30 cutoff, Master's Degree requirement).
+3. Enter Applicant Profile:
+   - **Date of Birth:** `1994-08-15` (Age 32 as of 2026-10-01)
+   - **Category:** `OBC` (Triggers statutory +3 years relaxation: max age becomes 33 -> **PASS**)
+   - **Aggregate Marks (%):** `62.5%` (Passes 60.0% threshold -> **PASS**)
+   - **Highest Qualification:** `M.Sc. Computer Science` (Meets Master's degree rule -> **PASS**)
+4. Click **"Evaluate My Eligibility"**.
+5. Observe the instant explainable verdict breakdown with color-coded badges, statutory relaxation notes, and verbatim citations.
+
+#### Step 4: Verify Air-Gapped Offline Privacy
+1. Switch to **Tab 3: Plain-Language Summary & Actions**.
+2. Click **"Read Aloud"** to hear the summary via browser-native Web Speech API. Notice in browser DevTools Network tab that **zero audio packets** leave your computer.
+3. Go to **Settings > Privacy & Local Data Storage** and click **"Purge All Stored Data"** to securely wipe all local records.
+
+---
+
 ## 🧪 Automated Testing Suite
 
-````powershell
-# 1. Run all backend unit, contract, multi-provider & pipeline tests
-.\.venv\Scripts\python.exe -m pytest tests/test_api_endpoints.py tests/test_multi_provider_llm.py tests/test_services_and_six_fields.py tests/test_unit_pipeline.py tests/test_structured_notice_regression.py tests/test_negative_and_edge_cases.py -v
+```powershell
+# 1. Run all 151 backend unit, integration, trust engine, action roadmap & timeline tests
+uv run pytest tests/ --ignore=tests/test_playwright_react_frontend.py -m "not live" -v
 
 # 2. Run frontend Vitest component tests (10 suites, 16 tests)
 cd frontend
@@ -151,12 +231,11 @@ cd ..
 
 # 3. Compile frontend production bundle (TypeScript strict check + Vite build)
 cd frontend
-npx tsc -b
 npm run build
 cd ..
 
-# 4. Run live local Ollama & Gemma 4 integration tests
-.\.venv\Scripts\python.exe -m pytest tests/test_live_gemma4.py -v
+# 4. Run live local Ollama & Gemma 4 integration tests (requires Ollama running)
+uv run pytest tests/test_live_gemma4.py -v
 ```
 
 ---
@@ -164,15 +243,20 @@ cd ..
 ## 📂 Repository Layout
 
 ```
-ps2/
+suchnasetu-ai/
 ├── pyproject.toml                 # Canonical Python project configuration (Apache-2.0)
 ├── requirements.txt               # Locked Python dependencies
 ├── LICENSE                        # Apache 2.0 Open-Source License
+├── CONTRIBUTING.md                # Contribution guidelines
+├── SETUP.md                       # Complete step-by-step Windows setup guide
 ├── .env.example                   # Environment configuration template
-├── ARCHITECTURE.md                # System architecture & OCR comparison
+├── ARCHITECTURE.md                # System architecture & design specification
 ├── API.md                         # Complete REST API specification
+├── run_app.bat                    # One-click Windows runner (FastAPI + React)
+├── assets/                        # Multi-viewport screenshots & local tessdata
 ├── docs/                          # Comprehensive technical documentation & requirements
-├── reports/                       # Verification ledgers, gap audits & test comparisons
+├── reports/                       # Validation reports & evaluation benchmarks
+├── scripts/                       # Setup, diagnostics, test runner & release packager
 │
 ├── frontend/                      # Modern React 19 Frontend
 │   ├── package.json               # Node dependencies & build scripts
@@ -219,7 +303,4 @@ ps2/
 │   ├── test_api_endpoints.py      # FastAPI REST endpoint integration tests
 │   ├── test_live_gemma4.py        # Live local model integration tests
 │   └── fixtures/                  # Three dedicated fictional demos + samples
-│
-└── release/                       # Standalone clean distribution archive
-    └── notice2action_ps02_release.zip
 ```

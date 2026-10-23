@@ -8,14 +8,35 @@ import {
   FileDown,
   Quote,
   CheckCircle2,
+  Info,
 } from 'lucide-react';
 
 export const ActionChecklistTable: React.FC = () => {
-  const { checklistEn, checklistHi, selectedLang, toggleChecklistItem, structuredNotice, summaryEn, summaryHi } = useNotice();
+  const {
+    checklistEn,
+    checklistHi,
+    localizedChecklist,
+    selectedLang,
+    outputLang,
+    toggleChecklistItem,
+    structuredNotice,
+    summaryEn,
+    summaryHi,
+    localizedSummary,
+  } = useNotice();
   const [isExporting, setIsExporting] = useState(false);
 
-  const checklist = selectedLang === 'hi' ? checklistHi : checklistEn;
-  const summary = selectedLang === 'hi' ? summaryHi : summaryEn;
+  const checklist = (outputLang && outputLang !== 'en' && localizedChecklist)
+    ? localizedChecklist
+    : (selectedLang === 'hi' || outputLang === 'hi')
+    ? (checklistHi || localizedChecklist || checklistEn)
+    : (checklistEn || localizedChecklist || checklistHi);
+
+  const summary = (outputLang && outputLang !== 'en' && localizedSummary)
+    ? localizedSummary
+    : (selectedLang === 'hi' || outputLang === 'hi')
+    ? (summaryHi || localizedSummary || summaryEn)
+    : (summaryEn || localizedSummary || summaryHi);
   if (!checklist || checklist.items.length === 0) return null;
 
   const totalItems = checklist.items.length;
@@ -23,16 +44,30 @@ export const ActionChecklistTable: React.FC = () => {
   const progressPercent = Math.round((completedItems / totalItems) * 100);
 
   const handleDownloadMarkdown = async () => {
-    if (!structuredNotice) return;
     setIsExporting(true);
     try {
-      const blob = await apiClient.exportMarkdown(structuredNotice, summary || undefined, checklist);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'notice2action_plan.md';
-      a.click();
-      URL.revokeObjectURL(url);
+      if (structuredNotice) {
+        const blob = await apiClient.exportMarkdown(structuredNotice, summary || undefined, checklist);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'notice2action_plan.md';
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const lines = [
+          '# Sequential Action Checklist',
+          '',
+          ...checklist.items.map((it) => `${it.step_number}. [${it.is_completed ? 'x' : ' '}] ${it.action} (${it.category})`),
+        ];
+        const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'notice2action_checklist.md';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     } catch (err) {
       console.error('Failed to export Markdown', err);
     } finally {
@@ -43,7 +78,7 @@ export const ActionChecklistTable: React.FC = () => {
   const handleDownloadIcs = async () => {
     setIsExporting(true);
     try {
-      const blob = await apiClient.exportIcs(checklist, structuredNotice?.purpose.value || 'Notice Deadline');
+      const blob = await apiClient.exportIcs(checklist, structuredNotice?.purpose?.value || 'Notice Deadline');
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -59,30 +94,30 @@ export const ActionChecklistTable: React.FC = () => {
 
   const getCategoryBadge = (cat: string) => {
     const colors: Record<string, string> = {
-      eligibility: 'bg-indigo-950/80 text-indigo-400 border-indigo-800',
-      documents: 'bg-blue-950/80 text-blue-400 border-blue-800',
-      application: 'bg-sky-950/80 text-sky-400 border-sky-800',
-      submission: 'bg-emerald-950/80 text-emerald-400 border-emerald-800',
-      clarification: 'bg-amber-950/80 text-amber-400 border-amber-800',
+      eligibility: 'bg-[#E8F7F0] text-[#08785D] border-[#B7E7D2]',
+      documents: 'bg-[#EAF2FF] text-[#245DC1] border-[#BFDBFE]',
+      application: 'bg-[#E8F7F0] text-[#08785D] border-[#B7E7D2]',
+      submission: 'bg-[#EAF2FF] text-[#245DC1] border-[#BFDBFE]',
+      clarification: 'bg-[#FFF4D6] text-[#92500A] border-[#FDE68A]',
     };
-    const style = colors[cat] || 'bg-slate-800 text-slate-400 border-slate-700';
+    const style = colors[cat] || 'bg-slate-100 text-[#526176] border-slate-200';
     return (
-      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${style}`}>
+      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border ${style}`}>
         {cat}
       </span>
     );
   };
 
   return (
-    <div className="bg-[#0B1327] border border-[#1D2D4E] rounded-xl p-5 space-y-4">
+    <div className="bg-white border border-[#E1E7EE] rounded-xl p-6 space-y-5 shadow-xs">
       {/* Header and Progress */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#1D2D4E]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E1E7EE]">
         <div>
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <CheckSquare className="w-4 h-4 text-blue-400" />
+          <h2 className="text-base font-bold text-[#12233D] flex items-center gap-2">
+            <CheckSquare className="w-4 h-4 text-[#08785D]" />
             {selectedLang === 'hi' ? 'कार्रवाई योग्य चेकलिस्ट' : 'Sequential Action Checklist'}
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-[#526176] mt-0.5">
             {selectedLang === 'hi'
               ? 'सत्यापित सूचना तथ्यों से प्राप्त आवश्यक चरण।'
               : 'Actionable steps derived strictly from verified facts.'}
@@ -92,12 +127,12 @@ export const ActionChecklistTable: React.FC = () => {
         {/* Progress Tracker */}
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <div className="text-xs font-mono font-bold text-slate-200">
+            <div className="text-xs font-mono font-bold text-[#12233D]">
               {completedItems} / {totalItems} Done ({progressPercent}%)
             </div>
-            <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden mt-1">
+            <div className="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden mt-1 border border-slate-200">
               <div
-                className="h-full bg-blue-500 transition-all duration-300"
+                className="h-full bg-[#08785D] transition-all duration-300 rounded-full"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -110,32 +145,42 @@ export const ActionChecklistTable: React.FC = () => {
         {checklist.items.map((item) => (
           <div
             key={item.step_number}
+            role="checkbox"
+            tabIndex={0}
+            aria-checked={item.is_completed}
+            aria-label={`Step ${item.step_number}: ${item.action}`}
             onClick={() => toggleChecklistItem(item.step_number)}
-            className={`p-3.5 rounded-lg border transition-all cursor-pointer flex items-start gap-3 select-none ${
+            onKeyDown={(e) => {
+              if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                toggleChecklistItem(item.step_number);
+              }
+            }}
+            className={`p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none focus:outline-hidden focus:ring-2 focus:ring-[#08785D] ${
               item.is_completed
-                ? 'bg-[#070B14]/40 border-slate-800/80 text-slate-500'
-                : 'bg-[#0D1528] border-[#1D2D4E] hover:border-blue-500/50 text-slate-200'
+                ? 'bg-slate-50/80 border-slate-200 text-[#68778B]'
+                : 'bg-[#F8FAFC] border-[#E1E7EE] hover:border-[#B7E7D2] text-[#12233D]'
             }`}
           >
-            <div className="pt-0.5 shrink-0 text-blue-400">
+            <div className="pt-0.5 shrink-0 text-[#08785D]">
               {item.is_completed ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                <CheckCircle2 className="w-5 h-5 text-[#08785D]" />
               ) : (
-                <Square className="w-5 h-5 text-slate-500 hover:text-blue-400 transition" />
+                <Square className="w-5 h-5 text-[#CBD5E1] hover:text-[#08785D] transition" />
               )}
             </div>
 
             <div className="flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-mono text-xs font-bold text-slate-400">
+                <span className="font-mono text-xs font-bold text-[#526176]">
                   Step {item.step_number}
                 </span>
                 {getCategoryBadge(item.category)}
                 <span
-                  className={`text-[10px] font-bold uppercase px-1.5 py-0.2 rounded ${
+                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
                     item.is_mandatory
-                      ? 'bg-rose-950/60 text-rose-400 border border-rose-900/50'
-                      : 'bg-slate-800 text-slate-400'
+                      ? 'bg-[#FEE8E7] text-[#B42318] border border-[#FCA5A5]'
+                      : 'bg-slate-100 text-[#526176] border border-slate-200'
                   }`}
                 >
                   {item.is_mandatory ? 'Mandatory' : 'Advisory'}
@@ -144,15 +189,15 @@ export const ActionChecklistTable: React.FC = () => {
 
               <div
                 className={`text-sm font-semibold transition ${
-                  item.is_completed ? 'line-through text-slate-500' : 'text-slate-100'
+                  item.is_completed ? 'line-through text-[#68778B]' : 'text-[#12233D]'
                 }`}
               >
                 {item.action}
               </div>
 
               {item.grounded_quote && !item.is_completed && (
-                <div className="text-xs text-slate-400 italic flex items-center gap-1 font-mono pt-0.5">
-                  <Quote className="w-3 h-3 text-blue-400 shrink-0" />
+                <div className="text-xs text-[#526176] italic flex items-center gap-1 font-mono pt-0.5">
+                  <Quote className="w-3 h-3 text-[#08785D] shrink-0" />
                   "{item.grounded_quote}"
                 </div>
               )}
@@ -161,26 +206,36 @@ export const ActionChecklistTable: React.FC = () => {
         ))}
       </div>
 
+      {/* Official Submission Disclaimer */}
+      <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE] flex items-center gap-2 text-xs text-[#526176]">
+        <Info className="w-4 h-4 text-[#08785D] shrink-0" />
+        <span>
+          <strong>Notice:</strong> Completing tasks in this preparation checklist does not constitute official submission to the issuing authority. Always submit via designated official portals.
+        </span>
+      </div>
+
       {/* Export Action Bar */}
-      <div className="pt-3 border-t border-[#1D2D4E] flex flex-wrap items-center justify-between gap-3">
-        <span className="text-xs text-slate-400">
+      <div className="pt-3 border-t border-[#E1E7EE] flex flex-wrap items-center justify-between gap-3">
+        <span className="text-xs text-[#526176]">
           Save action steps or sync closing deadlines to your digital calendar.
         </span>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
+            type="button"
             onClick={handleDownloadMarkdown}
             disabled={isExporting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-200 bg-[#111A33] hover:bg-[#1A264A] border border-[#1D2D4E] transition"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#12233D] bg-white hover:bg-[#F8FAFC] border border-[#CBD5E1] transition cursor-pointer"
           >
-            <FileDown className="w-3.5 h-3.5 text-blue-400" />
+            <FileDown className="w-3.5 h-3.5 text-[#08785D]" />
             Download Markdown (.md)
           </button>
 
           <button
+            type="button"
             onClick={handleDownloadIcs}
             disabled={isExporting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs cursor-pointer"
           >
             <Calendar className="w-3.5 h-3.5" />
             Add to Calendar (.ics)

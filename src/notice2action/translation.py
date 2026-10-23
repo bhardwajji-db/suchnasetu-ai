@@ -1,5 +1,17 @@
 """
-Bilingual (English and Hindi) Translation Engine for SuchnaSetu AI.
+Multilingual Translation Engine for SuchnaSetu AI.
+Supports 10 Indian official languages:
+- en: English
+- hi: Hindi (हिन्दी)
+- bn: Bengali (বাংলা)
+- ta: Tamil (தமிழ்)
+- te: Telugu (తెలుగు)
+- mr: Marathi (मराठी)
+- gu: Gujarati (ગુજરાતી)
+- pa: Punjabi (ਪੰਜਾਬੀ)
+- kn: Kannada (ಕನ್ನಡ)
+- ur: Urdu (اردو)
+
 Strictly preserves critical entities (dates, fees, percentages, names, contact numbers)
 without alteration during translation.
 """
@@ -12,13 +24,169 @@ from notice2action.schemas import (
     PlainLanguageSummary,
     ActionChecklist,
     ChecklistItem,
-    CertaintyStatus,
 )
-from notice2action.llm.ollama_client import OllamaClient
+from notice2action.llm.base import BaseLLMClient
 from notice2action.grounding import extract_critical_tokens
 
 
-# Deterministic Hindi dictionary for reliable fallback
+SUPPORTED_LANGUAGES: Dict[str, Dict[str, str]] = {
+    "en": {"name": "English", "native": "English", "dir": "ltr", "script": "Latin"},
+    "hi": {"name": "Hindi", "native": "हिन्दी", "dir": "ltr", "script": "Devanagari"},
+    "bn": {"name": "Bengali", "native": "বাংলা", "dir": "ltr", "script": "Bengali script"},
+    "ta": {"name": "Tamil", "native": "தமிழ்", "dir": "ltr", "script": "Tamil script"},
+    "te": {"name": "Telugu", "native": "తెలుగు", "dir": "ltr", "script": "Telugu script"},
+    "mr": {"name": "Marathi", "native": "मराठी", "dir": "ltr", "script": "Devanagari"},
+    "gu": {"name": "Gujarati", "native": "ગુજરાતી", "dir": "ltr", "script": "Gujarati script"},
+    "pa": {"name": "Punjabi", "native": "ਪੰਜਾਬੀ", "dir": "ltr", "script": "Gurmukhi"},
+    "kn": {"name": "Kannada", "native": "ಕನ್ನಡ", "dir": "ltr", "script": "Kannada script"},
+    "ur": {"name": "Urdu", "native": "اردو", "dir": "rtl", "script": "Arabic-derived"},
+}
+
+# Deterministic glossary for recurring notice concepts
+DETERMINISTIC_TRANSLATION_MAPS: Dict[str, Dict[str, str]] = {
+    "en": {
+        "prefix_about": "About",
+        "prefix_eligible": "Eligibility",
+        "prefix_actions": "Required Actions",
+        "prefix_documents": "Documents",
+        "prefix_deadline": "Deadline",
+        "prefix_help_contact": "Contact",
+        "prefix_missing": "Missing Information",
+        "not_stated": "Not stated in the notice.",
+        "submit_form": "Submit Application Form",
+        "pay_fee": "Pay Application Fee",
+        "verify_eligibility": "Verify Eligibility Requirements",
+        "prepare_documents": "Prepare Required Documents",
+    },
+    "hi": {
+        "prefix_about": "सूचना विवरण",
+        "prefix_eligible": "पात्रता",
+        "prefix_actions": "आवश्यक कदम",
+        "prefix_documents": "दस्तावेज़",
+        "prefix_deadline": "अंतिम तिथि",
+        "prefix_help_contact": "संपर्क",
+        "prefix_missing": "अनुपलब्ध जानकारी",
+        "not_stated": "सूचना में उल्लेख नहीं है।",
+        "submit_form": "आवेदन पत्र जमा करें",
+        "pay_fee": "आवेदन शुल्क का भुगतान करें",
+        "verify_eligibility": "पात्रता शर्तों की जांच करें",
+        "prepare_documents": "आवश्यक दस्तावेज़ तैयार करें",
+    },
+    "bn": {
+        "prefix_about": "বিজ্ঞপ্তি বিবরণ",
+        "prefix_eligible": "যোগ্যতা",
+        "prefix_actions": "প্রয়োজনীয় পদক্ষেপ",
+        "prefix_documents": "প্রয়োজনীয় নথিপত্র",
+        "prefix_deadline": "আবেদনের শেষ তারিখ",
+        "prefix_help_contact": "যোগাযোগ",
+        "prefix_missing": "অনুপস্থিত তথ্য",
+        "not_stated": "বিজ্ঞপ্তিতে উল্লেখ নেই।",
+        "submit_form": "আবেদনপত্র জমা দিন",
+        "pay_fee": "আবেদন ফি প্রদান করুন",
+        "verify_eligibility": "যোগ্যতার শর্তাবলী যাচাই করুন",
+        "prepare_documents": "প্রয়োজনীয় নথিপত্র প্রস্তুত করুন",
+    },
+    "ta": {
+        "prefix_about": "அறிவிப்பு விவரம்",
+        "prefix_eligible": "தகுதி வரம்பு",
+        "prefix_actions": "தேவையான நடவடிக்கைகள்",
+        "prefix_documents": "தேவையான ஆவணங்கள்",
+        "prefix_deadline": "கடைசி தேதி",
+        "prefix_help_contact": "தொடர்பு விவரங்கள்",
+        "prefix_missing": "குறிப்பிடப்படாத தகவல்",
+        "not_stated": "அறிவிப்பில் குறிப்பிடப்படவில்லை.",
+        "submit_form": "விண்ணப்ப படிவத்தை சமர்ப்பிக்கவும்",
+        "pay_fee": "விண்ணப்பக் கட்டணத்தை செலுத்தவும்",
+        "verify_eligibility": "தகுதி நிபந்தனைகளை சரிபார்க்கவும்",
+        "prepare_documents": "தேவையான ஆவணங்களைத் தயார் செய்யவும்",
+    },
+    "te": {
+        "prefix_about": "నోటీసు వివరాలు",
+        "prefix_eligible": "అర్హత ప్రమాణాలు",
+        "prefix_actions": "అవసరమైన చర్యలు",
+        "prefix_documents": "అవసరమైన పత్రాలు",
+        "prefix_deadline": "చివరి తేదీ",
+        "prefix_help_contact": "సంప్రదింపు వివరాలు",
+        "prefix_missing": "అందుబాటులో లేని సమాచారం",
+        "not_stated": "నోటీసులో పేర్కొనబడలేదు.",
+        "submit_form": "దరఖాస్తు ఫారమ్‌ను సమర్పించండి",
+        "pay_fee": "దరఖాస్తు రుసుము చెల్లించండి",
+        "verify_eligibility": "అర్హత నిబంధనలను పరిశీలించండి",
+        "prepare_documents": "అవసరమైన పత్రాలను సిద్ధం చేసుకోండి",
+    },
+    "mr": {
+        "prefix_about": "सूचना तपशील",
+        "prefix_eligible": "पात्रता निकष",
+        "prefix_actions": "आवश्यक कृती",
+        "prefix_documents": "आवश्यक कागदपत्रे",
+        "prefix_deadline": "अंतिम मुदत",
+        "prefix_help_contact": "संपर्क तपशील",
+        "prefix_missing": "अनुपलब्ध माहिती",
+        "not_stated": "सूचनेत नमूद केलेले नाही.",
+        "submit_form": "अर्ज सादर करा",
+        "pay_fee": "अर्ज शुल्क भरा",
+        "verify_eligibility": "पात्रतेच्या अटी तपासा",
+        "prepare_documents": "आवश्यक कागदपत्रे तयार ठेवा",
+    },
+    "gu": {
+        "prefix_about": "સૂચના વિગતો",
+        "prefix_eligible": "પાત્રતા માપદંડ",
+        "prefix_actions": "જરૂરી પગલાં",
+        "prefix_documents": "જરૂરી દસ્તાવેજો",
+        "prefix_deadline": "છેલ્લી તારીખ",
+        "prefix_help_contact": "સંપર્ક વિગતો",
+        "prefix_missing": "અનુપલબ્ધ માહિતી",
+        "not_stated": "સૂચનામાં ઉલ્લેખ નથી.",
+        "submit_form": "અરજી ફોર્મ જમા કરો",
+        "pay_fee": "અરજી ફી ભરો",
+        "verify_eligibility": "પાત્રતા શરતો તપાસો",
+        "prepare_documents": "જરૂરી દસ્તાવેજો તૈયાર કરો",
+    },
+    "pa": {
+        "prefix_about": "ਨੋਟਿਸ ਵੇਰਵਾ",
+        "prefix_eligible": "ਯੋਗਤਾ ਸ਼ਰਤਾਂ",
+        "prefix_actions": "ਲੋੜੀਂਦੀ ਕਾਰਵਾਈ",
+        "prefix_documents": "ਲੋੜੀਂਦੇ ਦਸਤਾਵੇਜ਼",
+        "prefix_deadline": "ਆਖਰੀ ਮਿਤੀ",
+        "prefix_help_contact": "ਸੰਪਰਕ ਵੇਰਵੇ",
+        "prefix_missing": "ਗੁੰਮ ਜਾਣਕਾਰੀ",
+        "not_stated": "ਨੋਟਿਸ ਵਿੱਚ ਦਰਜ ਨਹੀਂ ਹੈ।",
+        "submit_form": "ਅਰਜ਼ੀ ਫਾਰਮ ਜਮ੍ਹਾਂ ਕਰੋ",
+        "pay_fee": "ਅਰਜ਼ੀ ਫੀਸ ਅਦਾ ਕਰੋ",
+        "verify_eligibility": "ਯੋਗਤਾ ਸ਼ਰਤਾਂ ਦੀ ਜਾਂਚ ਕਰੋ",
+        "prepare_documents": "ਲੋੜੀਂਦੇ ਦਸਤਾਵੇਜ਼ ਤਿਆਰ ਕਰੋ",
+    },
+    "kn": {
+        "prefix_about": "ಪ್ರಕಟಣೆ ವಿವರ",
+        "prefix_eligible": "ಅರ್ಹತಾ ಮಾನದಂಡಗಳು",
+        "prefix_actions": "ಅಗತ್ಯ ಕ್ರಮಗಳು",
+        "prefix_documents": "ಅಗತ್ಯ ದಾಖಲೆಗಳು",
+        "prefix_deadline": "ಅಂತಿಮ ದಿನಾಂಕ",
+        "prefix_help_contact": "ಸಂಪರ್ಕ ವಿವರಗಳು",
+        "prefix_missing": "ತಿಳಿಸದಿರುವ ಮಾಹಿತಿ",
+        "not_stated": "ಪ್ರಕಟಣೆಯಲ್ಲಿ ತಿಳಿಸಲಾಗಿಲ್ಲ.",
+        "submit_form": "ಅರ್ಜಿ ನಮೂನೆಯನ್ನು ಸಲ್ಲಿಸಿ",
+        "pay_fee": "ಅರ್ಜಿ ಶುಲ್ಕವನ್ನು ಪಾವತಿಸಿ",
+        "verify_eligibility": "ಅರ್ಹತಾ ಷರತ್ತುಗಳನ್ನು ಪರಿಶೀಲಿಸಿ",
+        "prepare_documents": "ಅಗತ್ಯ ದಾಖಲೆಗಳನ್ನು ಸಿದ್ಧಪಡಿಸಿಕೊಳ್ಳಿ",
+    },
+    "ur": {
+        "prefix_about": "نوٹس کی تفصیل",
+        "prefix_eligible": "اہلیت کے معیارات",
+        "prefix_actions": "مطلوبہ اقدامات",
+        "prefix_documents": "مطلوبہ دستاویزات",
+        "prefix_deadline": "آخری تاریخ",
+        "prefix_help_contact": "رابطے کی تفصیلات",
+        "prefix_missing": "غیر موجود معلومات",
+        "not_stated": "نوٹس میں درج نہیں ہے۔",
+        "submit_form": "درخواست فارم جمع کروائیں",
+        "pay_fee": "درخواست فیس ادا کریں",
+        "verify_eligibility": "اہلیت کی شرائط کی تصدیق کریں",
+        "prepare_documents": "مطلوبہ دستاویزات تیار کریں",
+    },
+}
+
+# Legacy Hindi map alias for backwards compatibility
 DETERMINISTIC_HINDI_MAP = {
     "What is this notice about?": "यह सूचना किस बारे में है?",
     "Who is eligible?": "कौन पात्र है?",
@@ -27,28 +195,24 @@ DETERMINISTIC_HINDI_MAP = {
     "What is the deadline?": "अंतिम तिथि (डेडलाइन) क्या है?",
     "Where can the reader get help?": "सहायता या संपर्क कहाँ करें?",
     "What important information is missing?": "कौन सी महत्वपूर्ण जानकारी उपलब्ध नहीं है?",
-    "Not stated in the notice.": "सूचना में उल्लेख नहीं है (Not stated).",
-    "Needs confirmation.": "पुष्टि की आवश्यकता है (Needs confirmation).",
-    "Verify Eligibility": "पात्रता सत्यापित करें",
-    "Gather Required Documents": "आवश्यक दस्तावेज़ एकत्रित करें",
-    "Complete Application": "आवेदन प्रक्रिया पूरी करें",
-    "Submit Before Deadline": "अंतिम तिथि से पहले जमा करें",
-    "Contact Official Source": "आधिकारिक स्रोत से संपर्क करें",
+    "Not stated in the notice.": "सूचना में उल्लेख नहीं है।",
+    "Submit Application Form": "आवेदन पत्र जमा करें",
+    "Pay Application Fee": "आवेदन शुल्क का भुगतान करें",
+    "Verify Eligibility Requirements": "पात्रता शर्तों की जांच करें",
+    "Prepare Required Documents": "आवश्यक दस्तावेज़ तैयार करें",
 }
 
 
-def audit_entity_preservation(original_text: str, translated_text: str) -> Tuple[bool, List[str]]:
+def audit_entity_preservation(source_text: str, translated_text: str) -> Tuple[bool, List[str]]:
     """
-    Verifies that critical tokens (dates, amounts, numbers, percentages)
-    present in the original text are preserved intact in the translation.
+    Checks that critical tokens (dates, fees, numbers) from source_text
+    appear uncorrupted in translated_text.
+    Returns (True, []) if compliant, or (False, list_of_missing_tokens).
     """
-    orig_tokens = extract_critical_tokens(original_text)
-    trans_tokens = extract_critical_tokens(translated_text)
-    missing: List[str] = []
+    source_tokens = extract_critical_tokens(source_text)
+    missing = []
 
-    for tok in orig_tokens:
-        # Check if digit/number exists in translation text
-        # Extract digits from token
+    for tok in source_tokens:
         digits = re.findall(r"\d+", tok)
         for d in digits:
             if d not in translated_text:
@@ -57,34 +221,43 @@ def audit_entity_preservation(original_text: str, translated_text: str) -> Tuple
     return len(missing) == 0, missing
 
 
-def translate_summary_to_hindi(
+def translate_summary(
     summary: PlainLanguageSummary,
-    client: Optional[OllamaClient] = None,
+    target_lang: str = "en",
+    client: Optional[BaseLLMClient] = None,
 ) -> PlainLanguageSummary:
     """
-    Translates a plain-language summary into accessible Hindi,
+    Translates a plain-language summary into any of the 10 supported languages,
     ensuring critical entities (dates, fees, contacts) are preserved verbatim.
     """
+    lang = target_lang.lower().strip()
+    if lang not in SUPPORTED_LANGUAGES or lang == "en":
+        return summary
+
+    lang_meta = SUPPORTED_LANGUAGES[lang]
+    glossary = DETERMINISTIC_TRANSLATION_MAPS.get(lang, DETERMINISTIC_TRANSLATION_MAPS["en"])
+
     if client is None:
-        # Deterministic structured fallback
+        # Deterministic structured fallback with natural prefix headers
         return PlainLanguageSummary(
-            about=f"सूचना विवरण: {summary.about}",
-            eligible=f"पात्रता: {summary.eligible}",
-            actions=f"आवश्यक कदम: {summary.actions}",
-            documents=f"दस्तावेज़: {summary.documents}",
-            deadline=f"अंतिम तिथि: {summary.deadline}",
-            help_contact=f"संपर्क: {summary.help_contact}",
-            missing=f"अनुपलब्ध जानकारी: {summary.missing}",
+            about=f"{glossary['prefix_about']}: {summary.about}",
+            eligible=f"{glossary['prefix_eligible']}: {summary.eligible}",
+            actions=f"{glossary['prefix_actions']}: {summary.actions}",
+            documents=f"{glossary['prefix_documents']}: {summary.documents}",
+            deadline=f"{glossary['prefix_deadline']}: {summary.deadline}",
+            help_contact=f"{glossary['prefix_help_contact']}: {summary.help_contact}",
+            missing=f"{glossary['prefix_missing']}: {summary.missing}",
         )
 
     system_prompt = (
-        "You are an expert Hindi translator for official notices. Translate the given English summary "
-        "into clear, easy-to-understand Hindi (Devanagari script).\n"
+        f"You are an expert translator for official notices translating into {lang_meta['name']} ({lang_meta['native']}).\n"
+        f"Script: {lang_meta['script']}. Direction: {lang_meta['dir'].upper()}.\n"
         "MANDATORY RULE: Do NOT change, alter, or omit any dates, numbers, amounts, percentages, email addresses, "
-        "or contact phone numbers. Keep them verbatim or write them in standard Hindi numerals/English numerals in brackets."
+        "portal URLs, or contact phone numbers. Keep them verbatim or write them in standard numerals in brackets.\n"
+        "Output strictly valid JSON with the exact keys: 'about', 'eligible', 'actions', 'documents', 'deadline', 'help_contact', 'missing'."
     )
 
-    user_prompt = f"""Translate each field into clear, accessible Hindi:
+    user_prompt = f"""Translate each field into clear, accessible {lang_meta['name']}:
 About: {summary.about}
 Eligible: {summary.eligible}
 Actions: {summary.actions}
@@ -93,11 +266,11 @@ Deadline: {summary.deadline}
 Help_Contact: {summary.help_contact}
 Missing: {summary.missing}
 
-Respond in JSON with the exact keys: 'about', 'eligible', 'actions', 'documents', 'deadline', 'help_contact', 'missing'."""
+Respond with strictly valid JSON."""
 
     try:
         data = client.generate_structured_json(system_prompt, user_prompt)
-        hi_summary = PlainLanguageSummary(
+        translated = PlainLanguageSummary(
             about=data.get("about", summary.about),
             eligible=data.get("eligible", summary.eligible),
             actions=data.get("actions", summary.actions),
@@ -108,34 +281,41 @@ Respond in JSON with the exact keys: 'about', 'eligible', 'actions', 'documents'
         )
 
         # Audit preservation of deadline
-        ok, missing = audit_entity_preservation(summary.deadline, hi_summary.deadline)
+        ok, missing = audit_entity_preservation(summary.deadline, translated.deadline)
         if not ok:
-            # Fallback for deadline to prevent entity alteration
-            hi_summary.deadline = f"{hi_summary.deadline} ({summary.deadline})"
+            translated.deadline = f"{translated.deadline} ({summary.deadline})"
 
-        return hi_summary
+        return translated
     except Exception:
-        return translate_summary_to_hindi(summary, client=None)
+        return translate_summary(summary, target_lang=lang, client=None)
 
 
-def translate_checklist_to_hindi(
+def translate_checklist(
     checklist: ActionChecklist,
-    client: Optional[OllamaClient] = None,
+    target_lang: str = "en",
+    client: Optional[BaseLLMClient] = None,
 ) -> ActionChecklist:
-    """Translates the action checklist into Hindi, maintaining step order and status."""
+    """Translates the action checklist into any of the 10 supported languages, maintaining step order and status."""
+    lang = target_lang.lower().strip()
+    if lang not in SUPPORTED_LANGUAGES or lang == "en":
+        return checklist
+
+    glossary = DETERMINISTIC_TRANSLATION_MAPS.get(lang, DETERMINISTIC_TRANSLATION_MAPS["en"])
     translated_items: List[ChecklistItem] = []
 
     for item in checklist.items:
-        hi_action = item.action
-        for en_key, hi_val in DETERMINISTIC_HINDI_MAP.items():
-            if en_key in hi_action:
-                hi_action = hi_action.replace(en_key, hi_val)
+        action_text = item.action
 
-        # Append bilingual tag if entity is present
+        # Replace standard action phrases with localized terms
+        for en_key in ["Submit Application Form", "Pay Application Fee", "Verify Eligibility Requirements", "Prepare Required Documents"]:
+            map_key = en_key.lower().replace(" ", "_")
+            if en_key in action_text and map_key in glossary:
+                action_text = action_text.replace(en_key, glossary[map_key])
+
         translated_items.append(
             ChecklistItem(
                 step_number=item.step_number,
-                action=hi_action,
+                action=action_text,
                 category=item.category,
                 is_mandatory=item.is_mandatory,
                 requires_confirmation=item.requires_confirmation,
@@ -146,3 +326,18 @@ def translate_checklist_to_hindi(
         )
 
     return ActionChecklist(items=translated_items)
+
+
+# Backwards compatibility wrappers for existing callers
+def translate_summary_to_hindi(
+    summary: PlainLanguageSummary,
+    client: Optional[BaseLLMClient] = None,
+) -> PlainLanguageSummary:
+    return translate_summary(summary, target_lang="hi", client=client)
+
+
+def translate_checklist_to_hindi(
+    checklist: ActionChecklist,
+    client: Optional[BaseLLMClient] = None,
+) -> ActionChecklist:
+    return translate_checklist(checklist, target_lang="hi", client=client)

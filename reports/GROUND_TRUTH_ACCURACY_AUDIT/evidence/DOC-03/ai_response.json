@@ -1,0 +1,180 @@
+{
+  "issuing_authority": {
+    "field_name": "issuing_authority",
+    "value": "STAFF SELECTION COMMISSION",
+    "status": "stated",
+    "evidence_quote": "STAFF SELECTION COMMISSION",
+    "source_location": "Line 1",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "notice_reference_number": {
+    "field_name": "notice_reference_number",
+    "value": "SSC-NR-2026-ADV-04",
+    "status": "stated",
+    "evidence_quote": "Notice Ref: SSC-NR-2026-ADV-04",
+    "source_location": "Line 2",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "notice_date": {
+    "field_name": "notice_date",
+    "value": "10 February 2026",
+    "status": "stated",
+    "evidence_quote": "Date of Release: 10 February 2026",
+    "source_location": "Line 3",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "recipient": {
+    "field_name": "recipient",
+    "value": "Not stated in the notice.",
+    "status": "not_stated",
+    "evidence_quote": null,
+    "source_location": null,
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": "This information is not stated in the supplied notice.",
+    "uncertainty_type": null
+  },
+  "main_subject": {
+    "field_name": "main_subject",
+    "value": "Combined Graduate Level Examination 2026 Tier-I Schedule",
+    "status": "stated",
+    "evidence_quote": "Subject: Combined Graduate Level Examination 2026 Tier-| Schedule",
+    "source_location": "Line 5",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "required_action_and_deadline": {
+    "field_name": "required_action_and_deadline",
+    "value": "Online applications must be submitted by 25 April 2026.",
+    "status": "stated",
+    "evidence_quote": "Closing Date for Online Applications: 25 April 2026.",
+    "source_location": "Line 12",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "purpose": {
+    "field_name": "purpose",
+    "value": "To announce the schedule for the Combined Graduate Level Examination 2026 Tier-I.",
+    "status": "stated",
+    "evidence_quote": "Subject: Combined Graduate Level Examination 2026 Tier-| Schedule",
+    "source_location": "Line 5",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "eligibility": {
+    "field_name": "eligibility",
+    "value": "Candidates must hold a recognized University Degree with minimum 55% marks and be between 18 and 30 years of age on 01 January 2026.",
+    "status": "uncertain",
+    "evidence_quote": "1. Eligible candidates holding a recognized University Degree with minimum 55% marks may apply. ... 2. Candidates must be between 18 and 30 years of age on 01 January 2026.",
+    "source_location": null,
+    "requires_confirmation": true,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": "The provided evidence quotation could not be found anywhere in the notice text.",
+    "uncertainty_type": null
+  },
+  "deadline": {
+    "field_name": "deadline",
+    "value": "25 April 2026",
+    "status": "stated",
+    "evidence_quote": "Closing Date for Online Applications: 25 April 2026.",
+    "source_location": "Line 12",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "fee_or_cost": {
+    "field_name": "fee_or_cost",
+    "value": "Rs. 100 (Exempted for Women and SC/ST candidates).",
+    "status": "stated",
+    "evidence_quote": "Application Fee: Rs. 100 (Exempted for Women and SC/ST candidates).",
+    "source_location": "Line 10",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "required_documents": {
+    "field_name": "required_documents",
+    "value": "Graduation Certificate, Passport Photo, Scanned Signature.",
+    "status": "stated",
+    "evidence_quote": "Required Documents: Graduation Certificate, Passport Photo, Scanned Signature.",
+    "source_location": "Line 14",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "contact_details": {
+    "field_name": "contact_details",
+    "value": "Website: https://ssc.gov.in/portal",
+    "status": "stated",
+    "evidence_quote": "Website: https://ssc.gov.in/portal",
+    "source_location": "Line 16",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "required_actions": {
+    "field_name": "required_actions",
+    "value": "Apply online.",
+    "status": "stated",
+    "evidence_quote": "Closing Date for Online Applications: 25 April 2026.",
+    "source_location": "Line 12",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "important_conditions": {
+    "field_name": "important_conditions",
+    "value": "Not stated in the notice.",
+    "status": "not_stated",
+    "evidence_quote": null,
+    "source_location": null,
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": "This information is not stated in the supplied notice.",
+    "uncertainty_type": null
+  },
+  "missing_information": [
+    "Detailed application procedure",
+    "Examination syllabus",
+    "Exam date/schedule",
+    "Recipient"
+  ],
+  "uncertain_or_conflicting_details": [
+    "Eligibility: The provided evidence quotation could not be found anywhere in the notice text."
+  ],
+  "raw_notice_text": "STAFF SELECTION COMMISSION - PUBLIC ADVISORY\nNotice Ref: SSC-NR-2026-ADV-04\nDate of Release: 10 February 2026\n\nSubject: Combined Graduate Level Examination 2026 Tier-| Schedule\n\n1. Eligible candidates holding a recognized University Degree with minimum 55% marks may apply.\n2. Candidates must be between 18 and 30 years of age on 01 January 2026.\n\n3. Application Fee: Rs. 100 (Exempted for Women and SC/ST candidates).\n\n4. Closing Date for Online Applications: 25 April 2026.\n\n5. Required Documents: Graduation Certificate, Passport Photo, Scanned Signature.\n\n6. Website: https://ssc.gov.in/portal"
+}

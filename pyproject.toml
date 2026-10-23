@@ -9,7 +9,7 @@ description = "SuchnaSetu AI — Notice-to-Action Accessibility Assistant using 
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
-    { name = "Avinash", email = "developer@example.com" }
+    { name = "SuchnaSetu AI Team", email = "developer@example.com" }
 ]
 license = { text = "Apache-2.0" }
 dependencies = [

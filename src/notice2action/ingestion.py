@@ -101,6 +101,29 @@ def extract_text_from_pdf(file_bytes: bytes, target_lang: str = "eng+hin") -> Tu
     raise ValueError("The uploaded PDF contains no extractable digital text and no readable page scans.")
 
 
+def extract_text_from_docx(file_bytes: bytes) -> str:
+    """Extracts text content from a .docx file using standard library zipfile and xml parsing."""
+    import zipfile
+    import xml.etree.ElementTree as ET
+    from io import BytesIO
+
+    with zipfile.ZipFile(BytesIO(file_bytes)) as zf:
+        xml_content = zf.read("word/document.xml")
+
+    tree = ET.fromstring(xml_content)
+    ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    paragraphs = []
+    for p in tree.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p"):
+        texts = [node.text for node in p.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t") if node.text]
+        if texts:
+            paragraphs.append("".join(texts))
+
+    full_text = "\n\n".join(paragraphs).strip()
+    if not full_text:
+        raise ValueError("The uploaded DOCX document contains no text.")
+    return full_text
+
+
 def ingest_uploaded_file(file_name: str, file_bytes: bytes) -> IngestionResult:
     """
     Safely ingests an uploaded file (image, text, or PDF).
@@ -153,6 +176,27 @@ def ingest_uploaded_file(file_name: str, file_bytes: bytes) -> IngestionResult:
                 raw_text=None,
                 image=None,
                 error=f"Failed to process PDF: {e}",
+            )
+    elif file_type == "docx":
+        try:
+            docx_text = extract_text_from_docx(file_bytes)
+            clean_text = sanitize_input_text(docx_text)
+            warning = detect_prompt_injection(clean_text)
+            return IngestionResult(
+                source_type="docx",
+                filename=safe_name,
+                raw_text=clean_text,
+                image=None,
+                security_warning=warning,
+                char_count=len(clean_text),
+            )
+        except Exception as e:
+            return IngestionResult(
+                source_type="docx",
+                filename=safe_name,
+                raw_text=None,
+                image=None,
+                error=f"Failed to process DOCX: {e}",
             )
     elif file_type == "image":
         try:

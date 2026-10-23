@@ -170,7 +170,7 @@ def test_react_frontend_full_workflow_and_tabs():
         page.wait_for_selector("text=PS02", timeout=10000)
 
         # Step 2: Load Competition Demo
-        demo_btn = page.locator("button:has-text('Competition Demo (TEST-SCH)')").first
+        demo_btn = page.locator("button:has-text('Competition Demo')").first
         demo_btn.click()
         page.wait_for_timeout(1000)
 
@@ -208,7 +208,7 @@ def test_react_frontend_full_workflow_and_tabs():
         page.screenshot(path=str(SCREENSHOT_DIR / "react_workflow_03_summary_checklist.png"))
 
         # Step 6: Switch to Tab 4 (Follow-Up Q&A)
-        page.locator("button:has-text('4. Follow-Up Q&A')").click()
+        page.locator("button:has-text('Follow-Up Q&A')").click()
         page.wait_for_selector("text=Notice-Grounded Q&A Assistant", timeout=5000)
 
         # Click suggested question
@@ -222,6 +222,10 @@ def test_react_frontend_full_workflow_and_tabs():
         # Step 7: Test Stale Warning Detection
         page.locator("button:has-text('1. Ingestion & OCR')").click()
         page.wait_for_timeout(500)
+        upload_tools_btn = page.locator("button:has-text('Upload / OCR Source')")
+        if upload_tools_btn.count() > 0 and upload_tools_btn.is_visible():
+            upload_tools_btn.click()
+            page.wait_for_timeout(500)
         page.locator("textarea").fill(buffer_val + "\n\nADDITIONAL AMENDMENT: Deadline extended to 15 November 2026.")
         page.wait_for_timeout(1000)
 

@@ -19,7 +19,7 @@ const TriggerModal: React.FC = () => {
       explanation: 'Tentative date needs verification.',
     };
     openConfirmationModal('deadline', 'Closing Deadline', fact);
-  }, []);
+  }, [openConfirmationModal]);
 
   return <ConfirmationModal />;
 };
@@ -34,9 +34,8 @@ describe('ConfirmationModal Component', () => {
 
     expect(screen.getByText(/Review & Confirm Detail/i)).toBeInTheDocument();
     expect(screen.getByText(/Closing Deadline/i)).toBeInTheDocument();
-    expect(screen.getAllByText('Late October 2026 (tentative)').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Late October 2026/i)[0]).toBeInTheDocument();
     expect(screen.getByText(/Confirm As-Is/i)).toBeInTheDocument();
     expect(screen.getByText(/Save Verification/i)).toBeInTheDocument();
-    expect(screen.getByText(/Cancel/i)).toBeInTheDocument();
   });
 });

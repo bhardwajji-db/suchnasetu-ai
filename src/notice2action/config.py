@@ -96,9 +96,10 @@ class AppConfig:
     max_image_dimension: int = int(os.getenv("MAX_IMAGE_DIMENSION", "4096"))
     max_pdf_pages: int = int(os.getenv("MAX_PDF_PAGES", "30"))
     allowed_extensions: List[str] = field(
-        default_factory=lambda: [e.strip().lower() for e in os.getenv("ALLOWED_EXTENSIONS", "png,jpg,jpeg,webp,txt,pdf").split(",") if e.strip()]
+        default_factory=lambda: [e.strip().lower() for e in os.getenv("ALLOWED_EXTENSIONS", "png,jpg,jpeg,webp,tif,tiff,txt,pdf,docx").split(",") if e.strip()]
     )
     synthetic_fixtures_dir: Path = PROJECT_ROOT / "tests" / "fixtures"
+    demo_library_dir: Path = PROJECT_ROOT / "tests" / "fixtures" / "demo_library"
 
 
 config = AppConfig()

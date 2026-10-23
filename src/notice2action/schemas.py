@@ -8,8 +8,8 @@ recipient, main subject, required action and deadline).
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import List, Optional, Dict, Any, Union
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 
 
 class CertaintyStatus(str, Enum):
@@ -348,3 +348,421 @@ class FollowUpAnswer(BaseModel):
     is_supported: bool = True
     evidence_quote: Optional[str] = None
     unsupported_message: Optional[str] = None
+
+
+# =========================================================
+# Multi-Notice Revision Ledger Schemas
+# =========================================================
+
+class RelationshipType(str, Enum):
+    AMENDMENT = "AMENDMENT"
+    EXTENSION = "EXTENSION"
+    CANCELLATION = "CANCELLATION"
+    REPLACEMENT = "REPLACEMENT"
+    RELATED = "RELATED"
+    UNRESOLVED = "UNRESOLVED"
+
+
+class ChangeCategory(str, Enum):
+    ADDED = "ADDED"
+    REMOVED = "REMOVED"
+    MODIFIED = "MODIFIED"
+    UNCHANGED = "UNCHANGED"
+    UNCERTAIN = "UNCERTAIN"
+
+
+class NoticeRelationship(BaseModel):
+    source_notice_id: str = Field(..., description="ID or title of the original/base notice")
+    target_notice_id: str = Field(..., description="ID or title of the revised/amendment notice")
+    relationship_type: RelationshipType = Field(default=RelationshipType.RELATED)
+    confidence: str = Field(default="HIGH", description="'HIGH', 'MEDIUM', 'LOW'")
+    is_explicit: bool = Field(default=False, description="True if source explicitly references target notice number")
+    evidence_quote: str = Field(default="", description="Verbatim citation supporting the relationship")
+    source_reference: Optional[str] = Field(default=None, description="Explicit reference circular number if found")
+    explanation: str = Field(default="", description="Human-readable explanation of relationship")
+
+
+class RevisionEntry(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    field_name: str = Field(..., description="Machine-readable field key")
+    display_name: str = Field(..., description="Human-readable field name")
+    old_value: str = Field(..., description="Value in original notice")
+    new_value: str = Field(..., description="Value in revised notice")
+    change_category: ChangeCategory = Field(default=ChangeCategory.UNCHANGED)
+    category: Optional[str] = None
+    old_evidence_quote: Optional[str] = None
+    new_evidence_quote: Optional[str] = None
+    old_page: Optional[int] = None
+    new_page: Optional[int] = None
+    requires_review: bool = False
+    explanation: str = ""
+
+    @model_validator(mode="after")
+    def sync_category(self) -> "RevisionEntry":
+        if not self.category and self.change_category:
+            val = self.change_category.value if hasattr(self.change_category, "value") else str(self.change_category)
+            if val == "MODIFIED":
+                if self.field_name == "deadline":
+                    self.category = "DEADLINE_EXTENSION"
+                elif self.field_name == "fee_or_cost":
+                    self.category = "FEE_CHANGE"
+                elif self.field_name == "eligibility":
+                    self.category = "ELIGIBILITY_CHANGE"
+                else:
+                    self.category = "GENERAL_MODIFICATION"
+            else:
+                self.category = str(val)
+        return self
+
+
+class RevisionLedger(BaseModel):
+    source_notice_id: str
+    target_notice_id: str
+    source_title: str = "Original Notice"
+    target_title: str = "Revised Notice / Corrigendum"
+    relationship: NoticeRelationship
+    entries: List[RevisionEntry] = Field(default_factory=list)
+    summary_of_changes: str = ""
+    created_at: str = ""
+
+
+class CompareNoticesRequest(BaseModel):
+    source_session_id: Optional[str] = None
+    target_session_id: Optional[str] = None
+    source_text: Optional[str] = None
+    target_text: Optional[str] = None
+
+
+# =========================================================
+# Explainable Applicant Eligibility Engine Schemas
+# =========================================================
+
+class CriterionType(str, Enum):
+    AGE = "AGE"
+    QUALIFICATION = "QUALIFICATION"
+    PERCENTAGE = "PERCENTAGE"
+    CATEGORY = "CATEGORY"
+    DOCUMENT = "DOCUMENT"
+    OTHER = "OTHER"
+
+
+class EvaluationStatus(str, Enum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+    UNKNOWN = "UNKNOWN"
+
+
+class EligibilityCriterion(BaseModel):
+    id: str
+    criterion_type: CriterionType
+    description: str
+    operator: str = ">="  # ">=", "<=", "==", "IN", "CONTAINS"
+    threshold_value: str
+    cutoff_date: Optional[str] = None
+    category_relaxations: Dict[str, str] = Field(default_factory=dict)
+    evidence_quote: str = ""
+    page_number: Optional[int] = None
+
+
+class ApplicantProfile(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    date_of_birth: Optional[str] = None  # YYYY-MM-DD
+    age_years: Optional[float] = None
+    degree: Optional[str] = None
+    academic_degree: Optional[str] = None
+    course: Optional[str] = None  # e.g., B.Tech, MBA, B.Sc
+    academic_year: Optional[Union[str, int]] = None  # e.g., 2nd Year, Final Year
+    department: Optional[str] = None
+    marks_percentage: Optional[float] = None
+    academic_percentage: Optional[float] = None
+    income_annual: Optional[float] = None
+    annual_family_income: Optional[float] = None
+    enrollment_status: Optional[str] = None
+    category: Optional[str] = "General"  # General, OBC, SC, ST, EWS, PwD
+    documents_available: List[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+    @model_validator(mode="after")
+    def sync_aliases(self) -> "ApplicantProfile":
+        if not self.degree and self.academic_degree:
+            self.degree = self.academic_degree
+        if self.marks_percentage is None and self.academic_percentage is not None:
+            self.marks_percentage = self.academic_percentage
+        if self.income_annual is None and self.annual_family_income is not None:
+            self.income_annual = self.annual_family_income
+        if self.academic_year is not None:
+            self.academic_year = str(self.academic_year)
+        return self
+
+
+class CriterionEvaluationResult(BaseModel):
+    criterion_id: str
+    criterion_type: CriterionType
+    description: str
+    status: EvaluationStatus
+    applicant_value: str
+    requirement_value: str
+    evidence_quote: str
+    page_number: Optional[int] = None
+    explanation: str
+    missing_info: Optional[str] = None
+
+
+class EligibilityAssessment(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
+
+    session_id: Optional[str] = None
+    overall_status: str  # "ELIGIBLE", "NOT_ELIGIBLE", "INCONCLUSIVE"
+    overall_verdict: Optional[str] = None
+    results: List[CriterionEvaluationResult] = Field(default_factory=list)
+    summary: str = ""
+    disclaimer: str = (
+        "This assessment is for informational assistance only and does not constitute "
+        "an official government decision or guarantee of qualification. Always verify "
+        "with official gazettes and recruiting authorities."
+    )
+
+    @model_validator(mode="after")
+    def sync_verdict(self) -> "EligibilityAssessment":
+        if not self.overall_verdict:
+            self.overall_verdict = self.overall_status
+        return self
+
+
+class EvaluateEligibilityRequest(BaseModel):
+    session_id: Optional[str] = None
+    notice_text: Optional[str] = None
+    applicant_profile: ApplicantProfile
+
+
+# =========================================================
+# Feature 1: Evidence-First Trust Engine Schemas
+# =========================================================
+
+class EvidenceVerificationStatus(str, Enum):
+    VERIFIED_IN_SOURCE = "VERIFIED_IN_SOURCE"
+    UNVERIFIED = "UNVERIFIED"
+    UNCERTAIN_OCR = "UNCERTAIN_OCR"
+    DERIVED_DETERMINISTIC = "DERIVED_DETERMINISTIC"
+    AI_INTERPRETATION = "AI_INTERPRETATION"
+    HUMAN_CONFIRMED = "HUMAN_CONFIRMED"
+
+
+class TrustEvidence(BaseModel):
+    evidence_id: str
+    claim_id: Optional[str] = None
+    claim_text: str = ""
+    source_doc_id: Optional[str] = None
+    source_doc_title: Optional[str] = None
+    page_number: Optional[int] = None
+    line_start: Optional[int] = None
+    line_end: Optional[int] = None
+    verbatim_excerpt: str = ""
+    normalized_value: Optional[str] = None
+    verification_status: EvidenceVerificationStatus = EvidenceVerificationStatus.UNVERIFIED
+    confidence_rationale: str = ""
+    is_inert_safe: bool = True
+
+
+class VerifyEvidenceRequest(BaseModel):
+    notice_text: str
+    excerpt: str
+    claim_text: Optional[str] = None
+    source_doc_title: Optional[str] = "Active Notice"
+
+
+class VerifyEvidenceResponse(BaseModel):
+    is_valid: bool
+    evidence: TrustEvidence
+    suggested_match: Optional[str] = None
+
+
+# =========================================================
+# Feature 2: Personal Impact Change Tracker Schemas
+# =========================================================
+
+class ImpactType(str, Enum):
+    BENEFICIAL = "BENEFICIAL"
+    ADVERSE = "ADVERSE"
+    NEUTRAL = "NEUTRAL"
+    ACTION_REQUIRED = "ACTION_REQUIRED"
+    UNRESOLVED = "UNRESOLVED"
+
+
+class PersonalImpactItem(BaseModel):
+    id: str
+    field_name: str
+    change_category: ChangeCategory
+    previous_value: str
+    new_value: str
+    previous_status: Optional[str] = None
+    new_status: Optional[str] = None
+    impact_type: ImpactType
+    headline: str
+    explanation: str
+    evidence_old: Optional[str] = None
+    evidence_new: Optional[str] = None
+    required_user_action: Optional[str] = None
+
+
+class PersonalImpactReport(BaseModel):
+    overall_impact_summary: str
+    impact_level: str  # "HIGH", "MODERATE", "LOW", "NEUTRAL"
+    impact_items: List[PersonalImpactItem] = Field(default_factory=list)
+    recalculated_eligibility: Optional[EligibilityAssessment] = None
+    recommended_next_actions: List[str] = Field(default_factory=list)
+    disclaimer: str = (
+        "This personal impact analysis is derived automatically by comparing notice revisions against "
+        "your voluntarily provided profile. Always verify critical cutoff changes against the official issuing gazette."
+    )
+
+
+class EvaluatePersonalImpactRequest(BaseModel):
+    revision_ledger: Optional[RevisionLedger] = None
+    source_text: Optional[str] = None
+    target_text: Optional[str] = None
+    applicant_profile: Optional[ApplicantProfile] = None
+
+
+# =========================================================
+# Feature 3: Personalized Action Navigator Schemas
+# =========================================================
+
+class ActionCategory(str, Enum):
+    ELIGIBILITY_CHECK = "ELIGIBILITY_CHECK"
+    DOCUMENT_PREPARATION = "DOCUMENT_PREPARATION"
+    FEE_PAYMENT = "FEE_PAYMENT"
+    APPLICATION_SUBMISSION = "APPLICATION_SUBMISSION"
+    HEARING_APPEARANCE = "HEARING_APPEARANCE"
+    POST_SUBMISSION = "POST_SUBMISSION"
+    CORRIGENDUM_REVIEW = "CORRIGENDUM_REVIEW"
+
+
+class ActionItemStatus(str, Enum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    BLOCKED = "BLOCKED"
+    NEEDS_VERIFICATION = "NEEDS_VERIFICATION"
+
+
+class ActionItem(BaseModel):
+    id: str
+    title: str
+    explanation: str
+    category: ActionCategory
+    status: ActionItemStatus = ActionItemStatus.PENDING
+    deadline: Optional[str] = None
+    deadline_evidence: Optional[str] = None
+    deadline_status: Optional[str] = None  # Upcoming, Due soon, Due today, Past deadline, Date unclear, Superseded
+    remaining_time: Optional[str] = None  # e.g., '3 days remaining', 'Expired 2 days ago'
+    superseded_deadline: Optional[str] = None
+    fee_amount: Optional[str] = None
+    dependencies: List[str] = Field(default_factory=list)
+    blocked_by: List[str] = Field(default_factory=list)
+    official_portal_url: Optional[str] = None
+    url_verified: bool = False
+    evidence: Optional[TrustEvidence] = None
+    is_user_custom: bool = False
+    completed_at: Optional[str] = None
+    user_notes: Optional[str] = None
+
+
+class PersonalizedActionPlan(BaseModel):
+    plan_id: str
+    session_id: Optional[str] = None
+    notice_title: str = "Administrative Notice Action Plan"
+    overall_progress_percentage: float = 0.0
+    completed_count: int = 0
+    total_count: int = 0
+    items: List[ActionItem] = Field(default_factory=list)
+    next_recommended_action_id: Optional[str] = None
+    last_updated: str = ""
+
+
+class GenerateActionPlanRequest(BaseModel):
+    session_id: Optional[str] = None
+    notice_text: Optional[str] = None
+    applicant_profile: Optional[ApplicantProfile] = None
+    eligibility_assessment: Optional[EligibilityAssessment] = None
+    revision_ledger: Optional[RevisionLedger] = None
+
+
+class UpdateActionStatusRequest(BaseModel):
+    plan_id: str
+    action_id: str
+    status: ActionItemStatus
+    user_notes: Optional[str] = None
+
+
+# =========================================================
+# Feature 4: Cross-Notice Intelligence & Workspace Schemas
+# =========================================================
+
+class RelationshipConfidence(str, Enum):
+    VERIFIED = "VERIFIED"
+    STRONG_CANDIDATE = "STRONG_CANDIDATE"
+    POSSIBLE = "POSSIBLE"
+    CONFLICTING = "CONFLICTING"
+    UNKNOWN = "UNKNOWN"
+
+
+class NoticeMetadata(BaseModel):
+    id: str
+    title: str
+    reference_number: Optional[str] = None
+    issuing_authority: Optional[str] = None
+    notice_date: Optional[str] = None
+    ingested_at: str = ""
+    char_count: int = 0
+    raw_text: str = ""
+    fingerprint: str = ""
+    document_type: str = "NOTICE"  # "ORIGINAL", "CORRIGENDUM", "ADDENDUM", "CIRCULAR", "CANCELLATION"
+
+
+class CrossNoticeRelationship(BaseModel):
+    id: str
+    source_notice_id: str
+    target_notice_id: str
+    relationship_type: RelationshipType
+    confidence_level: RelationshipConfidence
+    evidence_quote: str = ""
+    rationale: str = ""
+    precedence_status: str = "INDEPENDENT"
+    user_confirmed: bool = False
+
+
+class TimelineEvent(BaseModel):
+    id: str
+    date: str
+    notice_id: str
+    notice_title: str
+    event_type: str
+    summary: str
+    evidence_quote: str = ""
+    is_active: bool = True
+
+
+class CrossNoticeConflict(BaseModel):
+    id: str
+    notice_a_id: str
+    notice_b_id: str
+    field_name: str
+    value_a: str
+    value_b: str
+    evidence_a: str = ""
+    evidence_b: str = ""
+    conflict_severity: str = "MODERATE"  # CRITICAL, MODERATE, INFORMATIONAL
+    resolution_guidance: str = ""
+    status: str = "UNRESOLVED"
+
+
+class WorkspaceTimelineReport(BaseModel):
+    workspace_id: str
+    notices: List[NoticeMetadata] = Field(default_factory=list)
+    relationships: List[CrossNoticeRelationship] = Field(default_factory=list)
+    timeline: List[TimelineEvent] = Field(default_factory=list)
+    conflicts: List[CrossNoticeConflict] = Field(default_factory=list)
+    active_notice_id: Optional[str] = None
+

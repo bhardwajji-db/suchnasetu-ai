@@ -1,17 +1,28 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
-import { apiClient } from '../services/apiClient';
 import { Volume2, VolumeX, Sparkles, AlertCircle } from 'lucide-react';
 
 export const PlainLanguageSummaryView: React.FC = () => {
-  const { summaryEn, summaryHi, selectedLang, readingLevel, changeReadingLevel } = useNotice();
+  const {
+    summaryEn,
+    summaryHi,
+    localizedSummary,
+    selectedLang,
+    outputLang,
+    readingLevel,
+    changeReadingLevel,
+  } = useNotice();
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
 
-  const summary = selectedLang === 'hi' ? summaryHi : summaryEn;
+  const summary = (outputLang && outputLang !== 'en' && localizedSummary)
+    ? localizedSummary
+    : (selectedLang === 'hi' || outputLang === 'hi')
+    ? (summaryHi || localizedSummary || summaryEn)
+    : (summaryEn || localizedSummary || summaryHi);
   if (!summary) return null;
 
-  const handleReadAloud = async () => {
+  const handleReadAloud = () => {
     if (isPlayingAudio) {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -21,38 +32,28 @@ export const PlainLanguageSummaryView: React.FC = () => {
     }
 
     setAudioError(null);
-    setIsPlayingAudio(true);
+
+    if (!('speechSynthesis' in window)) {
+      setAudioError('Text-to-speech is not supported by your browser.');
+      return;
+    }
 
     const fullText = `About: ${summary.about}. Eligibility: ${summary.eligible}. Required actions: ${summary.actions}. Documents: ${summary.documents}. Deadline: ${summary.deadline}. Contact: ${summary.help_contact}.`;
 
     try {
-      const audioBlob = await apiClient.getTTSAudio(fullText, selectedLang);
-      if (audioBlob) {
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        audio.onended = () => setIsPlayingAudio(false);
-        audio.onerror = () => {
-          fallbackBrowserSpeech(fullText);
-        };
-        await audio.play();
-      } else {
-        fallbackBrowserSpeech(fullText);
-      }
-    } catch {
-      fallbackBrowserSpeech(fullText);
-    }
-  };
-
-  const fallbackBrowserSpeech = (text: string) => {
-    if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
+      const utterance = new SpeechSynthesisUtterance(fullText);
       utterance.lang = selectedLang === 'hi' ? 'hi-IN' : 'en-US';
+      utterance.rate = 0.95;
+      utterance.onstart = () => setIsPlayingAudio(true);
       utterance.onend = () => setIsPlayingAudio(false);
-      utterance.onerror = () => setIsPlayingAudio(false);
+      utterance.onerror = () => {
+        setIsPlayingAudio(false);
+        setAudioError('Speech synthesis playback encountered an error.');
+      };
       window.speechSynthesis.speak(utterance);
-    } else {
-      setAudioError('Text-to-speech is not supported by your browser.');
+    } catch (e: any) {
+      setAudioError(`Playback error: ${e.message}`);
       setIsPlayingAudio(false);
     }
   };
@@ -68,33 +69,33 @@ export const PlainLanguageSummaryView: React.FC = () => {
   ];
 
   return (
-    <div className="bg-[#0B1327] border border-[#1D2D4E] rounded-xl p-5 space-y-4">
-      <div className="flex items-center justify-between pb-3 border-b border-[#1D2D4E]">
+    <div className="bg-white border border-[#E1E7EE] rounded-xl p-6 space-y-5 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E1E7EE]">
         <div>
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-blue-400" />
+          <h2 className="text-base font-bold text-[#12233D] flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#08785D]" />
             {selectedLang === 'hi' ? 'सरल भाषा में सारांश' : 'Plain-Language Accessible Summary'}
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-[#526176] mt-0.5">
             {selectedLang === 'hi'
               ? 'जटिल नोटिस को 7 मुख्य प्रश्नों के स्पष्ट उत्तरों में बदला गया है।'
               : 'Answers to the 7 core questions, calibrated for accessible reading.'}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Reading Level Selector */}
-          <div className="hidden sm:flex items-center gap-1 bg-[#111A33] border border-[#1D2D4E] rounded-lg p-0.5">
-            <span className="text-[10px] font-semibold text-slate-400 px-2 uppercase">
+          <div className="flex items-center gap-1 bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-0.5">
+            <span className="text-[10px] font-semibold text-[#68778B] px-1.5 uppercase">
               Level:
             </span>
             <button
               type="button"
               onClick={() => changeReadingLevel('simple')}
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+              className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition cursor-pointer ${
                 readingLevel === 'simple'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#08785D] text-white shadow-xs'
+                  : 'text-[#526176] hover:text-[#12233D]'
               }`}
             >
               Simple
@@ -102,10 +103,10 @@ export const PlainLanguageSummaryView: React.FC = () => {
             <button
               type="button"
               onClick={() => changeReadingLevel('standard')}
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+              className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition cursor-pointer ${
                 readingLevel === 'standard'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#08785D] text-white shadow-xs'
+                  : 'text-[#526176] hover:text-[#12233D]'
               }`}
             >
               Standard
@@ -113,67 +114,66 @@ export const PlainLanguageSummaryView: React.FC = () => {
             <button
               type="button"
               onClick={() => changeReadingLevel('detailed')}
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+              className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition cursor-pointer ${
                 readingLevel === 'detailed'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#08785D] text-white shadow-xs'
+                  : 'text-[#526176] hover:text-[#12233D]'
               }`}
             >
               Detailed
             </button>
           </div>
 
+          {/* Audio Listen Aloud Button */}
           <button
+            type="button"
             onClick={handleReadAloud}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-xs cursor-pointer ${
               isPlayingAudio
-                ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                : 'bg-blue-600 hover:bg-blue-500 text-white'
+                ? 'bg-[#B42318] text-white hover:bg-[#991B1B]'
+                : 'bg-[#E8F7F0] text-[#08785D] hover:bg-[#D4EFE3] border border-[#B7E7D2]'
             }`}
+            title="Read summary aloud"
+            aria-label="Play plain language summary audio"
           >
             {isPlayingAudio ? (
               <>
-                <VolumeX className="w-3.5 h-3.5" /> Stop Reading
+                <VolumeX className="w-3.5 h-3.5" />
+                <span>Stop Audio</span>
               </>
             ) : (
               <>
-                <Volume2 className="w-3.5 h-3.5" /> Listen (Read Aloud)
+                <Volume2 className="w-3.5 h-3.5" />
+                <span>Listen Aloud</span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-        {questions.map((q, idx) => (
-          <div
-            key={idx}
-            className="p-3.5 rounded-lg bg-[#070B14]/80 border border-[#1D2D4E]/80 space-y-1.5 hover:border-blue-500/40 transition"
-          >
-            <div className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
-              <span>{q.icon}</span>
-              <span>{q.label}</span>
-            </div>
-            <div className="text-sm font-medium text-slate-200 leading-relaxed">
-              {q.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
       {audioError && (
-        <div className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-800/40 text-xs text-amber-300 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+        <div className="p-3 rounded-xl bg-[#FFF4D6] border border-[#FDE68A] text-xs text-[#92500A] flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-[#92500A] shrink-0" />
           <span>{audioError}</span>
         </div>
       )}
 
-      {/* Legal & Informational Disclaimer */}
-      <div className="p-3 rounded-lg bg-[#070B14]/90 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
-        <AlertCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-        <span>
-          <strong>Notice:</strong> This plain-language summary and sequential action plan are generated for accessibility and informational purposes only. They do not constitute formal legal advice or statutory interpretation. Always consult the original notice issuer or qualified legal counsel for binding determinations.
-        </span>
+      {/* 7 Questions Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        {questions.map((q, idx) => (
+          <div
+            key={idx}
+            className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE] hover:border-[#B7E7D2] transition-all space-y-1.5 shadow-xs"
+          >
+            <div className="flex items-center gap-2 text-xs font-bold text-[#12233D]">
+              <span className="text-sm">{q.icon}</span>
+              <span>{q.label}</span>
+            </div>
+            <div className="text-xs text-[#526176] leading-relaxed pl-6">
+              {q.value || 'Not specified in this notice.'}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

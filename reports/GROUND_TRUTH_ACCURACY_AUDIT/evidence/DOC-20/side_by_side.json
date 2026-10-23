@@ -1,0 +1,46 @@
+{
+  "doc_id": "DOC-20",
+  "filename": "DOC-20_corrigendum_revision.png",
+  "category": "Corrigendum or revised notice",
+  "hash_sha256": "c3ec4abf12164cc82790d5f8995eb62f9e7920cc3496247330241eee54b3e137",
+  "file_size_bytes": 44432,
+  "ocr_metrics": {
+    "cer": 1.0,
+    "wer": 1.0,
+    "duration_seconds": 0.734696626663208,
+    "confidence": 95.4,
+    "critical_preserved": 2,
+    "critical_total": 2
+  },
+  "ai_metrics": {
+    "duration_seconds": 31.54174041748047,
+    "error": null
+  },
+  "field_evaluations": [
+    {
+      "field": "final_deadline",
+      "expected_value": "28 February 2026",
+      "expected_status": "PRESENT",
+      "source_quote": "extended from 18 February 2026 to 28 February 2026",
+      "ocr_preserved": true,
+      "ai_value": "28 February 2026 (6.00 PM)",
+      "ai_status": "uncertain",
+      "ai_quote": "The last date for submission of online applications is extended from 18 February 2026 to 28 February 2026 (6.00 PM)",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "application_fee",
+      "expected_value": "Rs. 150",
+      "expected_status": "PRESENT",
+      "source_quote": "reduced from Rs. 200 to Rs. 150",
+      "ocr_preserved": true,
+      "ai_value": "Rs. 150 (reduced from Rs. 200) for General candidates",
+      "ai_status": "stated",
+      "ai_quote": "The application fee is reduced from Rs. 200 to Rs. 150 for General candidates.",
+      "verdict": "PASS",
+      "root_cause": null
+    }
+  ],
+  "downstream_evaluations": {}
+}

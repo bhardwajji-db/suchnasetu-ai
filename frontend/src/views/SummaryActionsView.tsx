@@ -10,19 +10,20 @@ export const SummaryActionsView: React.FC = () => {
 
   if (!summaryEn && !checklistEn) {
     return (
-      <div className="bg-[#0B1327] border border-[#1D2D4E] rounded-xl p-12 text-center space-y-4">
-        <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mx-auto">
+      <div className="bg-white border border-[#E1E7EE] rounded-2xl p-12 text-center space-y-4 shadow-xs">
+        <div className="w-12 h-12 rounded-xl bg-[#E8F7F0] border border-[#B7E7D2] text-[#08785D] flex items-center justify-center mx-auto">
           <ListTodo className="w-6 h-6" />
         </div>
-        <h2 className="text-base font-bold text-white">No Summary or Action Checklist Available</h2>
-        <p className="text-xs text-slate-400 max-w-md mx-auto">
-          Analyze a notice in the Ingestion tab first to synthesize an accessible plain-language summary and sequential action steps.
+        <h2 className="text-base font-bold text-[#12233D]">No Summary or Action Checklist Available</h2>
+        <p className="text-xs text-[#526176] max-w-md mx-auto">
+          Analyze a notice in the Notice Workspace tab first to synthesize an accessible plain-language summary and sequential action steps.
         </p>
         <button
+          type="button"
           onClick={() => setActiveTab(1)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition shadow-sm cursor-pointer"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs cursor-pointer"
         >
-          <span>Go to Ingestion & OCR</span>
+          <span>Go to Notice Workspace</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -33,10 +34,10 @@ export const SummaryActionsView: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+        <h1 className="text-xl font-bold text-[#12233D] tracking-tight flex items-center gap-2">
           <span>📋 3. Plain-Language Summary & Grounded Action Checklist</span>
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-[#526176] mt-1">
           Transform convoluted legal circulars into simplified answers and an interactive sequential checklist with iCalendar deadline export.
         </p>
       </div>

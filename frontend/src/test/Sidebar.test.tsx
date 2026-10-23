@@ -14,7 +14,9 @@ describe('Sidebar Component', () => {
     expect(screen.getByText('1. Ingestion & OCR')).toBeInTheDocument();
     expect(screen.getByText('2. Grounded Facts')).toBeInTheDocument();
     expect(screen.getByText('3. Summary & Actions')).toBeInTheDocument();
-    expect(screen.getByText('4. Follow-Up Q&A')).toBeInTheDocument();
+    expect(screen.getByText('4. Revision Ledger')).toBeInTheDocument();
+    expect(screen.getByText('5. Eligibility Check')).toBeInTheDocument();
+    expect(screen.getByText('6. Follow-Up Q&A')).toBeInTheDocument();
     expect(screen.getByText(/Competition Demo/i)).toBeInTheDocument();
     expect(screen.getByText(/Load Selected Notice/i)).toBeInTheDocument();
     expect(screen.getByText(/Reset Workspace/i)).toBeInTheDocument();

@@ -17,6 +17,18 @@ import type {
   ReadingLevelResponse,
   LLMProviderStatus,
   EvidenceCitation,
+  NoticeRelationship,
+  RevisionLedger,
+  EligibilityCriterion,
+  ApplicantProfile,
+  EligibilityAssessment,
+  VerifyEvidenceResponse,
+  PersonalImpactReport,
+  PersonalizedActionPlan,
+  ActionItemStatus,
+  NoticeMetadata,
+  WorkspaceTimelineReport,
+  DemoLibraryResponse,
 } from '../types/api';
 
 const getBaseUrl = (): string => {
@@ -314,12 +326,12 @@ export const apiClient = {
   /**
    * Fetch TTS audio bytes (MP3) or return null if offline
    */
-  async getTTSAudio(text: string, lang: string = 'en'): Promise<Blob | null> {
+  async getTTSAudio(text: string, lang: string = 'en', allowCloud: boolean = false): Promise<Blob | null> {
     try {
       const res = await fetch(`${BASE_URL}/api/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, lang }),
+        body: JSON.stringify({ text, lang, allow_cloud: allowCloud }),
       });
       if (res.status === 204 || !res.ok) {
         return null;
@@ -328,5 +340,274 @@ export const apiClient = {
     } catch {
       return null;
     }
+  },
+
+  /**
+   * Detect administrative relationship (AMENDMENT, EXTENSION, CANCELLATION, etc.) between two notices
+   */
+  async detectRelationship(
+    sourceSessionId?: string,
+    targetSessionId?: string,
+    sourceText?: string,
+    targetText?: string
+  ): Promise<NoticeRelationship> {
+    const res = await fetch(`${BASE_URL}/api/relationships/detect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source_session_id: sourceSessionId || undefined,
+        target_session_id: targetSessionId || undefined,
+        source_text: sourceText || undefined,
+        target_text: targetText || undefined,
+      }),
+    });
+    return handleResponse<NoticeRelationship>(res);
+  },
+
+  /**
+   * Build field-by-field revision ledger comparing two notices
+   */
+  async compareRevisionLedger(
+    sourceSessionId?: string,
+    targetSessionId?: string,
+    sourceText?: string,
+    targetText?: string
+  ): Promise<RevisionLedger> {
+    const res = await fetch(`${BASE_URL}/api/revision-ledger/compare`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source_session_id: sourceSessionId || undefined,
+        target_session_id: targetSessionId || undefined,
+        source_text: sourceText || undefined,
+        target_text: targetText || undefined,
+      }),
+    });
+    return handleResponse<RevisionLedger>(res);
+  },
+
+  /**
+   * Extract machine-evaluable eligibility criteria from notice
+   */
+  async extractEligibilityCriteria(
+    sessionId?: string,
+    noticeText?: string
+  ): Promise<EligibilityCriterion[]> {
+    const res = await fetch(`${BASE_URL}/api/eligibility/extract-criteria`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sessionId || undefined,
+        notice_text: noticeText || undefined,
+      }),
+    });
+    return handleResponse<EligibilityCriterion[]>(res);
+  },
+
+  /**
+   * Evaluate applicant profile against notice eligibility criteria
+   */
+  async evaluateEligibility(
+    profile: ApplicantProfile,
+    sessionId?: string,
+    noticeText?: string
+  ): Promise<EligibilityAssessment> {
+    const res = await fetch(`${BASE_URL}/api/eligibility/evaluate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sessionId || undefined,
+        notice_text: noticeText || undefined,
+        applicant_profile: profile,
+      }),
+    });
+    return handleResponse<EligibilityAssessment>(res);
+  },
+
+  /**
+   * Verify an evidence quote against source notice text
+   */
+  async verifyEvidence(
+    noticeText: string,
+    excerpt: string,
+    claimText?: string,
+    docTitle?: string
+  ): Promise<VerifyEvidenceResponse> {
+    const res = await fetch(`${BASE_URL}/api/trust/verify-evidence`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        notice_text: noticeText,
+        excerpt,
+        claim_text: claimText,
+        source_doc_title: docTitle,
+      }),
+    });
+    return handleResponse<VerifyEvidenceResponse>(res);
+  },
+
+  /**
+   * Evaluate personal impact of notice revisions on an applicant profile
+   */
+  async evaluatePersonalImpact(params: {
+    revisionLedger?: RevisionLedger;
+    sourceText?: string;
+    targetText?: string;
+    profile?: ApplicantProfile;
+  }): Promise<PersonalImpactReport> {
+    const res = await fetch(`${BASE_URL}/api/impact/evaluate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        revision_ledger: params.revisionLedger,
+        source_text: params.sourceText,
+        target_text: params.targetText,
+        applicant_profile: params.profile,
+      }),
+    });
+    return handleResponse<PersonalImpactReport>(res);
+  },
+
+  /**
+   * Generate personalized, dependency-aware action roadmap
+   */
+  async generateActionPlan(params: {
+    sessionId?: string;
+    noticeText?: string;
+    profile?: ApplicantProfile;
+    eligibility?: EligibilityAssessment;
+    revisionLedger?: RevisionLedger;
+  }): Promise<PersonalizedActionPlan> {
+    const res = await fetch(`${BASE_URL}/api/actions/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: params.sessionId,
+        notice_text: params.noticeText,
+        applicant_profile: params.profile,
+        eligibility_assessment: params.eligibility,
+        revision_ledger: params.revisionLedger,
+      }),
+    });
+    return handleResponse<PersonalizedActionPlan>(res);
+  },
+
+  /**
+   * Update status or notes for an action item
+   */
+  async updateActionStatus(
+    plan: PersonalizedActionPlan,
+    actionId: string,
+    status: ActionItemStatus,
+    userNotes?: string
+  ): Promise<PersonalizedActionPlan> {
+    const res = await fetch(`${BASE_URL}/api/actions/update-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        plan,
+        action_id: actionId,
+        status,
+        user_notes: userNotes,
+      }),
+    });
+    return handleResponse<PersonalizedActionPlan>(res);
+  },
+
+  /**
+   * Multi-document workspace API
+   */
+  async getWorkspaceNotices(): Promise<NoticeMetadata[]> {
+    const res = await fetch(`${BASE_URL}/api/workspace/notices`);
+    return handleResponse<NoticeMetadata[]>(res);
+  },
+
+  async addWorkspaceNotice(text: string, title?: string, docId?: string): Promise<NoticeMetadata> {
+    const res = await fetch(`${BASE_URL}/api/workspace/notices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, title, doc_id: docId }),
+    });
+    return handleResponse<NoticeMetadata>(res);
+  },
+
+  async getWorkspaceTimeline(activeId?: string): Promise<WorkspaceTimelineReport> {
+    const url = activeId
+      ? `${BASE_URL}/api/workspace/timeline?active_id=${encodeURIComponent(activeId)}`
+      : `${BASE_URL}/api/workspace/timeline`;
+    const res = await fetch(url);
+    return handleResponse<WorkspaceTimelineReport>(res);
+  },
+
+  async clearWorkspace(): Promise<void> {
+    await fetch(`${BASE_URL}/api/workspace/clear`, { method: 'POST' });
+  },
+
+  /**
+   * Demo Library APIs
+   */
+  async getDemoLibrary(language?: string, format?: string, category?: string): Promise<DemoLibraryResponse> {
+    const params = new URLSearchParams();
+    if (language) params.append('language', language);
+    if (format) params.append('format', format);
+    if (category) params.append('category', category);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`${BASE_URL}/api/demo-library${query}`);
+    return handleResponse<DemoLibraryResponse>(res);
+  },
+
+  async loadDemoLibraryItem(id: string): Promise<{
+    id: string;
+    title: string;
+    language: string;
+    format: string;
+    text: string;
+    file_path: string;
+    char_count: number;
+    word_count: number;
+  }> {
+    const res = await fetch(`${BASE_URL}/api/demo-library/${encodeURIComponent(id)}/load`, {
+      method: 'POST',
+    });
+    return handleResponse<any>(res);
+  },
+
+  /**
+   * Language detection API
+   */
+  async detectLanguage(text: string): Promise<{
+    detected_language: string;
+    confidence: number;
+    is_mixed: boolean;
+    secondary_languages: string[];
+    script: string;
+    details: Record<string, any>;
+  }> {
+    const res = await fetch(`${BASE_URL}/api/language/detect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    return handleResponse<any>(res);
+  },
+
+  /**
+   * Persistently toggle a checklist item in SQLite database
+   */
+  async toggleChecklistItemPersistent(itemId: string, isCompleted: boolean): Promise<{ success: boolean; item_id: string; is_completed: boolean }> {
+    const res = await fetch(`${BASE_URL}/api/checklist/${encodeURIComponent(itemId)}/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_completed: isCompleted }),
+    });
+    return handleResponse<any>(res);
+  },
+
+  /**
+   * Fetch all persistently stored documents
+   */
+  async getPersistedDocuments(): Promise<{ documents: any[]; total: number }> {
+    const res = await fetch(`${BASE_URL}/api/documents`);
+    return handleResponse<any>(res);
   },
 };

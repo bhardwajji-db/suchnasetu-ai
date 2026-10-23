@@ -45,3 +45,36 @@ globalThis.fetch = vi.fn((url: string | URL | Request) => {
     text: async () => 'mock response text',
   } as Response);
 }) as any;
+
+// Mock Web Speech API for Vitest jsdom
+if (typeof window !== 'undefined') {
+  (window as any).speechSynthesis = {
+    speak: vi.fn((utterance: any) => {
+      if (utterance && utterance.onstart) {
+        utterance.onstart();
+      }
+    }),
+    cancel: vi.fn(),
+    pause: vi.fn(),
+    resume: vi.fn(),
+    paused: false,
+    speaking: false,
+    pending: false,
+    getVoices: () => [],
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  };
+
+  (globalThis as any).SpeechSynthesisUtterance = class {
+    text: string;
+    lang: string = '';
+    rate: number = 1;
+    onstart: any = null;
+    onend: any = null;
+    onerror: any = null;
+    constructor(text: string) {
+      this.text = text;
+    }
+  };
+}

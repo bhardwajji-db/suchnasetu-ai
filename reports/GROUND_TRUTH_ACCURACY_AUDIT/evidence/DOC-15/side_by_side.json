@@ -1,0 +1,46 @@
+{
+  "doc_id": "DOC-15",
+  "filename": "DOC-15_communication_channels.png",
+  "category": "URLs, email addresses, and phone numbers",
+  "hash_sha256": "56ddc055fcfcbdd2e5b34ee6c4a3206cf1fcdb9de88fb2ee64cff51fb3d55630",
+  "file_size_bytes": 45688,
+  "ocr_metrics": {
+    "cer": 1.0,
+    "wer": 1.0,
+    "duration_seconds": 0.7547411918640137,
+    "confidence": 93.8,
+    "critical_preserved": 3,
+    "critical_total": 3
+  },
+  "ai_metrics": {
+    "duration_seconds": 35.0181782245636,
+    "error": null
+  },
+  "field_evaluations": [
+    {
+      "field": "final_deadline",
+      "expected_value": "27 April 2026",
+      "expected_status": "PRESENT",
+      "source_quote": "27 April 2026",
+      "ocr_preserved": true,
+      "ai_value": "27 April 2026",
+      "ai_status": "stated",
+      "ai_quote": "Closing Date of Online Application: 27 April 2026.",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "official_portal_url",
+      "expected_value": "https://ctet.nic.in",
+      "expected_status": "PRESENT",
+      "source_quote": "https://ctet.nic.in",
+      "ocr_preserved": true,
+      "ai_value": "Apply online through the official portal or mirror link.",
+      "ai_status": "stated",
+      "ai_quote": "Official Application Portal: https://ctet.nic.in",
+      "verdict": "PASS",
+      "root_cause": null
+    }
+  ],
+  "downstream_evaluations": {}
+}

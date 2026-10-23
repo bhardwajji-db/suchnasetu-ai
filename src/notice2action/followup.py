@@ -2,6 +2,7 @@
 Follow-Up Question Answering Engine for SuchnaSetu AI.
 Provides notice-grounded answers and explicitly flags unstated information.
 Integrates with EvidenceService for line-level citation and strict grounding.
+Supports 10 Indian official languages.
 """
 
 from __future__ import annotations
@@ -13,8 +14,35 @@ from notice2action.llm.base import BaseLLMClient
 from notice2action.llm.factory import get_llm_client
 from notice2action.services.evidence_service import evidence_service
 from notice2action.security import wrap_untrusted_notice
+from notice2action.translation import SUPPORTED_LANGUAGES
 
 NOT_FOUND_MESSAGE = "This information was not found in the provided notice."
+
+LOCALIZED_NOT_FOUND: Dict[str, str] = {
+    "en": "This information was not found in the provided notice.",
+    "hi": "यह जानकारी प्रदान की गई सूचना में नहीं पाई गई। (This information was not found in the provided notice.)",
+    "bn": "প্রদত্ত বিজ্ঞপ্তিতে এই তথ্যটি পাওয়া যায়নি। (This information was not found in the provided notice.)",
+    "ta": "வழங்கப்பட்ட அறிவிப்பில் இந்த தகவல் காணப்படவில்லை। (This information was not found in the provided notice.)",
+    "te": "అందించిన నోటీసులో ఈ సమాచారం కనుగొనబడలేదు। (This information was not found in the provided notice.)",
+    "mr": "दिलेल्या सूचनेत ही माहिती आढळली नाही। (This information was not found in the provided notice.)",
+    "gu": "આપેલી સૂચનામાં આ માહિતી મળી નથી। (This information was not found in the provided notice.)",
+    "pa": "ਦਿੱਤੇ ਗਏ ਨੋਟਿਸ ਵਿੱਚ ਇਹ ਜਾਣਕਾਰੀ ਨਹੀਂ ਮਿਲੀ। (This information was not found in the provided notice.)",
+    "kn": "ಒದಗಿಸಲಾದ ಪ್ರಕಟಣೆಯಲ್ಲಿ ಈ ಮಾಹಿತಿ ಕಂಡುಬಂದಿಲ್ಲ। (This information was not found in the provided notice.)",
+    "ur": "فراہم کردہ نوٹس میں یہ معلومات موجود نہیں ہے۔ (This information was not found in the provided notice.)",
+}
+
+LOCALIZED_LINE_CITATION: Dict[str, str] = {
+    "en": "Based on notice Line {line}: \"{quote}\"",
+    "hi": "सूचना पंक्ति {line} के अनुसार: \"{quote}\"",
+    "bn": "বিজ্ঞপ্তির লাইন {line} অনুযায়ী: \"{quote}\"",
+    "ta": "அறிவிப்பு வரி {line} இன் படி: \"{quote}\"",
+    "te": "నోటీసు లైన్ {line} ప్రకారం: \"{quote}\"",
+    "mr": "सूचना ओळ {line} नुसार: \"{quote}\"",
+    "gu": "સૂચના લાઇન {line} મુજબ: \"{quote}\"",
+    "pa": "ਨੋਟਿਸ ਲਾਈਨ {line} ਅਨੁਸਾਰ: \"{quote}\"",
+    "kn": "ಪ್ರಕಟಣೆ ಸಾಲು {line} ಪ್ರಕಾರ: \"{quote}\"",
+    "ur": "نوٹس لائن {line} کے مطابق: \"{quote}\"",
+}
 
 FOLLOWUP_SYSTEM_PROMPT = """You are SuchnaSetu AI, answering follow-up questions about an official notice.
 
@@ -52,6 +80,10 @@ class FollowUpAssistant:
         Answers a follow-up query against the provided raw notice text.
         Guarantees session isolation and truthful reporting of absent information.
         """
+        target_lang = target_lang.lower().strip() if target_lang else "en"
+        if target_lang not in SUPPORTED_LANGUAGES:
+            target_lang = "en"
+
         if not question or not question.strip():
             return FollowUpAnswer(
                 question=question,
@@ -73,9 +105,18 @@ class FollowUpAssistant:
         wrapped_notice = wrap_untrusted_notice(raw_notice_text)
         user_prompt = f"Notice Text:\n{wrapped_notice}\n\nUser Question:\n{question}"
 
+        system_prompt = FOLLOWUP_SYSTEM_PROMPT
+        if target_lang != "en":
+            lang_meta = SUPPORTED_LANGUAGES[target_lang]
+            system_prompt += (
+                f"\n6. The user requested the answer in {lang_meta['name']} ({lang_meta['native']}). "
+                f"You MUST provide the 'answer' field in {lang_meta['name']} ({lang_meta['script']}, direction: {lang_meta['dir'].upper()}). "
+                f"However, the 'evidence_quote' must remain strictly verbatim as written in the source notice text."
+            )
+
         try:
             data = self.client.generate_structured_json(
-                system_prompt=FOLLOWUP_SYSTEM_PROMPT,
+                system_prompt=system_prompt,
                 user_prompt=user_prompt,
             )
 
@@ -89,9 +130,10 @@ class FollowUpAssistant:
                 found, line_no = evidence_service.verify_quote(quote_clean, raw_notice_text)
                 if not found:
                     # Model hallucinated quote
+                    localized_msg = LOCALIZED_NOT_FOUND.get(target_lang, NOT_FOUND_MESSAGE)
                     return FollowUpAnswer(
                         question=question,
-                        answer=f"{NOT_FOUND_MESSAGE} The notice does not specify this detail. Please confirm directly with official contact.",
+                        answer=f"{localized_msg} The notice does not specify this detail. Please confirm directly with official contact.",
                         is_supported=False,
                         evidence_quote=None,
                         unsupported_message="Quotation could not be verified in the source notice text.",
@@ -109,16 +151,9 @@ class FollowUpAssistant:
                     quote_clean = None
 
             if not is_supported:
-                # Enforce the required exact absent-information phrasing
-                if NOT_FOUND_MESSAGE not in answer_text:
-                    answer_text = f"{NOT_FOUND_MESSAGE} The notice does not specify this detail."
-                elif "does not specify" not in answer_text:
-                    answer_text = f"{answer_text} The notice does not specify this detail."
-
-            # If Hindi requested
-            if target_lang == "hi":
-                if not is_supported:
-                    answer_text = "यह जानकारी प्रदान की गई सूचना में नहीं पाई गई। (This information was not found in the provided notice.)"
+                localized_absent = LOCALIZED_NOT_FOUND.get(target_lang, NOT_FOUND_MESSAGE)
+                if not answer_text:
+                    answer_text = localized_absent
 
             return FollowUpAnswer(
                 question=question,
@@ -132,9 +167,8 @@ class FollowUpAssistant:
             # Deterministic offline fallback based on evidence index
             if citations and citations[0].relevance_score >= 0.5:
                 top = citations[0]
-                ans = f"Based on notice Line {top.line_number}: \"{top.quote}\""
-                if target_lang == "hi":
-                    ans = f"सूचना पंक्ति {top.line_number} के अनुसार: \"{top.quote}\""
+                citation_template = LOCALIZED_LINE_CITATION.get(target_lang, LOCALIZED_LINE_CITATION["en"])
+                ans = citation_template.format(line=top.line_number, quote=top.quote)
                 return FollowUpAnswer(
                     question=question,
                     answer=ans,
@@ -143,9 +177,7 @@ class FollowUpAssistant:
                 )
 
             # Absent info fallback
-            ans = f"{NOT_FOUND_MESSAGE} Please review the notice text or contact official authorities."
-            if target_lang == "hi":
-                ans = "यह जानकारी प्रदान की गई सूचना में नहीं पाई गई।"
+            ans = LOCALIZED_NOT_FOUND.get(target_lang, NOT_FOUND_MESSAGE)
             return FollowUpAnswer(
                 question=question,
                 answer=ans,

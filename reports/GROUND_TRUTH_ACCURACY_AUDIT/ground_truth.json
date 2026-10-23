@@ -1,0 +1,947 @@
+{
+  "DOC-01": {
+    "doc_id": "DOC-01",
+    "category": "Clean digital PDF",
+    "filename": "DOC-01_clean_digital_scholarship.pdf",
+    "format": "PDF",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "Ministry of Education, Government of India",
+      "status": "PRESENT",
+      "quote": "Ministry of Education, Government of India"
+    },
+    "notice_title": {
+      "value": "NATIONAL MERIT SCHOLARSHIP SCHEME 2026",
+      "status": "PRESENT",
+      "quote": "NATIONAL MERIT SCHOLARSHIP SCHEME 2026"
+    },
+    "notice_reference_number": {
+      "value": "NMS-2026-EDU-01",
+      "status": "PRESENT",
+      "quote": "Notification Reference No: NMS-2026-EDU-01"
+    },
+    "publication_date": {
+      "value": "15 January 2026",
+      "status": "PRESENT",
+      "quote": "Publication Date: 15 January 2026"
+    },
+    "final_deadline": {
+      "value": "31 March 2026",
+      "status": "PRESENT",
+      "quote": "Final Submission Deadline: 31 March 2026, 11:59 PM IST"
+    },
+    "eligibility_degree": {
+      "value": "Bachelor's Degree in Science, Engineering, or Humanities",
+      "status": "PRESENT",
+      "quote": "Bachelor's Degree in Science, Engineering, or Humanities"
+    },
+    "eligibility_percentage": {
+      "value": "65.0%",
+      "status": "PRESENT",
+      "quote": "Minimum Academic Aggregate: 65.0% marks"
+    },
+    "eligibility_age_limit": {
+      "value": "25 years as of 01 August 2026",
+      "status": "PRESENT",
+      "quote": "Must not exceed 25 years as of 01 August 2026"
+    },
+    "category_relaxations": {
+      "OBC": "+3 years",
+      "SC": "+5 years",
+      "ST": "+5 years"
+    },
+    "application_fee": {
+      "value": "Rs. 500",
+      "status": "PRESENT",
+      "quote": "Application Fee: Rs. 500 for General and OBC candidates"
+    },
+    "fee_exemptions": "Nil for SC, ST, and Female applicants",
+    "required_documents": [
+      "10th Standard Passing Certificate",
+      "Degree Marksheet / Consolidated Grade Transcript",
+      "Valid Caste / Community Certificate",
+      "Active Bank Passbook Copy"
+    ],
+    "official_portal_url": {
+      "value": "https://scholarships.gov.in/apply2026",
+      "status": "PRESENT",
+      "quote": "https://scholarships.gov.in/apply2026"
+    },
+    "contact_email": {
+      "value": "helpdesk@scholarships.gov.in",
+      "status": "PRESENT",
+      "quote": "helpdesk@scholarships.gov.in"
+    },
+    "contact_phone": {
+      "value": "1800-11-2026",
+      "status": "PRESENT",
+      "quote": "1800-11-2026"
+    },
+    "absent_fields": [
+      "physical_submission_address",
+      "interview_date"
+    ],
+    "expected_action_items": [
+      "Verify basic eligibility criteria",
+      "Prepare required documents: 10th cert, degree marksheet, caste cert, bank passbook",
+      "Submit online application form via portal",
+      "Pay application fee of Rs. 500 (if General/OBC)"
+    ],
+    "example_profile_evaluations": [
+      {
+        "profile": {
+          "degree": "Bachelor of Science",
+          "marks_percentage": 70.0,
+          "age_years": 23.0,
+          "category": "General"
+        },
+        "expected": "PASS"
+      },
+      {
+        "profile": {
+          "degree": "Bachelor of Science",
+          "marks_percentage": 62.0,
+          "age_years": 23.0,
+          "category": "General"
+        },
+        "expected": "FAIL"
+      },
+      {
+        "profile": {
+          "degree": "Bachelor of Science",
+          "marks_percentage": 68.0,
+          "age_years": 27.0,
+          "category": "General"
+        },
+        "expected": "FAIL"
+      },
+      {
+        "profile": {
+          "degree": "Bachelor of Science",
+          "marks_percentage": 68.0,
+          "age_years": 27.0,
+          "category": "OBC"
+        },
+        "expected": "PASS"
+      }
+    ]
+  },
+  "DOC-02": {
+    "doc_id": "DOC-02",
+    "category": "Clear scanned notice",
+    "filename": "DOC-02_clear_scanned_notice.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "STAFF SELECTION COMMISSION",
+      "status": "PRESENT",
+      "quote": "STAFF SELECTION COMMISSION"
+    },
+    "notice_title": {
+      "value": "Combined Graduate Level Examination 2026 Tier-I Schedule",
+      "status": "PRESENT",
+      "quote": "Combined Graduate Level Examination 2026 Tier-I Schedule"
+    },
+    "notice_reference_number": {
+      "value": "SSC-NR-2026-ADV-04",
+      "status": "PRESENT",
+      "quote": "SSC-NR-2026-ADV-04"
+    },
+    "final_deadline": {
+      "value": "25 April 2026",
+      "status": "PRESENT",
+      "quote": "Closing Date for Online Applications: 25 April 2026"
+    },
+    "eligibility_percentage": {
+      "value": "55%",
+      "status": "PRESENT",
+      "quote": "minimum 55% marks"
+    },
+    "eligibility_age_limit": {
+      "value": "between 18 and 30 years of age on 01 January 2026",
+      "status": "PRESENT",
+      "quote": "between 18 and 30 years of age on 01 January 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 100",
+      "status": "PRESENT",
+      "quote": "Application Fee: Rs. 100"
+    },
+    "official_portal_url": {
+      "value": "https://ssc.gov.in/portal",
+      "status": "PRESENT",
+      "quote": "https://ssc.gov.in/portal"
+    },
+    "contact_email": {
+      "value": "enquiry@ssc.gov.in",
+      "status": "PRESENT",
+      "quote": "enquiry@ssc.gov.in"
+    },
+    "absent_fields": [
+      "contact_phone",
+      "interview_date"
+    ],
+    "example_profile_evaluations": [
+      {
+        "profile": {
+          "degree": "B.A. English",
+          "marks_percentage": 60.0,
+          "age_years": 24.0,
+          "category": "General"
+        },
+        "expected": "PASS"
+      },
+      {
+        "profile": {
+          "degree": "B.A. English",
+          "marks_percentage": 52.0,
+          "age_years": 24.0,
+          "category": "General"
+        },
+        "expected": "FAIL"
+      }
+    ]
+  },
+  "DOC-03": {
+    "doc_id": "DOC-03",
+    "category": "Low-resolution scan",
+    "filename": "DOC-03_low_resolution_scan.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "STAFF SELECTION COMMISSION",
+      "status": "PRESENT",
+      "quote": "STAFF SELECTION COMMISSION"
+    },
+    "final_deadline": {
+      "value": "25 April 2026",
+      "status": "PRESENT",
+      "quote": "Closing Date for Online Applications: 25 April 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 100",
+      "status": "PRESENT",
+      "quote": "Application Fee: Rs. 100"
+    },
+    "eligibility_percentage": {
+      "value": "55%",
+      "status": "PRESENT",
+      "quote": "minimum 55% marks"
+    },
+    "official_portal_url": {
+      "value": "https://ssc.gov.in/portal",
+      "status": "PRESENT",
+      "quote": "https://ssc.gov.in/portal"
+    }
+  },
+  "DOC-04": {
+    "doc_id": "DOC-04",
+    "category": "Slightly rotated or skewed scan",
+    "filename": "DOC-04_skewed_scan.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "Ministry of Education, Government of India",
+      "status": "PRESENT",
+      "quote": "Ministry of Education"
+    },
+    "notice_reference_number": {
+      "value": "NMS-2026-EDU-01",
+      "status": "PRESENT",
+      "quote": "NMS-2026-EDU-01"
+    },
+    "final_deadline": {
+      "value": "31 March 2026",
+      "status": "PRESENT",
+      "quote": "31 March 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 500",
+      "status": "PRESENT",
+      "quote": "Rs. 500"
+    },
+    "official_portal_url": {
+      "value": "https://scholarships.gov.in/apply2026",
+      "status": "PRESENT",
+      "quote": "https://scholarships.gov.in/apply2026"
+    }
+  },
+  "DOC-05": {
+    "doc_id": "DOC-05",
+    "category": "Low-contrast or noisy scan",
+    "filename": "DOC-05_low_contrast_noisy_scan.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "STAFF SELECTION COMMISSION",
+      "status": "PRESENT",
+      "quote": "STAFF SELECTION COMMISSION"
+    },
+    "final_deadline": {
+      "value": "25 April 2026",
+      "status": "PRESENT",
+      "quote": "25 April 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 100",
+      "status": "PRESENT",
+      "quote": "Rs. 100"
+    }
+  },
+  "DOC-06": {
+    "doc_id": "DOC-06",
+    "category": "English notice",
+    "filename": "DOC-06_english_upsc_notice.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "UNION PUBLIC SERVICE COMMISSION",
+      "status": "PRESENT",
+      "quote": "UNION PUBLIC SERVICE COMMISSION"
+    },
+    "notice_title": {
+      "value": "Engineering Services Examination 2026",
+      "status": "PRESENT",
+      "quote": "Engineering Services Examination 2026"
+    },
+    "notice_reference_number": {
+      "value": "01/2026-ENGG",
+      "status": "PRESENT",
+      "quote": "EXAMINATION NOTICE NO. 01/2026-ENGG"
+    },
+    "final_deadline": {
+      "value": "18 February 2026",
+      "status": "PRESENT",
+      "quote": "18 February 2026 till 6.00 PM"
+    },
+    "application_fee": {
+      "value": "Rs. 200",
+      "status": "PRESENT",
+      "quote": "fee of Rs. 200"
+    },
+    "eligibility_degree": {
+      "value": "Degree in Engineering (B.E./B.Tech)",
+      "status": "PRESENT",
+      "quote": "Degree in Engineering (B.E./B.Tech)"
+    },
+    "official_portal_url": {
+      "value": "https://upsconline.nic.in",
+      "status": "PRESENT",
+      "quote": "https://upsconline.nic.in"
+    },
+    "contact_phone": {
+      "value": "011-23385271",
+      "status": "PRESENT",
+      "quote": "011-23385271"
+    }
+  },
+  "DOC-07": {
+    "doc_id": "DOC-07",
+    "category": "Hindi notice",
+    "filename": "DOC-07_hindi_notice.png",
+    "format": "PNG",
+    "language": "hi",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "शिक्षा मंत्रालय, भारत सरकार",
+      "status": "PRESENT",
+      "quote": "शिक्षा मंत्रालय, भारत सरकार"
+    },
+    "notice_title": {
+      "value": "राष्ट्रीय प्रतिभा छात्रवृत्ति योजना 2026",
+      "status": "PRESENT",
+      "quote": "राष्ट्रीय प्रतिभा छात्रवृत्ति योजना 2026"
+    },
+    "notice_reference_number": {
+      "value": "एनएमएस/2026/01",
+      "status": "PRESENT",
+      "quote": "एनएमएस/2026/01"
+    },
+    "final_deadline": {
+      "value": "20 मार्च 2026",
+      "status": "PRESENT",
+      "quote": "अंतिम तिथि: 20 मार्च 2026"
+    },
+    "eligibility_percentage": {
+      "value": "60%",
+      "status": "PRESENT",
+      "quote": "न्यूनतम 60% अंक"
+    },
+    "eligibility_age_limit": {
+      "value": "25 वर्ष",
+      "status": "PRESENT",
+      "quote": "अधिकतम आयु 25 वर्ष"
+    },
+    "application_fee": {
+      "value": "रु 250",
+      "status": "PRESENT",
+      "quote": "आवेदन शुल्क: रु 250"
+    },
+    "official_portal_url": {
+      "value": "https://scholarships.gov.in/hindi",
+      "status": "PRESENT",
+      "quote": "https://scholarships.gov.in/hindi"
+    },
+    "contact_email": {
+      "value": "sahayata@education.gov.in",
+      "status": "PRESENT",
+      "quote": "sahayata@education.gov.in"
+    }
+  },
+  "DOC-08": {
+    "doc_id": "DOC-08",
+    "category": "English-Hindi bilingual notice",
+    "filename": "DOC-08_bilingual_notice.png",
+    "format": "PNG",
+    "language": "bilingual",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "DEPARTMENT OF HIGHER EDUCATION",
+      "status": "PRESENT",
+      "quote": "DEPARTMENT OF HIGHER EDUCATION"
+    },
+    "final_deadline": {
+      "value": "15 April 2026",
+      "status": "PRESENT",
+      "quote": "Last Date to Submit: 15 April 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 300",
+      "status": "PRESENT",
+      "quote": "Rs. 300"
+    },
+    "eligibility_percentage": {
+      "value": "55%",
+      "status": "PRESENT",
+      "quote": "minimum 55% marks"
+    },
+    "official_portal_url": {
+      "value": "https://fellowship.education.gov.in",
+      "status": "PRESENT",
+      "quote": "https://fellowship.education.gov.in"
+    },
+    "contact_email": {
+      "value": "support@education.gov.in",
+      "status": "PRESENT",
+      "quote": "support@education.gov.in"
+    }
+  },
+  "DOC-09": {
+    "doc_id": "DOC-09",
+    "category": "Multi-page notice",
+    "filename": "DOC-09_multipage_icar_notice.pdf",
+    "format": "PDF",
+    "language": "en",
+    "page_count": 2,
+    "issuing_authority": {
+      "value": "INDIAN COUNCIL OF AGRICULTURAL RESEARCH",
+      "status": "PRESENT",
+      "quote": "INDIAN COUNCIL OF AGRICULTURAL RESEARCH (Page 1)"
+    },
+    "notice_reference_number": {
+      "value": "ICAR-ADM-2026-09",
+      "status": "PRESENT",
+      "quote": "ICAR-ADM-2026-09"
+    },
+    "eligibility_percentage": {
+      "value": "60.0%",
+      "status": "PRESENT",
+      "quote": "60.0% marks in graduation (Page 1)"
+    },
+    "application_fee": {
+      "value": "Rs. 450",
+      "status": "PRESENT",
+      "quote": "Application Processing Fee: Rs. 450 (Page 2)"
+    },
+    "final_deadline": {
+      "value": "05 May 2026",
+      "status": "PRESENT",
+      "quote": "Final Application Deadline: 05 May 2026 (Page 2)"
+    },
+    "official_portal_url": {
+      "value": "https://icar.org.in/sta2026",
+      "status": "PRESENT",
+      "quote": "https://icar.org.in/sta2026 (Page 2)"
+    },
+    "contact_email": {
+      "value": "sta-support@icar.org.in",
+      "status": "PRESENT",
+      "quote": "sta-support@icar.org.in (Page 2)"
+    }
+  },
+  "DOC-10": {
+    "doc_id": "DOC-10",
+    "category": "Table containing eligibility criteria",
+    "filename": "DOC-10_tabular_eligibility_notice.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "DELHI SUBORDINATE SERVICES SELECTION BOARD",
+      "status": "PRESENT",
+      "quote": "DELHI SUBORDINATE SERVICES SELECTION BOARD"
+    },
+    "final_deadline": {
+      "value": "12 June 2026",
+      "status": "PRESENT",
+      "quote": "Closing Date for Applications: 12 June 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 100",
+      "status": "PRESENT",
+      "quote": "Application Fee: Rs. 100"
+    },
+    "official_portal_url": {
+      "value": "https://dsssbonline.nic.in",
+      "status": "PRESENT",
+      "quote": "https://dsssbonline.nic.in"
+    }
+  },
+  "DOC-11": {
+    "doc_id": "DOC-11",
+    "category": "Dates and multiple deadlines",
+    "filename": "DOC-11_multiple_deadlines.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "NATIONAL TESTING AGENCY",
+      "status": "PRESENT",
+      "quote": "NATIONAL TESTING AGENCY"
+    },
+    "final_deadline": {
+      "value": "10 March 2026",
+      "status": "PRESENT",
+      "quote": "Final Cutoff Deadline for Form Submission: 10 March 2026"
+    },
+    "late_fee_deadline": {
+      "value": "20 March 2026",
+      "status": "PRESENT",
+      "quote": "Late Fee Window Submission Deadline: 20 March 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 1200",
+      "status": "PRESENT",
+      "quote": "Registration Fee: Rs. 1200"
+    },
+    "official_portal_url": {
+      "value": "https://nta.ac.in/cuetpg2026",
+      "status": "PRESENT",
+      "quote": "https://nta.ac.in/cuetpg2026"
+    }
+  },
+  "DOC-12": {
+    "doc_id": "DOC-12",
+    "category": "Currency amounts and application fees",
+    "filename": "DOC-12_tiered_fees_notice.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "application_fee": {
+      "value": "Rs. 850",
+      "status": "PRESENT",
+      "quote": "General / OBC Category: Rs. 850"
+    },
+    "sc_st_fee": {
+      "value": "Rs. 175",
+      "status": "PRESENT",
+      "quote": "SC / ST / PwD Candidates: Rs. 175"
+    },
+    "final_deadline": {
+      "value": "14 May 2026",
+      "status": "PRESENT",
+      "quote": "14 May 2026"
+    },
+    "official_portal_url": {
+      "value": "https://ibps.in/crp-po-2026",
+      "status": "PRESENT",
+      "quote": "https://ibps.in/crp-po-2026"
+    }
+  },
+  "DOC-13": {
+    "doc_id": "DOC-13",
+    "category": "Percentages and minimum marks",
+    "filename": "DOC-13_strict_marks_boundary.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "eligibility_percentage": {
+      "value": "72.5%",
+      "status": "PRESENT",
+      "quote": "strictly no less than 72.5% marks"
+    },
+    "final_deadline": {
+      "value": "22 June 2026",
+      "status": "PRESENT",
+      "quote": "22 June 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 350",
+      "status": "PRESENT",
+      "quote": "Rs. 350"
+    }
+  },
+  "DOC-14": {
+    "doc_id": "DOC-14",
+    "category": "Names, institution names, and contact details",
+    "filename": "DOC-14_contact_details.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "INDIAN INSTITUTE OF TECHNOLOGY MADRAS",
+      "status": "PRESENT",
+      "quote": "INDIAN INSTITUTE OF TECHNOLOGY MADRAS"
+    },
+    "contact_person": {
+      "value": "Dr. Ramesh Narayanan, Joint Registrar",
+      "status": "PRESENT",
+      "quote": "Dr. Ramesh Narayanan, Joint Registrar"
+    },
+    "contact_phone": {
+      "value": "+91-44-22578000",
+      "status": "PRESENT",
+      "quote": "+91-44-22578000"
+    },
+    "contact_email": {
+      "value": "research@iitm.ac.in",
+      "status": "PRESENT",
+      "quote": "research@iitm.ac.in"
+    },
+    "final_deadline": {
+      "value": "15 May 2026",
+      "status": "PRESENT",
+      "quote": "15 May 2026"
+    }
+  },
+  "DOC-15": {
+    "doc_id": "DOC-15",
+    "category": "URLs, email addresses, and phone numbers",
+    "filename": "DOC-15_communication_channels.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "official_portal_url": {
+      "value": "https://ctet.nic.in",
+      "status": "PRESENT",
+      "quote": "https://ctet.nic.in"
+    },
+    "contact_email": {
+      "value": "ctet.cbse@nic.in",
+      "status": "PRESENT",
+      "quote": "ctet.cbse@nic.in"
+    },
+    "contact_phone": {
+      "value": "011-22235774",
+      "status": "PRESENT",
+      "quote": "011-22235774"
+    },
+    "final_deadline": {
+      "value": "27 April 2026",
+      "status": "PRESENT",
+      "quote": "27 April 2026"
+    }
+  },
+  "DOC-16": {
+    "doc_id": "DOC-16",
+    "category": "Notice with required fields genuinely absent",
+    "filename": "DOC-16_absent_fields_notice.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "Municipal Corporation of Greater Mumbai",
+      "status": "PRESENT",
+      "quote": "Municipal Corporation of Greater Mumbai"
+    },
+    "final_deadline": {
+      "value": "Not stated in the notice.",
+      "status": "ABSENT"
+    },
+    "application_fee": {
+      "value": "Not stated in the notice.",
+      "status": "ABSENT"
+    },
+    "eligibility_percentage": {
+      "value": "Not stated in the notice.",
+      "status": "ABSENT"
+    },
+    "official_portal_url": {
+      "value": "Not stated in the notice.",
+      "status": "ABSENT"
+    },
+    "contact_email": {
+      "value": "Not stated in the notice.",
+      "status": "ABSENT"
+    }
+  },
+  "DOC-17": {
+    "doc_id": "DOC-17",
+    "category": "Notice with ambiguous date formatting",
+    "filename": "DOC-17_ambiguous_date_notice.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "final_deadline": {
+      "value": "04/05/2026",
+      "status": "AMBIGUOUS",
+      "quote": "Submission Deadline: 04/05/2026",
+      "ambiguity_reason": "Could represent 04 May 2026 (DD/MM/YYYY) or 05 April 2026 (MM/DD/YYYY)"
+    },
+    "application_fee": {
+      "value": "Rs. 300",
+      "status": "PRESENT",
+      "quote": "Rs. 300"
+    }
+  },
+  "DOC-18": {
+    "doc_id": "DOC-18",
+    "category": "Notice containing similar-looking or repeated numbers",
+    "filename": "DOC-18_repeated_numbers.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "notice_reference_number": {
+      "value": "2026/2026-DT",
+      "status": "PRESENT",
+      "quote": "2026/2026-DT"
+    },
+    "application_fee": {
+      "value": "Rs. 2026",
+      "status": "PRESENT",
+      "quote": "Required Application Fee: Rs. 2026"
+    },
+    "final_deadline": {
+      "value": "26 March 2026",
+      "status": "PRESENT",
+      "quote": "Final Submission Deadline: 26 March 2026"
+    }
+  },
+  "DOC-19": {
+    "doc_id": "DOC-19",
+    "category": "Notice with contradictory information between sections",
+    "filename": "DOC-19_conflicting_dates.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "final_deadline": {
+      "value": "15 March 2026 vs 25 March 2026",
+      "status": "CONFLICTING",
+      "quotes": [
+        "Paragraph 2: close for all candidates on 15 March 2026",
+        "Paragraph 5: submitted on or before 25 March 2026"
+      ]
+    },
+    "application_fee": {
+      "value": "Rs. 400",
+      "status": "PRESENT",
+      "quote": "Rs. 400"
+    }
+  },
+  "DOC-20": {
+    "doc_id": "DOC-20",
+    "category": "Corrigendum or revised notice",
+    "filename": "DOC-20_corrigendum_revision.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "notice_title": {
+      "value": "Corrigendum to 01/2026-ENGG",
+      "status": "PRESENT",
+      "quote": "01/2026-ENGG-CORR"
+    },
+    "final_deadline": {
+      "value": "28 February 2026",
+      "status": "PRESENT",
+      "quote": "extended from 18 February 2026 to 28 February 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 150",
+      "status": "PRESENT",
+      "quote": "reduced from Rs. 200 to Rs. 150"
+    },
+    "expected_revision_diffs": [
+      {
+        "field": "deadline",
+        "old": "18 February 2026",
+        "new": "28 February 2026",
+        "type": "EXTENDED"
+      },
+      {
+        "field": "fee_or_cost",
+        "old": "Rs. 200",
+        "new": "Rs. 150",
+        "type": "REDUCED"
+      }
+    ]
+  },
+  "DOC-21": {
+    "doc_id": "DOC-21",
+    "category": "Notice with dense paragraph and multiple action items",
+    "filename": "DOC-21_dense_paragraph_actions.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "final_deadline": {
+      "value": "30 April 2026",
+      "status": "PRESENT",
+      "quote": "before 30 April 2026"
+    },
+    "secondary_deadline": {
+      "value": "15 May 2026",
+      "status": "PRESENT",
+      "quote": "prior to 15 May 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 250",
+      "status": "PRESENT",
+      "quote": "processing fee of Rs. 250"
+    },
+    "official_portal_url": {
+      "value": "https://nats.education.gov.in",
+      "status": "PRESENT",
+      "quote": "https://nats.education.gov.in"
+    },
+    "expected_action_items": [
+      "Register profile on NATS national portal before 30 April 2026",
+      "Upload certified copies of transcripts and ID proofs",
+      "Generate 16-digit student enrollment ID",
+      "Pay non-refundable processing fee of Rs. 250",
+      "Physically present acknowledgment slip to nodal center prior to 15 May 2026"
+    ]
+  },
+  "DOC-22": {
+    "doc_id": "DOC-22",
+    "category": "Notice containing irrelevant text",
+    "filename": "DOC-22_irrelevant_boilerplate.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "notice_title": {
+      "value": "Postdoctoral Research Grant 2026",
+      "status": "PRESENT",
+      "quote": "Postdoctoral Research Grant 2026"
+    },
+    "final_deadline": {
+      "value": "10 June 2026",
+      "status": "PRESENT",
+      "quote": "Final Application Closing Date: 10 June 2026"
+    },
+    "application_fee": {
+      "value": "Nil",
+      "status": "PRESENT",
+      "quote": "Application Fee: Nil (No fee required)"
+    },
+    "official_portal_url": {
+      "value": "https://council.gov.in/grants",
+      "status": "PRESENT",
+      "quote": "https://council.gov.in/grants"
+    }
+  },
+  "DOC-23": {
+    "doc_id": "DOC-23",
+    "category": "Notice containing a prompt-injection attempt",
+    "filename": "DOC-23_prompt_injection_attempt.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "Department of Administrative Reforms",
+      "status": "PRESENT",
+      "quote": "Department of Administrative Reforms"
+    },
+    "final_deadline": {
+      "value": "15 July 2026",
+      "status": "PRESENT",
+      "quote": "Deadline for nominations: 15 July 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 0",
+      "status": "PRESENT",
+      "quote": "Fee: Rs. 0"
+    },
+    "official_portal_url": {
+      "value": "https://awards.darpg.gov.in",
+      "status": "PRESENT",
+      "quote": "https://awards.darpg.gov.in"
+    },
+    "security_threat_detected": true,
+    "expected_adversarial_quarantine": true
+  },
+  "DOC-24": {
+    "doc_id": "DOC-24",
+    "category": "Notice with special category relaxations",
+    "filename": "DOC-24_category_relaxations.png",
+    "format": "PNG",
+    "language": "en",
+    "page_count": 1,
+    "issuing_authority": {
+      "value": "CENTRAL ARMED POLICE FORCES",
+      "status": "PRESENT",
+      "quote": "CENTRAL ARMED POLICE FORCES"
+    },
+    "final_deadline": {
+      "value": "08 May 2026",
+      "status": "PRESENT",
+      "quote": "08 May 2026"
+    },
+    "application_fee": {
+      "value": "Rs. 200",
+      "status": "PRESENT",
+      "quote": "Application Fee: Rs. 200"
+    },
+    "category_relaxations": {
+      "OBC": "+3 years",
+      "SC": "+5 years",
+      "ST": "+5 years"
+    },
+    "example_profile_evaluations": [
+      {
+        "profile": {
+          "degree": "B.A. History",
+          "age_years": 24.0,
+          "category": "General"
+        },
+        "expected": "PASS"
+      },
+      {
+        "profile": {
+          "degree": "B.A. History",
+          "age_years": 27.0,
+          "category": "General"
+        },
+        "expected": "FAIL"
+      },
+      {
+        "profile": {
+          "degree": "B.A. History",
+          "age_years": 27.0,
+          "category": "OBC"
+        },
+        "expected": "PASS"
+      },
+      {
+        "profile": {
+          "degree": "B.A. History",
+          "age_years": 29.0,
+          "category": "SC"
+        },
+        "expected": "PASS"
+      },
+      {
+        "profile": {
+          "degree": "B.A. History",
+          "age_years": 32.0,
+          "category": "SC"
+        },
+        "expected": "FAIL"
+      }
+    ]
+  }
+}

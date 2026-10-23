@@ -98,6 +98,8 @@ export interface PreflightReport {
   model_name: string;
   is_ready_for_inference: boolean;
   items: DiagnosticItem[];
+  ollama_connected?: boolean;
+  tesseract_available?: boolean;
 }
 
 export interface LLMProviderStatus {
@@ -109,6 +111,7 @@ export interface LLMProviderStatus {
   model: string;
   endpoint?: string;
   key_configured: boolean;
+  status?: string;
 }
 
 export interface EvidenceCitation {
@@ -119,6 +122,7 @@ export interface EvidenceCitation {
 
 export interface SampleFixture {
   id: string;
+  filename?: string;
   title: string;
   type: 'text' | 'image';
   language: 'en' | 'hi';
@@ -149,14 +153,38 @@ export interface OCRResponse {
 
 export interface AnalyzeResponse {
   session_id?: string;
+  document_id?: string;
+  source_language?: string;
+  detected_language?: string;
+  language_confidence?: number;
+  is_mixed_language?: boolean;
   structured_notice: StructuredNotice;
   six_core_fields?: SixCoreFields;
   summary_en: PlainLanguageSummary;
   summary_hi: PlainLanguageSummary;
   checklist_en: ActionChecklist;
   checklist_hi: ActionChecklist;
+  target_language?: string;
+  localized_summary?: PlainLanguageSummary;
+  localized_checklist?: ActionChecklist;
   fingerprint: string;
   duration_seconds: number;
+}
+
+export interface DemoLibraryItem {
+  id: string;
+  title: string;
+  language: string;
+  format: string;
+  category: string;
+  description: string;
+  file_path: string;
+  word_count: number;
+}
+
+export interface DemoLibraryResponse {
+  demos: DemoLibraryItem[];
+  total: number;
 }
 
 export interface ConfirmFactResponse {
@@ -172,4 +200,324 @@ export interface ReadingLevelResponse {
   summary_en: PlainLanguageSummary;
   summary_hi: PlainLanguageSummary;
   reading_level: string;
+}
+
+
+// =========================================================
+// Multi-Notice Revision Ledger Types
+// =========================================================
+
+export type RelationshipType =
+  | 'AMENDMENT'
+  | 'EXTENSION'
+  | 'CANCELLATION'
+  | 'REPLACEMENT'
+  | 'RELATED'
+  | 'UNRESOLVED';
+
+export type ChangeCategory =
+  | 'ADDED'
+  | 'REMOVED'
+  | 'MODIFIED'
+  | 'UNCHANGED'
+  | 'UNCERTAIN';
+
+export interface NoticeRelationship {
+  source_notice_id: string;
+  target_notice_id: string;
+  relationship_type: RelationshipType;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  is_explicit: boolean;
+  evidence_quote: string;
+  source_reference?: string | null;
+  explanation: string;
+}
+
+export interface RevisionEntry {
+  field_name: string;
+  display_name: string;
+  old_value: string;
+  new_value: string;
+  change_category: ChangeCategory;
+  old_evidence_quote?: string | null;
+  new_evidence_quote?: string | null;
+  old_page?: number | null;
+  new_page?: number | null;
+  requires_review: boolean;
+  explanation: string;
+}
+
+export interface RevisionLedger {
+  source_notice_id: string;
+  target_notice_id: string;
+  source_title: string;
+  target_title: string;
+  relationship: NoticeRelationship;
+  entries: RevisionEntry[];
+  summary_of_changes: string;
+  created_at: string;
+}
+
+// =========================================================
+// Explainable Applicant Eligibility Engine Types
+// =========================================================
+
+export type CriterionType =
+  | 'AGE'
+  | 'QUALIFICATION'
+  | 'PERCENTAGE'
+  | 'CATEGORY'
+  | 'DOCUMENT'
+  | 'OTHER';
+
+export type EvaluationStatus = 'PASS' | 'FAIL' | 'UNKNOWN';
+
+export interface EligibilityCriterion {
+  id: string;
+  criterion_type: CriterionType;
+  description: string;
+  operator: string;
+  threshold_value: string;
+  cutoff_date?: string | null;
+  category_relaxations?: Record<string, string>;
+  evidence_quote: string;
+  page_number?: number | null;
+}
+
+export interface ApplicantProfile {
+  date_of_birth?: string | null;
+  age_years?: number | null;
+  degree?: string | null;
+  course?: string | null;
+  academic_year?: string | null;
+  department?: string | null;
+  income_annual?: number | null;
+  enrollment_status?: string | null;
+  marks_percentage?: number | null;
+  category?: string | null;
+  documents_available?: string[];
+  notes?: string | null;
+}
+
+export interface CriterionEvaluationResult {
+  criterion_id: string;
+  criterion_type: CriterionType;
+  description: string;
+  status: EvaluationStatus;
+  applicant_value: string;
+  requirement_value: string;
+  evidence_quote: string;
+  page_number?: number | null;
+  explanation: string;
+  missing_info?: string | null;
+}
+
+export interface EligibilityAssessment {
+  session_id?: string | null;
+  overall_status: 'ELIGIBLE' | 'NOT_ELIGIBLE' | 'INCONCLUSIVE';
+  results: CriterionEvaluationResult[];
+  summary: string;
+  disclaimer: string;
+}
+
+// =========================================================
+// Evidence-First Trust Engine Types
+// =========================================================
+
+export type EvidenceVerificationStatus =
+  | 'VERIFIED_IN_SOURCE'
+  | 'UNVERIFIED'
+  | 'UNCERTAIN_OCR'
+  | 'DERIVED_DETERMINISTIC'
+  | 'AI_INTERPRETATION'
+  | 'HUMAN_CONFIRMED';
+
+export interface TrustEvidence {
+  evidence_id: string;
+  claim_id?: string | null;
+  claim_text: string;
+  source_doc_id?: string | null;
+  source_doc_title?: string | null;
+  page_number?: number | null;
+  line_start?: number | null;
+  line_end?: number | null;
+  verbatim_excerpt: string;
+  normalized_value?: string | null;
+  verification_status: EvidenceVerificationStatus;
+  confidence_rationale: string;
+  is_inert_safe: boolean;
+}
+
+export interface VerifyEvidenceResponse {
+  is_valid: boolean;
+  evidence: TrustEvidence;
+  suggested_match?: string | null;
+}
+
+// =========================================================
+// Personal Impact Change Tracker Types
+// =========================================================
+
+export type ImpactType =
+  | 'BENEFICIAL'
+  | 'ADVERSE'
+  | 'NEUTRAL'
+  | 'ACTION_REQUIRED'
+  | 'UNRESOLVED';
+
+export interface PersonalImpactItem {
+  id: string;
+  field_name: string;
+  change_category: ChangeCategory;
+  previous_value: string;
+  new_value: string;
+  previous_status?: string | null;
+  new_status?: string | null;
+  impact_type: ImpactType;
+  headline: string;
+  explanation: string;
+  evidence_old?: string | null;
+  evidence_new?: string | null;
+  required_user_action?: string | null;
+}
+
+export interface PersonalImpactReport {
+  overall_impact_summary: string;
+  impact_level: 'HIGH' | 'MODERATE' | 'LOW' | 'NEUTRAL';
+  impact_items: PersonalImpactItem[];
+  recalculated_eligibility?: EligibilityAssessment | null;
+  recommended_next_actions: string[];
+  disclaimer: string;
+}
+
+// =========================================================
+// Personalized Action Navigator Types
+// =========================================================
+
+export type ActionCategory =
+  | 'ELIGIBILITY_CHECK'
+  | 'DOCUMENT_PREPARATION'
+  | 'FEE_PAYMENT'
+  | 'APPLICATION_SUBMISSION'
+  | 'HEARING_APPEARANCE'
+  | 'POST_SUBMISSION'
+  | 'CORRIGENDUM_REVIEW';
+
+export type ActionItemStatus =
+  | 'PENDING'
+  | 'COMPLETED'
+  | 'BLOCKED'
+  | 'NEEDS_VERIFICATION';
+
+export interface ActionItem {
+  id: string;
+  title: string;
+  explanation: string;
+  category: ActionCategory;
+  status: ActionItemStatus;
+  deadline?: string | null;
+  deadline_evidence?: string | null;
+  deadline_status?: string | null;
+  remaining_time?: string | null;
+  superseded_deadline?: string | null;
+  fee_amount?: string | null;
+  dependencies: string[];
+  blocked_by: string[];
+  official_portal_url?: string | null;
+  url_verified: boolean;
+  evidence?: TrustEvidence | null;
+  is_user_custom: boolean;
+  completed_at?: string | null;
+  user_notes?: string | null;
+}
+
+export interface PersonalizedActionPlan {
+  plan_id: string;
+  session_id?: string | null;
+  notice_title: string;
+  overall_progress_percentage: number;
+  completed_count: number;
+  total_count: number;
+  items: ActionItem[];
+  next_recommended_action_id?: string | null;
+  last_updated: string;
+}
+
+// =========================================================
+// Cross-Notice Intelligence & Workspace Types
+// =========================================================
+
+export type RelationshipConfidence =
+  | 'VERIFIED'
+  | 'STRONG_CANDIDATE'
+  | 'POSSIBLE'
+  | 'CONFLICTING'
+  | 'UNKNOWN';
+
+export interface NoticeMetadata {
+  id: string;
+  title: string;
+  reference_number?: string | null;
+  issuing_authority?: string | null;
+  notice_date?: string | null;
+  ingested_at: string;
+  char_count: number;
+  raw_text: string;
+  fingerprint: string;
+  document_type: string;
+}
+
+export interface CrossNoticeRelationship {
+  id: string;
+  source_notice_id: string;
+  target_notice_id: string;
+  relationship_type: RelationshipType;
+  confidence_level: RelationshipConfidence;
+  evidence_quote: string;
+  rationale: string;
+  precedence_status: string;
+  user_confirmed: boolean;
+}
+
+export interface TimelineEvent {
+  id: string;
+  date: string;
+  notice_id: string;
+  notice_title: string;
+  event_type: string;
+  summary: string;
+  evidence_quote: string;
+  is_active: boolean;
+}
+
+export interface CrossNoticeConflict {
+  id: string;
+  notice_a_id: string;
+  notice_b_id: string;
+  field_name: string;
+  value_a: string;
+  value_b: string;
+  evidence_a: string;
+  evidence_b: string;
+  conflict_severity: 'CRITICAL' | 'MODERATE' | 'INFORMATIONAL';
+  resolution_guidance: string;
+  status: string;
+}
+
+export interface WorkspaceTimelineReport {
+  workspace_id: string;
+  notices: NoticeMetadata[];
+  relationships: CrossNoticeRelationship[];
+  timeline: TimelineEvent[];
+  conflicts: CrossNoticeConflict[];
+  active_notice_id?: string | null;
+}
+
+export interface AccessibilityPreferences {
+  textSize: 'normal' | 'large' | 'extra-large';
+  lineSpacing: 'normal' | 'relaxed' | 'loose';
+  highContrast: boolean;
+  warmBackground: boolean;
+  highlightKeyInfo: boolean;
+  reducedMotion: boolean;
 }

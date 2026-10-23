@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import {
   LayoutDashboard,
   FileText,
   Search,
   ListTodo,
+  GitCompare,
+  UserCheck,
   MessageSquare,
   History,
   Settings,
@@ -13,12 +16,13 @@ import {
   Activity,
   ChevronDown,
   ChevronUp,
-  Download,
-  AlertCircle,
-  CheckCircle2,
+  Compass,
+  Layers,
+  BookOpen,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
+  const { t } = useTranslation();
   const {
     activeTab,
     setActiveTab,
@@ -38,27 +42,34 @@ export const Sidebar: React.FC = () => {
     { id: 1, label: '1. Ingestion & OCR', icon: FileText },
     { id: 2, label: '2. Grounded Facts', icon: Search, badge: structuredNotice ? '8 Facts' : undefined },
     { id: 3, label: '3. Summary & Actions', icon: ListTodo, badge: structuredNotice ? 'Ready' : undefined },
-    { id: 4, label: '4. Follow-Up Q&A', icon: MessageSquare },
-    { id: 5, label: 'Notice History', icon: History, badge: history.length > 0 ? `${history.length}` : undefined },
-    { id: 6, label: 'Settings & Health', icon: Settings },
+    { id: 4, label: '4. Revision Ledger', icon: GitCompare, badge: 'Impact' },
+    { id: 5, label: '5. Eligibility Check', icon: UserCheck, badge: 'Rules' },
+    { id: 6, label: '6. Follow-Up Q&A', icon: MessageSquare },
+    { id: 7, label: '7. Action Navigator', icon: Compass, badge: 'Roadmap' },
+    { id: 8, label: '8. Multi-Notice Timeline', icon: Layers, badge: 'Graph' },
+    { id: 9, label: 'Notice History', icon: History, badge: history.length > 0 ? `${history.length}` : undefined },
+    { id: 10, label: 'Settings & Health', icon: Settings },
+    { id: 11, label: t('navDemoLibrary') || '11. Demo Library', icon: BookOpen, badge: '32 Demos' },
   ];
 
   const handleCompetitionDemo = () => {
     loadSampleFixture('synthetic_scholarship_notice.txt');
+    setActiveTab(1);
   };
 
   const handleLoadSelectedSample = () => {
     if (selectedSample) {
       loadSampleFixture(selectedSample);
+      setActiveTab(1);
     }
   };
 
   return (
-    <aside className="w-68 bg-[#090F1F] border-r border-[#1D2D4E] flex flex-col justify-between h-[calc(100vh-61px)] overflow-y-auto shrink-0">
+    <aside className="w-64 sm:w-68 bg-[#F8FAFC] border-r border-[#E1E7EE] flex flex-col justify-between h-[calc(100vh-61px)] overflow-y-auto shrink-0 shadow-xs">
       <div className="p-4 space-y-6">
         {/* Navigation Group */}
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2 px-1">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#68778B] block mb-2 px-1">
             Navigation
           </span>
           <nav className="space-y-1">
@@ -68,23 +79,24 @@ export const Sidebar: React.FC = () => {
               return (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 font-bold'
-                      : 'text-slate-300 hover:bg-[#121B33] hover:text-white'
+                      ? 'bg-[#08785D] text-white shadow-xs font-bold'
+                      : 'text-[#526176] hover:bg-[#E8F7F0] hover:text-[#08785D]'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 truncate">
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-[#68778B]'}`} />
                     <span className="truncate">{item.label}</span>
                   </div>
                   {item.badge && (
                     <span
-                      className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded shrink-0 ${
+                      className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-md shrink-0 ${
                         isActive
-                          ? 'bg-blue-800 text-blue-100'
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                          ? 'bg-[#06664E] text-[#E8F7F0]'
+                          : 'bg-white text-[#08785D] border border-[#B7E7D2]'
                       }`}
                     >
                       {item.badge}
@@ -96,89 +108,109 @@ export const Sidebar: React.FC = () => {
           </nav>
         </div>
 
-        {/* Quick-Load Samples */}
-        <div className="pt-2 border-t border-[#1D2D4E]">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2.5 px-1">
-            🧪 Quick-Load Samples
+        {/* Quick Demo Notices Group */}
+        <div className="pt-2 border-t border-[#E1E7EE] space-y-3">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#68778B] block px-1">
+            Demo Notices
           </span>
 
+          {/* Golden Benchmark / Competition Demo Button */}
           <button
+            type="button"
             onClick={handleCompetitionDemo}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-600 hover:to-indigo-600 transition shadow-sm cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#08785D] to-[#06664E] hover:from-[#06664E] hover:to-[#054E3C] shadow-xs cursor-pointer transition-all"
+            title="Load the official UPSC National Scholarship evaluation notice"
           >
-            <Sparkles className="w-3.5 h-3.5 text-blue-300 shrink-0" />
-            <span className="truncate">Competition Demo (TEST-SCH)</span>
+            <Sparkles className="w-3.5 h-3.5 text-white" />
+            <span>Competition Demo (UPSC)</span>
           </button>
 
-          <div className="space-y-2">
+          {/* Sample Fixtures Dropdown */}
+          <div className="space-y-1.5">
+            <label htmlFor="sample-selector" className="text-[11px] font-medium text-[#68778B] px-1 block">
+              Sample Notices:
+            </label>
             <select
+              id="sample-selector"
               value={selectedSample}
               onChange={(e) => setSelectedSample(e.target.value)}
-              aria-label="Select sample notice fixture"
-              className="w-full bg-[#111A33] border border-[#1D2D4E] rounded-md px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+              className="w-full bg-white text-[#12233D] border border-[#E1E7EE] rounded-lg px-2.5 py-1.5 text-xs font-medium outline-hidden focus:border-[#08785D] cursor-pointer"
             >
-              {samples.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
+              {samples.length > 0 ? (
+                samples.map((s) => (
+                  <option key={s.id || s.filename} value={s.filename || s.id}>
+                    {s.title || s.filename}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="synthetic_scholarship_notice.txt">National Merit Scholarship 2026</option>
+                  <option value="sample_scholarship_notice.txt">State Post-Matric Circular</option>
+                  <option value="demo_response_hearing.txt">Judicial Notice / Summons</option>
+                </>
+              )}
             </select>
-
             <button
+              type="button"
               onClick={handleLoadSelectedSample}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-slate-200 bg-[#152244] hover:bg-[#1C2D5A] border border-[#1D2D4E] transition cursor-pointer"
+              className="w-full py-1.5 px-3 rounded-lg text-xs font-semibold text-[#12233D] bg-white hover:bg-[#E8F7F0] hover:text-[#08785D] border border-[#E1E7EE] hover:border-[#B7E7D2] transition cursor-pointer"
             >
-              <Download className="w-3 h-3 text-blue-400" />
-              <span>Load Selected Notice</span>
+              Load Selected Notice
             </button>
           </div>
-        </div>
 
-        {/* System Diagnostics Drawer */}
-        <div className="pt-2 border-t border-[#1D2D4E]">
+          {/* Reset Workspace Action */}
           <button
-            onClick={() => setShowDiagnostics(!showDiagnostics)}
-            className="w-full flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1 hover:text-white cursor-pointer"
+            type="button"
+            onClick={resetSession}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#B42318] hover:bg-[#FEE8E7] border border-transparent hover:border-[#FCA5A5] transition cursor-pointer"
           >
-            <span className="flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-blue-400" />
-              System Diagnostics
-            </span>
-            {showDiagnostics ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset Workspace</span>
           </button>
-
-          {showDiagnostics && systemHealth && (
-            <div className="bg-[#0B1327] border border-[#1D2D4E] rounded-lg p-2.5 space-y-2 text-xs">
-              {systemHealth.items.map((it, idx) => (
-                <div key={idx} className="pb-1.5 border-b border-slate-800/60 last:border-0 last:pb-0">
-                  <div className="flex items-center gap-1.5 font-semibold text-slate-200">
-                    {it.status === 'ok' ? (
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                    ) : (
-                      <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
-                    )}
-                    <span className="truncate">{it.name}</span>
-                  </div>
-                  <div className="text-[11px] text-slate-400 pl-4">{it.details}</div>
-                  {it.remedy && (
-                    <div className="text-[10px] text-amber-400 pl-4 mt-0.5">Remedy: {it.remedy}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Footer Reset Action */}
-      <div className="p-4 border-t border-[#1D2D4E]">
+      {/* Diagnostics Accordion / Status Footer */}
+      <div className="p-3 bg-white border-t border-[#E1E7EE] space-y-2">
         <button
-          onClick={resetSession}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 border border-slate-800 hover:border-rose-900 transition cursor-pointer"
+          type="button"
+          onClick={() => setShowDiagnostics(!showDiagnostics)}
+          className="w-full flex items-center justify-between text-xs font-medium text-[#526176] hover:text-[#12233D] px-1 py-1 cursor-pointer"
         >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Reset Workspace</span>
+          <div className="flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5 text-[#08785D]" />
+            <span>Preflight Diagnostics</span>
+          </div>
+          {showDiagnostics ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
         </button>
+
+        {showDiagnostics && (
+          <div className="text-[11px] space-y-1 bg-[#F8FAFC] p-2.5 rounded-lg border border-[#E1E7EE] font-mono">
+            <div className="flex justify-between items-center">
+              <span className="text-[#68778B]">Ollama Daemon:</span>
+              <span className={systemHealth?.ollama_connected ? 'text-[#08785D] font-bold' : 'text-[#92500A]'}>
+                {systemHealth?.ollama_connected ? 'Connected' : 'Offline (Mock)'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[#68778B]">Tesseract OCR:</span>
+              <span className={systemHealth?.tesseract_available ? 'text-[#08785D] font-bold' : 'text-[#92500A]'}>
+                {systemHealth?.tesseract_available ? 'Installed' : 'Unavailable'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[#68778B]">Model:</span>
+              <span className="text-[#12233D] truncate max-w-[110px]" title={systemHealth?.model_name}>
+                {systemHealth?.model_name || 'gemma2:2b'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="text-[10px] text-center text-[#68778B] pt-1">
+          HackDay 2026 • PS02 Team
+        </div>
       </div>
     </aside>
   );

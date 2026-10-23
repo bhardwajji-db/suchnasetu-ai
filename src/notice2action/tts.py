@@ -1,23 +1,39 @@
 """
 Text-to-Speech (TTS) and Accessibility Read-Aloud Engine for SuchnaSetu AI.
 Provides audio read-aloud in English and Hindi for vision-impaired and accessibility users.
-Supports both gTTS audio generation and browser-native Web Speech API.
+Prioritizes browser-native Web Speech API for 100% offline, air-gapped privacy.
 """
 
 from __future__ import annotations
 
 import io
 from typing import Optional
-from gtts import gTTS
+
+try:
+    from gtts import gTTS
+    _GTTS_AVAILABLE = True
+except ImportError:
+    gTTS = None  # type: ignore
+    _GTTS_AVAILABLE = False
 
 
-def generate_audio_bytes(text: str, lang: str = "en") -> Optional[bytes]:
+def generate_audio_bytes(
+    text: str,
+    lang: str = "en",
+    allow_cloud_tts: bool = False,
+) -> Optional[bytes]:
     """
-    Generates MP3 audio bytes using gTTS.
+    Generates MP3 audio bytes using gTTS ONLY when allow_cloud_tts=True.
+    By default (allow_cloud_tts=False), this returns None to guarantee 100% offline
+    air-gapped privacy and route playback to the browser-native Web Speech API.
+
     lang: 'en' for English, 'hi' for Hindi.
-    Returns bytes or None if offline/error.
+    Returns bytes or None if offline/error/cloud disabled.
     """
-    if not text or not text.strip():
+    if not text or not text.strip() or not allow_cloud_tts:
+        return None
+
+    if not _GTTS_AVAILABLE or gTTS is None:
         return None
 
     try:
@@ -28,7 +44,7 @@ def generate_audio_bytes(text: str, lang: str = "en") -> Optional[bytes]:
         fp.seek(0)
         return fp.read()
     except Exception:
-        # If gTTS fails (e.g. offline mode), return None so UI can use Web Speech API fallback
+        # If gTTS fails (e.g. offline mode or network error), return None so UI can use Web Speech API fallback
         return None
 
 

@@ -1,0 +1,180 @@
+{
+  "issuing_authority": {
+    "field_name": "issuing_authority",
+    "value": "INDIAN COUNCIL OF AGRICULTURAL RESEARCH",
+    "status": "stated",
+    "evidence_quote": "INDIAN COUNCIL OF AGRICULTURAL RESEARCH",
+    "source_location": "Lines 2-19",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "notice_reference_number": {
+    "field_name": "notice_reference_number",
+    "value": "ICAR-ADM-2026-09",
+    "status": "stated",
+    "evidence_quote": "Notice No. ICAR-ADM-2026-09",
+    "source_location": "Lines 3-20",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "notice_date": {
+    "field_name": "notice_date",
+    "value": "01 February 2026",
+    "status": "stated",
+    "evidence_quote": "Date of Notification: 01 February 2026",
+    "source_location": "Line 4",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "recipient": {
+    "field_name": "recipient",
+    "value": "Candidates for Senior Technical Assistant Examination 2026",
+    "status": "stated",
+    "evidence_quote": "Notification for Senior Technical Assistant Examination 2026",
+    "source_location": "Line 6",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "main_subject": {
+    "field_name": "main_subject",
+    "value": "Senior Technical Assistant Examination 2026",
+    "status": "stated",
+    "evidence_quote": "Notification for Senior Technical Assistant Examination 2026",
+    "source_location": "Line 6",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "required_action_and_deadline": {
+    "field_name": "required_action_and_deadline",
+    "value": "Submit application online by 05 May 2026, 17:00 Hours.",
+    "status": "stated",
+    "evidence_quote": "Final Application Deadline: 05 May 2026, 17:00 Hours.",
+    "source_location": "Line 25",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "purpose": {
+    "field_name": "purpose",
+    "value": "Examination for Senior Technical Assistant",
+    "status": "stated",
+    "evidence_quote": "Notification for Senior Technical Assistant Examination 2026",
+    "source_location": "Line 6",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "eligibility": {
+    "field_name": "eligibility",
+    "value": "Bachelor's Degree in Agriculture or Allied Sciences; Minimum aggregate percentage of 60.0% marks in graduation; Age must not exceed 28 years on 01 January 2026.",
+    "status": "stated",
+    "evidence_quote": "Candidate must possess a Bachelor's Degree in Agriculture or Allied Sciences.",
+    "source_location": "Line 10",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "deadline": {
+    "field_name": "deadline",
+    "value": "05 May 2026, 17:00 Hours",
+    "status": "stated",
+    "evidence_quote": "Final Application Deadline: 05 May 2026, 17:00 Hours.",
+    "source_location": "Line 25",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "fee_or_cost": {
+    "field_name": "fee_or_cost",
+    "value": "Rs. 450 (Non-refundable)",
+    "status": "stated",
+    "evidence_quote": "Application Processing Fee: Rs. 450 (Non-refundable).",
+    "source_location": "Line 23",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "required_documents": {
+    "field_name": "required_documents",
+    "value": "Degree Certificate and Photo ID",
+    "status": "stated",
+    "evidence_quote": "Upload Degree Certificate and Photo ID.",
+    "source_location": "Line 31",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "contact_details": {
+    "field_name": "contact_details",
+    "value": "Helpdesk Email: sta-support@icar.org.in; Phone Support: 011-25841234",
+    "status": "uncertain",
+    "evidence_quote": "Helpdesk Email: sta-support@icar.org.in\nPhone Support: 011-25841234",
+    "source_location": null,
+    "requires_confirmation": true,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": "The provided evidence quotation could not be found anywhere in the notice text.",
+    "uncertainty_type": null
+  },
+  "required_actions": {
+    "field_name": "required_actions",
+    "value": "Submit application online at https://icar.org.in/sta2026 and upload required documents.",
+    "status": "uncertain",
+    "evidence_quote": "All applications must be submitted online at https://icar.org.in/sta2026\nUpload Degree Certificate and Photo ID.",
+    "source_location": null,
+    "requires_confirmation": true,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": "The provided evidence quotation could not be found anywhere in the notice text.",
+    "uncertainty_type": null
+  },
+  "important_conditions": {
+    "field_name": "important_conditions",
+    "value": "OBC candidates get 3 years age relaxation.",
+    "status": "stated",
+    "evidence_quote": "OBC candidates get 3 years age relaxation.",
+    "source_location": "Line 14",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "missing_information": [
+    "Examination syllabus",
+    "Exam pattern/structure",
+    "Selection criteria details"
+  ],
+  "uncertain_or_conflicting_details": [
+    "Official Contact: The provided evidence quotation could not be found anywhere in the notice text.",
+    "Required Actions: The provided evidence quotation could not be found anywhere in the notice text."
+  ],
+  "raw_notice_text": "--- Page 1 ---\nINDIAN COUNCIL OF AGRICULTURAL RESEARCH\nNotice No. ICAR-ADM-2026-09 (Page 1 of 2)\nDate of Notification: 01 February 2026\n\nNotification for Senior Technical Assistant Examination 2026\n\nSection A: Academic Qualifications and Eligibility Criteria\n\n1. Candidate must possess a Bachelor's Degree in Agriculture or Allied Sciences.\n2. Minimum aggregate percentage of 60.0% marks in graduation is mandatory.\n3. Candidate age must not exceed 28 years on 01 January 2026.\n\n4. Relaxations: OBC candidates get 3 years age relaxation.\n\n[Continued on Page 2 for Fee Structure, Deadlines, and Application Links...]\n\n--- Page 2 ---\nINDIAN COUNCIL OF AGRICULTURAL RESEARCH\nNotice No. ICAR-ADM-2026-09 (Page 2 of 2)\n\nSection B: Financial Charges and Mandatory Schedule\n1. Application Processing Fee: Rs. 450 (Non-refundable).\n2. Online Portal Submission Opening: 10 February 2026.\n3. Final Application Deadline: 05 May 2026, 17:00 Hours.\n4. Admit Card Download Date: 20 May 2026.\n\nSection C: Mandatory Submission Instructions\n\n- All applications must be submitted online at https://icar.org.in/sta2026\n- Upload Degree Certificate and Photo ID.\n\n- Helpdesk Email: sta-support@icar.org.in\n\n- Phone Support: 011-25841234"
+}
