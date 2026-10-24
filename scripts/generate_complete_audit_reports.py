@@ -42,7 +42,7 @@ SochnaSetu AI is an enterprise-grade accessibility assistant engineered to conve
 The codebase underwent a complete architectural inspection, defect remediation, and full-stack verification. All core pipelines operate **100% locally and air-gapped** without paid API keys or cloud dependencies.
 
 ### Key Quality Metrics
-- **Master Feature Verification:** **20 / 20 PASS (100.0%)** ([`reports/system_feature_verification.json`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/reports/system_feature_verification.json))
+- **Master Feature Verification:** **20 / 20 PASS (100.0%)** ([`reports/system_feature_verification.json`](./reports/system_feature_verification.json))
 - **Backend & Integration Tests:** **213 / 213 PASS (100.0%)** in 684s via `pytest tests/`
 - **Frontend Vitest Suites:** **38 / 38 PASS (100.0%)** across 17 test files via `vitest`
 - **Frontend Production Build:** **PASS** (`tsc -b && vite build` completed in 645ms)
@@ -100,7 +100,7 @@ The codebase underwent a complete architectural inspection, defect remediation, 
 # ---------------------------------------------------------------------------
 REPORT_01 = r"""# 01. CODEBASE INVENTORY & ARCHITECTURE — SOCHNASETU AI
 
-**Root Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Root Directory:** `.`  
 **Repository Branch:** `main`  
 **Head Commit:** `26ca54f`
 
@@ -809,7 +809,7 @@ Tested via Playwright and Vitest across 7 canonical device viewports:
 ## 2. Multi-Device Local Area Network (LAN) Access
 
 - **Host Binding:** `0.0.0.0:8000` (FastAPI backend and compiled frontend SPA).
-- **Wi-Fi Detection:** [start_production.bat](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/start_production.bat) auto-detects local IPv4 addresses (e.g. `192.168.1.X`) via PowerShell and displays ready-to-use access links.
+- **Wi-Fi Detection:** [start_production.bat](./start_production.bat) auto-detects local IPv4 addresses (e.g. `192.168.1.X`) via PowerShell and displays ready-to-use access links.
 - **Physical Device Compatibility:** Phones and tablets connected to the same Wi-Fi network access the full application seamlessly at `http://<YOUR_LAN_IP>:8000`.
 """
 

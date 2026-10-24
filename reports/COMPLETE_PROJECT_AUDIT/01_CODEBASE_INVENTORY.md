@@ -1,6 +1,6 @@
 # 01. CODEBASE INVENTORY & ARCHITECTURE — SOCHNASETU AI
 
-**Root Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Root Directory:** `.`  
 **Repository Branch:** `main`  
 **Head Commit:** `26ca54f`
 

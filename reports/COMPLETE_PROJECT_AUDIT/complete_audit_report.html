@@ -43,7 +43,7 @@
 <p>SochnaSetu AI is an enterprise-grade accessibility assistant engineered to convert complex, low-resolution administrative and academic notices into structured, verifiable, and plain-language action checklists.</p>
 <p>The codebase underwent a complete architectural inspection, defect remediation, and full-stack verification. All core pipelines operate **100% locally and air-gapped** without paid API keys or cloud dependencies.</p>
 <h3>Key Quality Metrics</h3>
-<li style='margin-left: 20px;'>**Master Feature Verification:** **20 / 20 PASS (100.0%)** ([`reports/system_feature_verification.json`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/reports/system_feature_verification.json))</li>
+<li style='margin-left: 20px;'>**Master Feature Verification:** **20 / 20 PASS (100.0%)** ([`reports/system_feature_verification.json`](./reports/system_feature_verification.json))</li>
 <li style='margin-left: 20px;'>**Backend &amp; Integration Tests:** **213 / 213 PASS (100.0%)** in 684s via `pytest tests/`</li>
 <li style='margin-left: 20px;'>**Frontend Vitest Suites:** **38 / 38 PASS (100.0%)** across 17 test files via `vitest`</li>
 <li style='margin-left: 20px;'>**Frontend Production Build:** **PASS** (`tsc -b &amp;&amp; vite build` completed in 645ms)</li>
@@ -101,7 +101,7 @@
 <p>2. **Browser TTS Voice Dependency:** The offline accessibility voice synthesis utilizes the client browser&#x27;s native Web Speech API (`window.speechSynthesis`). Voice accent and naturalness vary by user operating system and installed TTS voice packs.</p>
 <p>3. **Physical Device Wi-Fi Connectivity:** Network LAN binding on `0.0.0.0:8000` is fully operational and verified via headless viewport emulation; real-device access requires the client phone and host PC to reside on the same Wi-Fi subnet with Windows Firewall port 8000 allowed.</p>
 <h1>01. CODEBASE INVENTORY &amp; ARCHITECTURE — SOCHNASETU AI</h1>
-<p>**Root Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  </p>
+<p>**Root Directory:** `.`  </p>
 <p>**Repository Branch:** `main`  </p>
 <p>**Head Commit:** `26ca54f`</p>
 <hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'>
@@ -820,7 +820,7 @@ ps2/
 <hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;'>
 <h2>2. Multi-Device Local Area Network (LAN) Access</h2>
 <li style='margin-left: 20px;'>**Host Binding:** `0.0.0.0:8000` (FastAPI backend and compiled frontend SPA).</li>
-<li style='margin-left: 20px;'>**Wi-Fi Detection:** [start_production.bat](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/start_production.bat) auto-detects local IPv4 addresses (e.g. `192.168.1.X`) via PowerShell and displays ready-to-use access links.</li>
+<li style='margin-left: 20px;'>**Wi-Fi Detection:** [start_production.bat](./start_production.bat) auto-detects local IPv4 addresses (e.g. `192.168.1.X`) via PowerShell and displays ready-to-use access links.</li>
 <li style='margin-left: 20px;'>**Physical Device Compatibility:** Phones and tablets connected to the same Wi-Fi network access the full application seamlessly at `http://&lt;YOUR_LAN_IP&gt;:8000`.</li>
 <h1>14. REMAINING ISSUES &amp; SYSTEM LIMITATIONS — SOCHNASETU AI</h1>
 <p>This report provides complete transparency regarding current technical trade-offs and future optimization opportunities.</p>

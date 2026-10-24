@@ -21,5 +21,5 @@ Tested via Playwright and Vitest across 7 canonical device viewports:
 ## 2. Multi-Device Local Area Network (LAN) Access
 
 - **Host Binding:** `0.0.0.0:8000` (FastAPI backend and compiled frontend SPA).
-- **Wi-Fi Detection:** [start_production.bat](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/start_production.bat) auto-detects local IPv4 addresses (e.g. `192.168.1.X`) via PowerShell and displays ready-to-use access links.
+- **Wi-Fi Detection:** [start_production.bat](./start_production.bat) auto-detects local IPv4 addresses (e.g. `192.168.1.X`) via PowerShell and displays ready-to-use access links.
 - **Physical Device Compatibility:** Phones and tablets connected to the same Wi-Fi network access the full application seamlessly at `http://<YOUR_LAN_IP>:8000`.

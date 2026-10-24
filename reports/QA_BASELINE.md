@@ -1,7 +1,7 @@
 # SochnaSetu AI (PS02) — QA Baseline Report
 **Audit Date:** October 24, 2026  
 **Auditor:** Senior QA Automation & Release Verification Engineer  
-**Workspace:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Workspace:** `.`  
 **Execution Environment:** Windows 11 Pro 64-bit, PowerShell 5.1 / 7, VS Code / Antigravity
 
 ---

@@ -1,7 +1,7 @@
 # FINAL PROJECT VERIFICATION & QUALITY AUDIT REPORT
 **Project:** SochnaSetu AI — Notice-to-Action Accessibility Assistant  
 **Problem Statement:** Hack Day 2026 — PS02  
-**Root Directory:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Root Directory:** `.`  
 **GitHub Repository:** `https://github.com/bhardwajji-db/suchnasetu-ai`  
 **Current Branch:** `main` | **Verified Commit:** `6beffd3`  
 **Verification Date:** 2026-10-24  

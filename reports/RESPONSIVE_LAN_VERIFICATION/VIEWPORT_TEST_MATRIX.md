@@ -25,7 +25,7 @@ The responsive layout was tested against 8 standard device form factors represen
 
 ## 2. Automated Test Suite Execution Evidence
 
-All viewport tests are implemented in [`frontend/src/test/ResponsiveViewportMatrix.test.tsx`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/frontend/src/test/ResponsiveViewportMatrix.test.tsx).
+All viewport tests are implemented in [`frontend/src/test/ResponsiveViewportMatrix.test.tsx`](./frontend/src/test/ResponsiveViewportMatrix.test.tsx).
 
 ### Vitest Test Suite Output:
 ```text

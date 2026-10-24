@@ -16,7 +16,7 @@ SochnaSetu AI is an enterprise-grade accessibility assistant engineered to conve
 The codebase underwent a complete architectural inspection, defect remediation, and full-stack verification. All core pipelines operate **100% locally and air-gapped** without paid API keys or cloud dependencies.
 
 ### Key Quality Metrics
-- **Master Feature Verification:** **20 / 20 PASS (100.0%)** ([`reports/system_feature_verification.json`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/reports/system_feature_verification.json))
+- **Master Feature Verification:** **20 / 20 PASS (100.0%)** ([`reports/system_feature_verification.json`](./reports/system_feature_verification.json))
 - **Backend & Integration Tests:** **213 / 213 PASS (100.0%)** in 684s via `pytest tests/`
 - **Frontend Vitest Suites:** **38 / 38 PASS (100.0%)** across 17 test files via `vitest`
 - **Frontend Production Build:** **PASS** (`tsc -b && vite build` completed in 645ms)

@@ -27,5 +27,5 @@
 ## 2. Regression Prevention & Verification
 
 All 10 defects were verified through the Vitest Responsive Viewport Matrix test suite:
-- File: [`frontend/src/test/ResponsiveViewportMatrix.test.tsx`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/frontend/src/test/ResponsiveViewportMatrix.test.tsx)
+- File: [`frontend/src/test/ResponsiveViewportMatrix.test.tsx`](./frontend/src/test/ResponsiveViewportMatrix.test.tsx)
 - Outcome: 8/8 viewports passing without horizontal overflow, component collisions, or broken layouts.

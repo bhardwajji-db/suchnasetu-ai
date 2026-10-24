@@ -27,7 +27,7 @@ SochnaSetu AI supports 10 official languages with instant client-side switching,
 
 ## 2. Automated Test Execution Evidence
 
-All automated language switching tests are housed in [`frontend/src/test/MultilingualSwitching.test.tsx`](file:///C:/Users/Avinash/OneDrive/Desktop/AI-Projects/Hacktober%20fest/ps2/frontend/src/test/MultilingualSwitching.test.tsx).
+All automated language switching tests are housed in [`frontend/src/test/MultilingualSwitching.test.tsx`](./frontend/src/test/MultilingualSwitching.test.tsx).
 
 ### Vitest Test Suite Execution Results:
 ```text

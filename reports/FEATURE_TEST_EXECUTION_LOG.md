@@ -1,6 +1,6 @@
 # SochnaSetu AI (PS02) — Complete Feature Test Execution Log
 **Log Generated:** October 24, 2026  
-**Project Root:** `C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2`  
+**Project Root:** `.`  
 **Execution Environment:** Windows 11 (64-bit) | PowerShell 7 | Python 3.11.15 | Node.js v22.14.0 | Vite v8.3.4  
 **Local Inference Model:** Ollama `gemma4:latest` (8.0B parameters, Q4_K_M quantization)  
 **Overall Status:** 100% Tests Passing Across All Suites (0 Failures, 0 Regressions)
@@ -31,7 +31,7 @@
 ============================= test session starts =============================
 platform win32 -- Python 3.11.15, pytest-9.1.1, pluggy-1.7.0 -- .venv\Scripts\python.exe
 cachedir: .pytest_cache
-rootdir: C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2
+rootdir: .
 configfile: pyproject.toml
 plugins: anyio-4.15.1, cov-7.1.0
 collecting ... collected 8 items
@@ -122,7 +122,7 @@ Found 0 errors and 0 warnings across 49 files.
 ```
 ============================= test session starts =============================
 platform win32 -- Python 3.11.15, pytest-9.1.1, pluggy-1.7.0
-rootdir: C:\Users\Avinash\OneDrive\Desktop\AI-Projects\Hacktober fest\ps2
+rootdir: .
 configfile: pyproject.toml
 plugins: anyio-4.15.1, cov-7.1.0
 collected 2 items

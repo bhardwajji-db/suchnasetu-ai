@@ -101,12 +101,12 @@ def test_openrouter_mocked_success(mock_post):
     }
     mock_post.return_value = mock_resp
 
-    client = OpenRouterClient(api_key="test_mock_key_openrouter")
+    client = OpenRouterClient(api_key="mock_test_key")
     result = client.generate_structured_json("System prompt", "User prompt")
     assert result["purpose"]["value"] == "Test Notice"
     assert mock_post.called
     headers = mock_post.call_args[1]["headers"]
-    assert "Bearer test_mock_key_openrouter" in headers["Authorization"]
+    assert headers["Authorization"] == "Bearer mock_test_key"
 
 
 @patch("requests.post")
