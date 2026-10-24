@@ -67,7 +67,5 @@ paragraphs = [
 ]
 
 dest1 = Path("tests/fixtures/fake_notice_for_testing.docx")
-dest2 = Path("fake_notice_for_testing.docx")
 create_docx_file(dest1, title, paragraphs)
-create_docx_file(dest2, title, paragraphs)
-print("Created fake_notice_for_testing.docx in tests/fixtures and project root.")
+print("Created fake_notice_for_testing.docx in tests/fixtures.")

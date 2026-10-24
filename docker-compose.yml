@@ -1,0 +1,65 @@
+version: "3.8"
+
+# ==============================================================================
+# SochnaSetu AI — Production Multi-Container Orchestration
+# Services:
+#   1. suchnasetu-app (FastAPI backend + React 19 SPA on port 8000)
+#   2. ollama (Local-first AI LLM inference engine on port 11434)
+# ==============================================================================
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sochnasetu-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Optional NVIDIA GPU acceleration:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  suchnasetu-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sochnasetu-app
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - HOST=0.0.0.0
+      - PORT=8000
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=gemma4:latest
+      - LOG_LEVEL=INFO
+    volumes:
+      - suchnasetu_data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  ollama_models:
+    name: sochnasetu_ollama_models
+  suchnasetu_data:
+    name: sochnasetu_app_data

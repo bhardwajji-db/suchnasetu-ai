@@ -31,7 +31,7 @@
       {
         "field_name": "deadline_date",
         "expected_value": "30 October 2026 (2026-10-30)",
-        "actual_value": "5:00 PM on 30 October 2026",
+        "actual_value": "30 October 2026, 5:00 PM",
         "status": "PASS",
         "is_critical": true,
         "notes": null
@@ -39,7 +39,7 @@
       {
         "field_name": "deadline_time",
         "expected_value": "5:00 PM",
-        "actual_value": "5:00 PM on 30 October 2026",
+        "actual_value": "30 October 2026, 5:00 PM",
         "status": "PASS",
         "is_critical": true,
         "notes": null
@@ -67,7 +67,7 @@
       {
         "field_name": "contact_details",
         "expected_value": "scholarships@example.invalid",
-        "actual_value": "Scholarship Office, Room 204, Academic Block; scholarships@example.invalid",
+        "actual_value": "scholarships@example.invalid",
         "status": "PASS",
         "is_critical": true,
         "notes": null
@@ -91,6 +91,78 @@
     ]
   },
   "extracted_structured": {
+    "issuing_authority": {
+      "field_name": "issuing_authority",
+      "value": "INSTITUTE OF TECHNOLOGY",
+      "status": "stated",
+      "evidence_quote": "INSTITUTE OF TECHNOLOGY",
+      "source_location": "Line 1",
+      "requires_confirmation": false,
+      "user_confirmed": false,
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
+    },
+    "notice_reference_number": {
+      "field_name": "notice_reference_number",
+      "value": "TEST-SCH-2026-001",
+      "status": "stated",
+      "evidence_quote": "Notice ID: TEST-SCH-2026-001",
+      "source_location": "Line 3",
+      "requires_confirmation": false,
+      "user_confirmed": false,
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
+    },
+    "notice_date": {
+      "field_name": "notice_date",
+      "value": "20 October 2026",
+      "status": "stated",
+      "evidence_quote": "Date of issue: 20 October 2026",
+      "source_location": "Line 5",
+      "requires_confirmation": false,
+      "user_confirmed": false,
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
+    },
+    "recipient": {
+      "field_name": "recipient",
+      "value": "Not stated in the notice.",
+      "status": "not_stated",
+      "evidence_quote": null,
+      "source_location": null,
+      "requires_confirmation": false,
+      "user_confirmed": false,
+      "confirmed_value": null,
+      "explanation": "This information is not stated in the supplied notice.",
+      "uncertainty_type": null
+    },
+    "main_subject": {
+      "field_name": "main_subject",
+      "value": "Merit Scholarship Application",
+      "status": "stated",
+      "evidence_quote": "Subject: Merit Scholarship Application",
+      "source_location": "Line 7",
+      "requires_confirmation": false,
+      "user_confirmed": false,
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
+    },
+    "required_action_and_deadline": {
+      "field_name": "required_action_and_deadline",
+      "value": "Submit applications and supporting documents by 5:00 PM on 30 October 2026.",
+      "status": "stated",
+      "evidence_quote": "Eligible students must submit their merit scholarship applications by 5:00 PM on 30 October 2026.",
+      "source_location": "Line 9",
+      "requires_confirmation": false,
+      "user_confirmed": false,
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
+    },
     "purpose": {
       "field_name": "purpose",
       "value": "Merit Scholarship Application",
@@ -99,7 +171,9 @@
       "source_location": "Line 7",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": null
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
     },
     "eligibility": {
       "field_name": "eligibility",
@@ -109,17 +183,21 @@
       "source_location": "Line 11",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": null
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
     },
     "deadline": {
       "field_name": "deadline",
-      "value": "5:00 PM on 30 October 2026",
+      "value": "30 October 2026, 5:00 PM",
       "status": "stated",
       "evidence_quote": "Eligible students must submit their merit scholarship applications by 5:00 PM on 30 October 2026.",
       "source_location": "Line 9",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": null
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
     },
     "fee_or_cost": {
       "field_name": "fee_or_cost",
@@ -129,27 +207,33 @@
       "source_location": null,
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": "This information is not stated in the supplied notice."
+      "confirmed_value": null,
+      "explanation": "This information is not stated in the supplied notice.",
+      "uncertainty_type": null
     },
     "required_documents": {
       "field_name": "required_documents",
       "value": "Previous qualifying examination marksheet, College identity card, Bank account proof.",
       "status": "stated",
-      "evidence_quote": "Required documents: 1. Previous qualifying examination marksheet. 2. College identity card. 3. Bank account proof.",
-      "source_location": "Found in notice",
+      "evidence_quote": "1. Previous qualifying examination marksheet.\n2. College identity card.\n3. Bank account proof.",
+      "source_location": "Lines 14-16",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": null
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
     },
     "contact_details": {
       "field_name": "contact_details",
-      "value": "Scholarship Office, Room 204, Academic Block; scholarships@example.invalid",
+      "value": "scholarships@example.invalid",
       "status": "stated",
-      "evidence_quote": "Submission method: Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.",
-      "source_location": "Line 18",
+      "evidence_quote": "Helpdesk: scholarships@example.invalid",
+      "source_location": "Line 20",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": null
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
     },
     "required_actions": {
       "field_name": "required_actions",
@@ -159,7 +243,9 @@
       "source_location": "Line 18",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": null
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
     },
     "important_conditions": {
       "field_name": "important_conditions",
@@ -169,26 +255,28 @@
       "source_location": "Line 22",
       "requires_confirmation": false,
       "user_confirmed": false,
-      "explanation": null
+      "confirmed_value": null,
+      "explanation": null,
+      "uncertainty_type": null
     },
     "missing_information": [
-      "Application fee",
-      "Specific application form details",
-      "Application Fee"
+      "Official status (The notice explicitly states it is synthetic test data)",
+      "Application Fee",
+      "Recipient"
     ],
     "uncertain_or_conflicting_details": [
-      "The notice explicitly states it is synthetic test data and not an official announcement."
+      "The notice is synthetic test data and not an official announcement."
     ],
     "raw_notice_text": "INSTITUTE OF TECHNOLOGY — SYNTHETIC TEST NOTICE\n\nNotice ID: TEST-SCH-2026-001\n\nDate of issue: 20 October 2026\n\nSubject: Merit Scholarship Application\n\nEligible students must submit their merit scholarship applications by 5:00 PM on 30 October 2026.\n\nEligibility: Students who obtained at least 80% marks in their last qualifying examination.\n\nRequired documents:\n1. Previous qualifying examination marksheet.\n2. College identity card.\n3. Bank account proof.\n\nSubmission method: Submit the application and supporting documents to the Scholarship Office, Room 204, Academic Block.\n\nHelpdesk: scholarships@example.invalid\n\nLate applications will not be accepted.\n\nThis notice is synthetic test data. It is not an official announcement.\n"
   },
   "summary": {
     "about": "This notice is about applying for a Merit Scholarship. It is a chance to get financial help for your studies!",
     "eligible": "You can apply if you scored at least 80% in your last big exam.",
-    "actions": "Please give your application and all needed papers to the Scholarship Office. They are in Room 204, Academic Block.",
-    "documents": "You must bring these three things: 1. Your marksheet from your last exam. 2. Your college ID card. 3. Proof of your bank account.",
-    "deadline": "The deadline is 5:00 PM on October 30, 2026. Please do not be late!",
-    "help_contact": "If you have questions, you can visit the Scholarship Office (Room 204, Academic Block) or email scholarships@example.invalid.",
-    "missing": "⚠️ Important: The notice is missing some key details. We do not know: 1. The application fee amount. 2. Details about the specific application form. 3. The exact application fee."
+    "actions": "You must give your application and all papers to the Scholarship Office. This office is in Room 204, Academic Block.",
+    "documents": "Please bring these three things: 1. Your marksheet from your last exam. 2. Your college ID card. 3. Proof of your bank account.",
+    "deadline": "The deadline is October 30, 2026. You must submit everything by 5:00 PM.",
+    "help_contact": "If you have questions, please email: scholarships@example.invalid",
+    "missing": "⚠️ Important: This notice is missing some key details. They are: Official status (It says this is test data), Application Fee, and the intended Recipient."
   },
   "checklist": {
     "items": [
@@ -209,7 +297,7 @@
         "is_mandatory": true,
         "requires_confirmation": false,
         "is_completed": false,
-        "grounded_quote": "Required documents: 1. Previous qualifying examination marksheet. 2. College identity card. 3. Bank account proof.",
+        "grounded_quote": "1. Previous qualifying examination marksheet.\n2. College identity card.\n3. Bank account proof.",
         "notes": null
       },
       {
@@ -224,7 +312,7 @@
       },
       {
         "step_number": 4,
-        "action": "Submit Before Deadline: Complete submission by 5:00 PM on 30 October 2026.",
+        "action": "Submit Before Deadline: Complete submission by 30 October 2026, 5:00 PM.",
         "category": "submission",
         "is_mandatory": true,
         "requires_confirmation": false,
@@ -234,7 +322,7 @@
       },
       {
         "step_number": 5,
-        "action": "Contact Official Source: Inquire about missing details (Application fee, Specific application form details, Application Fee) via Scholarship Office, Room 204, Academic Block; scholarships@example.invalid.",
+        "action": "Contact Official Source: Inquire about missing details (Official status (The notice explicitly states it is synthetic test data), Application Fee, Recipient) via scholarships@example.invalid.",
         "category": "clarification",
         "is_mandatory": false,
         "requires_confirmation": false,

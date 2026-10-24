@@ -1,0 +1,47 @@
+# Version control
+.git
+.gitignore
+.github
+
+# Virtual environments & dependencies
+.venv
+venv
+env
+node_modules
+frontend/node_modules
+
+# Python caches & build artifacts
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+dist
+build
+.eggs
+
+# Testing & Coverage
+.pytest_cache
+.coverage
+.coverage.*
+htmlcov
+reports/*.json
+
+# Scratch, sessions & personal experiment files
+.sessions
+tmp
+temp
+scratch
+friend*
+ascii*
+frame_*
+code_*
+term_*
+sphere_*
+eye*
+build_player*
+
+# Docker & local builds
+Dockerfile*
+docker-compose*
+release/*.zip

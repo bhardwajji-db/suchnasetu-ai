@@ -26,7 +26,8 @@ from typing import List, Optional, Dict, Any
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from PIL import Image
 
@@ -1347,3 +1348,54 @@ def toggle_checklist_item_endpoint(item_id: str, payload: Dict[str, Any]):
     completed = bool(payload.get("completed", False))
     ok = get_db().set_checklist_item_completed(item_id, completed)
     return {"item_id": item_id, "completed": completed, "updated": ok}
+
+
+# ---------------------------------------------------------
+# Feature: Production Frontend SPA Serving (Single-Port Deployment)
+# ---------------------------------------------------------
+
+frontend_dist = PROJECT_ROOT / "frontend" / "dist"
+if (frontend_dist / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="frontend-assets")
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_spa_frontend(request: Request, full_path: str):
+    """
+    Serves the compiled React 19 SPA for client-side routing in production.
+    Never intercepts /api/*, /docs, /redoc, or /openapi.json.
+    """
+    clean_path = full_path.lstrip("/")
+
+    # Security check: Never serve sensitive paths or path traversal attempts
+    if ".." in full_path or clean_path.startswith("etc") or clean_path.startswith("windows") or clean_path.startswith("bin"):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    if (
+        clean_path == "api"
+        or clean_path.startswith("api/")
+        or clean_path == "docs"
+        or clean_path.startswith("docs/")
+        or clean_path == "openapi.json"
+        or clean_path == "redoc"
+        or clean_path.startswith("redoc/")
+    ):
+        raise HTTPException(status_code=404, detail="API route not found")
+
+    target_file = frontend_dist / clean_path
+    if target_file.is_file() and not clean_path.endswith(".html"):
+        return FileResponse(str(target_file))
+
+    # Supported SPA application views
+    valid_spa_routes = {
+        "", "dashboard", "ingestion", "facts", "summary", "revision",
+        "eligibility", "qa", "navigator", "timeline", "history", "settings", "demo"
+    }
+    first_segment = clean_path.split("/")[0].lower()
+    if clean_path == "" or first_segment in valid_spa_routes:
+        index_html = frontend_dist / "index.html"
+        if index_html.is_file():
+            return FileResponse(str(index_html))
+
+    raise HTTPException(status_code=404, detail="Page not found")
+
