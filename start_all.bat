@@ -50,7 +50,7 @@ start "SochnaSetu Frontend (React/Vite)" cmd /k "title SochnaSetu Frontend && cd
 :: 5. Wait for servers to spin up and open browser
 echo.
 echo Waiting 4 seconds for services to initialize...
-timeout /t 4 /nobreak >nul
+ping -n 5 127.0.0.1 >nul
 
 echo Opening browser at http://localhost:5173...
 start http://localhost:5173
