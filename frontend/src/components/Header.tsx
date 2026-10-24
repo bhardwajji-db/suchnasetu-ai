@@ -18,14 +18,14 @@ export const Header: React.FC = () => {
     toggleMobileMenu,
   } = useNotice();
 
-  const { setLanguage } = useTranslation();
+  const { setLanguage, t } = useTranslation();
 
   const getStatusBadge = () => {
     if (!systemHealth) {
       return (
         <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
           <span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse" />
-          Checking System...
+          {t('loading') || 'Checking System...'}
         </span>
       );
     }
@@ -33,7 +33,7 @@ export const Header: React.FC = () => {
       return (
         <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
           <CheckCircle2 className="w-3.5 h-3.5 text-[#08785D]" />
-          <span>System Online • {systemHealth.model_name || 'Ready'}</span>
+          <span>{t('healthReady') || 'System Online'} • {systemHealth.model_name || 'Ready'}</span>
         </span>
       );
     }
@@ -41,14 +41,14 @@ export const Header: React.FC = () => {
       return (
         <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FFF4D6] text-[#92500A] border border-[#FDE68A]">
           <AlertTriangle className="w-3.5 h-3.5 text-[#92500A]" />
-          <span>Preflight Warning</span>
+          <span>{t('warning') || 'Preflight Warning'}</span>
         </span>
       );
     }
     return (
       <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FEE8E7] text-[#B42318] border border-[#FCA5A5]">
         <XCircle className="w-3.5 h-3.5 text-[#B42318]" />
-        <span>Provider Offline</span>
+        <span>{t('healthError') || 'Provider Offline'}</span>
       </span>
     );
   };
@@ -112,7 +112,7 @@ export const Header: React.FC = () => {
           aria-label="View Original Ground-Truth Notice Document"
         >
           <Eye className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-[#08785D]" />
-          <span className="hidden sm:inline">Original Notice</span>
+          <span className="hidden sm:inline">{t('viewOriginalNotice') || 'Original Notice'}</span>
         </button>
 
         {/* Local Privacy & Model Badge */}

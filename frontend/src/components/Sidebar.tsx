@@ -52,17 +52,17 @@ export const Sidebar: React.FC = () => {
   }, [isMobileMenuOpen, setIsMobileMenuOpen]);
 
   const navItems = [
-    { id: 0, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 1, label: '1. Ingestion & OCR', icon: FileText },
-    { id: 2, label: '2. Grounded Facts', icon: Search, badge: structuredNotice ? '8 Facts' : undefined },
-    { id: 3, label: '3. Summary & Actions', icon: ListTodo, badge: structuredNotice ? 'Ready' : undefined },
-    { id: 4, label: '4. Revision Ledger', icon: GitCompare, badge: 'Impact' },
-    { id: 5, label: '5. Eligibility Check', icon: UserCheck, badge: 'Rules' },
-    { id: 6, label: '6. Follow-Up Q&A', icon: MessageSquare },
-    { id: 7, label: '7. Action Navigator', icon: Compass, badge: 'Roadmap' },
-    { id: 8, label: '8. Multi-Notice Timeline', icon: Layers, badge: 'Graph' },
-    { id: 9, label: 'Notice History', icon: History, badge: history.length > 0 ? `${history.length}` : undefined },
-    { id: 10, label: 'Settings & Health', icon: Settings },
+    { id: 0, label: t('navDashboard') || 'Dashboard', icon: LayoutDashboard },
+    { id: 1, label: t('navIngestion') || '1. Ingestion & OCR', icon: FileText },
+    { id: 2, label: t('navFacts') || '2. Grounded Facts', icon: Search, badge: structuredNotice ? '8 Facts' : undefined },
+    { id: 3, label: t('navSummary') || '3. Summary & Actions', icon: ListTodo, badge: structuredNotice ? 'Ready' : undefined },
+    { id: 4, label: t('navRevision') || '4. Revision Ledger', icon: GitCompare, badge: 'Impact' },
+    { id: 5, label: t('navEligibility') || '5. Eligibility Check', icon: UserCheck, badge: 'Rules' },
+    { id: 6, label: t('navQA') || '6. Follow-Up Q&A', icon: MessageSquare },
+    { id: 7, label: t('navActionNavigator') || '7. Action Navigator', icon: Compass, badge: 'Roadmap' },
+    { id: 8, label: t('navTimeline') || '8. Multi-Notice Timeline', icon: Layers, badge: 'Graph' },
+    { id: 9, label: t('navHistory') || 'Notice History', icon: History, badge: history.length > 0 ? `${history.length}` : undefined },
+    { id: 10, label: t('navSettings') || 'Settings & Health', icon: Settings },
     { id: 11, label: t('navDemoLibrary') || '11. Demo Library', icon: BookOpen, badge: '32 Demos' },
   ];
 
@@ -89,7 +89,7 @@ export const Sidebar: React.FC = () => {
         {/* Navigation Group */}
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#68778B] block mb-2 px-1">
-            Navigation
+            {t('sidebarTitle') || 'Navigation'}
           </span>
           <nav className="space-y-1">
             {navItems.map((item) => {
@@ -130,7 +130,7 @@ export const Sidebar: React.FC = () => {
         {/* Quick Demo Notices Group */}
         <div className="pt-2 border-t border-[#E1E7EE] space-y-3">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#68778B] block px-1">
-            Demo Notices
+            {t('sampleNotices') || 'Demo Notices'}
           </span>
 
           {/* Golden Benchmark / Competition Demo Button */}
@@ -141,13 +141,13 @@ export const Sidebar: React.FC = () => {
             title="Load the official UPSC National Scholarship evaluation notice"
           >
             <Sparkles className="w-3.5 h-3.5 text-white" />
-            <span>Competition Demo (UPSC)</span>
+            <span>{t('competitionDemo') || 'Competition Demo (UPSC)'}</span>
           </button>
 
           {/* Sample Fixtures Dropdown */}
           <div className="space-y-1.5">
             <label htmlFor="sample-selector" className="text-[11px] font-medium text-[#68778B] px-1 block">
-              Sample Notices:
+              {t('sampleNotices') || 'Sample Notices'}:
             </label>
             <select
               id="sample-selector"
@@ -174,7 +174,7 @@ export const Sidebar: React.FC = () => {
               onClick={handleLoadSelectedSample}
               className="w-full py-1.5 px-3 rounded-lg text-xs font-semibold text-[#12233D] bg-white hover:bg-[#E8F7F0] hover:text-[#08785D] border border-[#E1E7EE] hover:border-[#B7E7D2] transition cursor-pointer"
             >
-              Load Selected Notice
+              {t('loadSample') || 'Load Selected Notice'}
             </button>
           </div>
 
@@ -199,7 +199,7 @@ export const Sidebar: React.FC = () => {
         >
           <div className="flex items-center gap-1.5">
             <Activity className="w-3.5 h-3.5 text-[#08785D]" />
-            <span>Preflight Diagnostics</span>
+            <span>{t('status') || 'Preflight Diagnostics'}</span>
           </div>
           {showDiagnostics ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
         </button>

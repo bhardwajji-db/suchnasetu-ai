@@ -43,7 +43,7 @@ import {
   Globe,
   RefreshCw,
 } from 'lucide-react';
-import { SUPPORTED_LANGUAGES, LANGUAGE_CODES } from '../i18n';
+import { SUPPORTED_LANGUAGES, LANGUAGE_CODES, useTranslation } from '../i18n';
 
 export const IngestionView: React.FC = () => {
   const {
@@ -73,6 +73,7 @@ export const IngestionView: React.FC = () => {
     openEvidenceInspector,
     openConfirmationModal,
   } = useNotice();
+  const { t } = useTranslation();
 
   // Workspace View State
   const [activeAnalysisTab, setActiveAnalysisTab] = useState<
@@ -265,11 +266,10 @@ export const IngestionView: React.FC = () => {
           </div>
           <h1 className="text-xl font-bold text-[#12233D] tracking-tight flex items-center gap-2">
             <Layers className="w-5 h-5 text-[#08785D]" />
-            <span>Notice Intelligence Workspace</span>
+            <span>{t('ingestionTitle') || 'Notice Intelligence Workspace'}</span>
           </h1>
           <p className="text-xs text-[#526176] mt-0.5 max-w-2xl">
-            Ingest and review official circulars, scholarships, and administrative notifications.
-            Inspect source text side-by-side with grounded facts, eligibility rules, and actionable steps.
+            {t('ingestionSubtitle') || 'Ingest and review official circulars, scholarships, and administrative notifications.'}
           </p>
         </div>
 
@@ -298,10 +298,10 @@ export const IngestionView: React.FC = () => {
             <Play className={`w-3.5 h-3.5 fill-white ${isAnalyzing ? 'animate-spin' : ''}`} />
             <span>
               {isAnalyzing
-                ? 'Grounding with Gemma 4...'
+                ? (t('analyzingNotice') || 'Grounding with Gemma 4...')
                 : structuredNotice
-                ? 'Re-Analyze Notice'
-                : 'Analyze Notice with Local Gemma 4'} {analysisDuration ? ' (' + analysisDuration.toFixed(1) + 's)' : ''}
+                ? (t('analyzeNotice') || 'Re-Analyze Notice')
+                : (t('analyzeNotice') || 'Analyze Notice with Local Gemma 4')} {analysisDuration ? ' (' + analysisDuration.toFixed(1) + 's)' : ''}
             </span>
           </button>
         </div>

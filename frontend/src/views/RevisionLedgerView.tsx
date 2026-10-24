@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { apiClient } from '../services/apiClient';
 import type { RevisionLedger, ChangeCategory, PersonalImpactReport, PersonalImpactItem } from '../types/api';
 import {
@@ -19,6 +20,7 @@ import {
 
 export const RevisionLedgerView: React.FC = () => {
   const { rawNoticeText, sessionId, applicantProfile, speakText, openEvidenceInspector, setActiveTab } = useNotice();
+  const { t } = useTranslation();
   const [personalImpact, setPersonalImpact] = useState<PersonalImpactReport | null>(null);
   const [sourceText, setSourceText] = useState<string>(rawNoticeText || '');
   const [targetText, setTargetText] = useState<string>('');
@@ -169,10 +171,10 @@ export const RevisionLedgerView: React.FC = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#12233D] flex items-center gap-2.5">
             <GitCompare className="w-6 h-6 text-[#08785D]" />
-            Multi-Notice Revision Ledger
+            {t('revisionTitle') || 'Multi-Notice Revision Ledger'}
           </h1>
           <p className="text-xs sm:text-sm text-[#526176] mt-1">
-            Compare official advertisements with addenda, corrigenda, and extension notices with line-by-line verification.
+            {t('revisionSubtitle') || 'Compare official advertisements with addenda, corrigenda, and extension notices with line-by-line verification.'}
           </p>
         </div>
 
@@ -257,7 +259,7 @@ export const RevisionLedgerView: React.FC = () => {
           ) : (
             <>
               <GitCompare className="w-4 h-4" />
-              Compare Notice Versions & Build Ledger
+              {t('compareNotices') || 'Compare Notice Versions & Build Ledger'}
             </>
           )}
         </button>

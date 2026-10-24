@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { Volume2, VolumeX, Sparkles, AlertCircle } from 'lucide-react';
 
 export const PlainLanguageSummaryView: React.FC = () => {
@@ -12,6 +13,7 @@ export const PlainLanguageSummaryView: React.FC = () => {
     readingLevel,
     changeReadingLevel,
   } = useNotice();
+  const { t } = useTranslation();
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
 
@@ -59,13 +61,13 @@ export const PlainLanguageSummaryView: React.FC = () => {
   };
 
   const questions = [
-    { label: selectedLang === 'hi' ? 'यह सूचना किस बारे में है?' : 'What is this notice about?', value: summary.about, icon: '📄' },
-    { label: selectedLang === 'hi' ? 'कौन पात्र है?' : 'Who is eligible to participate / apply?', value: summary.eligible, icon: '👥' },
-    { label: selectedLang === 'hi' ? 'आपको क्या करना होगा?' : 'What action must the reader take?', value: summary.actions, icon: '⚡' },
-    { label: selectedLang === 'hi' ? 'कौन से दस्तावेज़ आवश्यक हैं?' : 'What documents are required?', value: summary.documents, icon: '📋' },
-    { label: selectedLang === 'hi' ? 'अंतिम तिथि क्या है?' : 'What is the final submission deadline?', value: summary.deadline, icon: '📅' },
-    { label: selectedLang === 'hi' ? 'सहायता या संपर्क कहाँ करें?' : 'Where can the reader get official help?', value: summary.help_contact, icon: '📞' },
-    { label: selectedLang === 'hi' ? 'कौन सी जानकारी उपलब्ध नहीं है?' : 'What critical information is missing?', value: summary.missing, icon: '❓' },
+    { label: t('mainSubject') || (selectedLang === 'hi' ? 'यह सूचना किस बारे में है?' : 'What is this notice about?'), value: summary.about, icon: '📄' },
+    { label: t('eligibility') || (selectedLang === 'hi' ? 'कौन पात्र है?' : 'Who is eligible to participate / apply?'), value: summary.eligible, icon: '👥' },
+    { label: t('actions') || (selectedLang === 'hi' ? 'आपको क्या करना होगा?' : 'What action must the reader take?'), value: summary.actions, icon: '⚡' },
+    { label: t('requiredDocuments') || (selectedLang === 'hi' ? 'कौन से दस्तावेज़ आवश्यक हैं?' : 'What documents are required?'), value: summary.documents, icon: '📋' },
+    { label: t('deadline') || (selectedLang === 'hi' ? 'अंतिम तिथि क्या है?' : 'What is the final submission deadline?'), value: summary.deadline, icon: '📅' },
+    { label: t('contactDetails') || (selectedLang === 'hi' ? 'सहायता या संपर्क कहाँ करें?' : 'Where can the reader get official help?'), value: summary.help_contact, icon: '📞' },
+    { label: t('missingInfoTitle') || (selectedLang === 'hi' ? 'कौन सी जानकारी उपलब्ध नहीं है?' : 'What critical information is missing?'), value: summary.missing, icon: '❓' },
   ];
 
   return (
@@ -74,12 +76,12 @@ export const PlainLanguageSummaryView: React.FC = () => {
         <div>
           <h2 className="text-base font-bold text-[#12233D] flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#08785D]" />
-            {selectedLang === 'hi' ? 'सरल भाषा में सारांश' : 'Plain-Language Accessible Summary'}
+            {t('summaryTitle') || (selectedLang === 'hi' ? 'सरल भाषा में सारांश' : 'Plain-Language Accessible Summary')}
           </h2>
           <p className="text-xs text-[#526176] mt-0.5">
-            {selectedLang === 'hi'
+            {t('summarySubtitle') || (selectedLang === 'hi'
               ? 'जटिल नोटिस को 7 मुख्य प्रश्नों के स्पष्ट उत्तरों में बदला गया है।'
-              : 'Answers to the 7 core questions, calibrated for accessible reading.'}
+              : 'Answers to the 7 core questions, calibrated for accessible reading.')}
           </p>
         </div>
 
@@ -87,7 +89,7 @@ export const PlainLanguageSummaryView: React.FC = () => {
           {/* Reading Level Selector */}
           <div className="flex items-center gap-1 bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg p-0.5">
             <span className="text-[10px] font-semibold text-[#68778B] px-1.5 uppercase">
-              Level:
+              {t('readingLevel') || 'Level'}:
             </span>
             <button
               type="button"
@@ -98,7 +100,7 @@ export const PlainLanguageSummaryView: React.FC = () => {
                   : 'text-[#526176] hover:text-[#12233D]'
               }`}
             >
-              Simple
+              {t('simpleLevel') || 'Simple'}
             </button>
             <button
               type="button"
@@ -109,7 +111,7 @@ export const PlainLanguageSummaryView: React.FC = () => {
                   : 'text-[#526176] hover:text-[#12233D]'
               }`}
             >
-              Standard
+              {t('standardLevel') || 'Standard'}
             </button>
             <button
               type="button"
@@ -120,7 +122,7 @@ export const PlainLanguageSummaryView: React.FC = () => {
                   : 'text-[#526176] hover:text-[#12233D]'
               }`}
             >
-              Detailed
+              {t('detailedLevel') || 'Detailed'}
             </button>
           </div>
 

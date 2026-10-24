@@ -9,13 +9,28 @@ import {
 } from 'lucide-react';
 
 export const MobileBottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, toggleMobileMenu, isMobileMenuOpen } = useNotice();
+  const { activeTab, setActiveTab, toggleMobileMenu, isMobileMenuOpen, selectedLang } = useNotice();
+
+  const getNavLabel = (id: number) => {
+    switch (id) {
+      case 0:
+        return selectedLang === 'hi' ? 'होम' : 'Home';
+      case 1:
+        return selectedLang === 'hi' ? 'इनपुट' : 'Ingest';
+      case 2:
+        return selectedLang === 'hi' ? 'तथ्य' : 'Facts';
+      case 3:
+        return selectedLang === 'hi' ? 'कार्रवाई' : 'Actions';
+      default:
+        return 'Nav';
+    }
+  };
 
   const navButtons = [
-    { id: 0, label: 'Home', icon: LayoutDashboard },
-    { id: 1, label: 'Ingest', icon: FileText },
-    { id: 2, label: 'Facts', icon: Search },
-    { id: 3, label: 'Actions', icon: ListTodo },
+    { id: 0, label: getNavLabel(0), icon: LayoutDashboard },
+    { id: 1, label: getNavLabel(1), icon: FileText },
+    { id: 2, label: getNavLabel(2), icon: Search },
+    { id: 3, label: getNavLabel(3), icon: ListTodo },
   ];
 
   const isMoreActive = activeTab >= 4;
@@ -71,8 +86,8 @@ export const MobileBottomNav: React.FC = () => {
         >
           <Menu className="w-4 h-4" />
         </div>
-        <span className="text-[10px] tracking-tight mt-0.5">
-          {isMoreActive ? 'More (Active)' : 'Menu'}
+        <span className="text-[10px] tracking-tight mt-0.5 truncate max-w-[55px]">
+          {isMoreActive ? (selectedLang === 'hi' ? 'अन्य (सक्रिय)' : 'More (Active)') : (selectedLang === 'hi' ? 'मेन्यू' : 'Menu')}
         </span>
       </button>
     </nav>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { FileDropzone } from '../components/FileDropzone';
 import { OCRPanel } from '../components/OCRPanel';
 import { NoticeBuffer } from '../components/NoticeBuffer';
@@ -28,6 +29,7 @@ export const DashboardView: React.FC = () => {
     isAnalyzing,
     uploadedImage,
   } = useNotice();
+  const { t } = useTranslation();
 
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
@@ -113,7 +115,7 @@ export const DashboardView: React.FC = () => {
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs cursor-pointer"
               >
                 <UploadCloud className="w-4 h-4" />
-                <span>Analyze a Notice</span>
+                <span>{t('analyzeNotice') || 'Analyze a Notice'}</span>
               </button>
               <button
                 type="button"
@@ -121,7 +123,7 @@ export const DashboardView: React.FC = () => {
                 className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm text-[#12233D] bg-[#F8FAFC] hover:bg-[#E8F7F0] hover:text-[#08785D] border border-[#CBD5E1] transition cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-[#08785D]" />
-                <span>Explore Demo Notice</span>
+                <span>{t('competitionDemo') || 'Explore Demo Notice'}</span>
               </button>
             </div>
 
@@ -250,7 +252,7 @@ export const DashboardView: React.FC = () => {
             className="w-full flex items-center justify-center gap-2.5 py-4 px-6 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-[#08785D] to-[#06664E] hover:from-[#06664E] hover:to-[#054E3C] transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-white" />
-            <span>Analyze Notice with SuchnaSetu AI</span>
+            <span>{isAnalyzing ? (t('analyzingNotice') || 'Analyzing Notice with SuchnaSetu AI...') : (t('analyzeNotice') || 'Analyze Notice with SuchnaSetu AI')}</span>
           </button>
         </div>
       </section>

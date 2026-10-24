@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -13,6 +14,7 @@ import {
 
 export const EvidenceInspectorDrawer: React.FC = () => {
   const { evidenceDrawer, closeEvidenceInspector, speakText } = useNotice();
+  const { t } = useTranslation();
   const { isOpen, evidence, suggestedMatch } = evidenceDrawer;
 
   // Handle ESC key to close
@@ -67,7 +69,7 @@ export const EvidenceInspectorDrawer: React.FC = () => {
           <div className="flex items-center gap-2">
             <Search className="w-5 h-5 text-[#08785D]" />
             <h2 id="evidence-drawer-title" className="text-base font-bold text-[#12233D] tracking-tight">
-              Evidence Trust Inspector
+              {t('evidenceInspectorTitle') || 'Evidence Trust Inspector'}
             </h2>
           </div>
           <button

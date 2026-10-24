@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import {
   Settings,
   Activity,
@@ -31,6 +32,7 @@ export const SettingsView: React.FC = () => {
     resetAccessibilityPrefs,
     speakText,
   } = useNotice();
+  const { t } = useTranslation();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [switchMessage, setSwitchMessage] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export const SettingsView: React.FC = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#12233D] tracking-tight flex items-center gap-2">
             <Settings className="w-5 h-5 text-[#08785D]" />
-            <span>Settings & System Diagnostics</span>
+            <span>{t('settingsTitle') || 'Settings & System Diagnostics'}</span>
           </h1>
           <p className="text-xs sm:text-sm text-[#526176] mt-1">
             Inspect real-time system dependencies, manage inference providers, and view privacy safeguards.

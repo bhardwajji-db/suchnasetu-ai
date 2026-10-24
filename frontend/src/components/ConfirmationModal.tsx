@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { ShieldAlert, Quote, Check, X, AlertTriangle } from 'lucide-react';
 
 interface DialogProps {
@@ -17,6 +18,7 @@ const ConfirmationModalDialog: React.FC<DialogProps> = ({
   onClose,
   onSave,
 }) => {
+  const { t } = useTranslation();
   const [correctedValue, setCorrectedValue] = useState<string>(
     fact.confirmed_value || fact.value || ''
   );
@@ -73,7 +75,7 @@ const ConfirmationModalDialog: React.FC<DialogProps> = ({
             </div>
             <div>
               <h2 id="confirm-modal-title" className="text-sm font-bold text-[#12233D]">
-                Review & Confirm Detail
+                {t('confirmFactModalTitle') || 'Review & Confirm Detail'}
               </h2>
               <p className="text-[11px] text-[#526176]">
                 Ground-truth verification for {displayName}

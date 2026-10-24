@@ -46,15 +46,15 @@ export const en: TranslationDictionary = {
   navFacts: '2. Grounded Facts',
   navSummary: '3. Summary & Actions',
   navRevision: '4. Revision Ledger',
-  navEligibility: '5. Eligibility Engine',
+  navEligibility: '5. Eligibility Check',
   navQA: '6. Follow-Up Q&A',
   navActionNavigator: '7. Action Navigator',
-  navTimeline: '8. Notice Timeline',
-  navHistory: '9. Notice History',
-  navSettings: '10. Settings & Reset',
+  navTimeline: '8. Multi-Notice Timeline',
+  navHistory: 'Notice History',
+  navSettings: 'Settings & Health',
   sidebarTitle: 'Workspaces',
   sampleNotices: 'Sample Notices',
-  loadSample: 'Load Sample',
+  loadSample: 'Load Selected Notice',
 
   // Ingestion & OCR
   ingestionTitle: 'Notice Ingestion & OCR Preprocessing',
@@ -176,8 +176,8 @@ export const en: TranslationDictionary = {
 
   // Modals & Drawers
   originalNoticeModalTitle: 'Original Notice Document Viewer',
-  confirmFactModalTitle: 'Confirm or Correct Notice Fact',
-  evidenceInspectorTitle: 'Grounded Evidence Inspector',
+  confirmFactModalTitle: 'Review & Confirm Detail',
+  evidenceInspectorTitle: 'Evidence Trust Inspector',
   voiceGuidanceActive: 'Voice Guidance Active',
   stopSpeech: 'Stop Speech',
 };

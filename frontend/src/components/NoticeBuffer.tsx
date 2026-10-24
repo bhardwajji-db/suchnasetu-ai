@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { Sparkles, Trash2, FileText } from 'lucide-react';
 
 export const NoticeBuffer: React.FC = () => {
   const { rawNoticeText, setRawNoticeText, loadSampleFixture, clearBuffer, samples } = useNotice();
+  const { t } = useTranslation();
 
   const charCount = rawNoticeText.length;
   const lineCount = rawNoticeText ? rawNoticeText.split('\n').length : 0;
@@ -14,7 +16,7 @@ export const NoticeBuffer: React.FC = () => {
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold uppercase tracking-wider text-[#12233D] flex items-center gap-2">
           <FileText className="w-4 h-4 text-[#08785D]" />
-          Notice Ground-Truth Buffer
+          {t('bufferTitle') || 'Notice Ground-Truth Buffer'}
         </span>
         <span
           className={`text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-md ${
@@ -32,7 +34,7 @@ export const NoticeBuffer: React.FC = () => {
         onChange={(e) => setRawNoticeText(e.target.value)}
         aria-label="Official notice text content"
         rows={9}
-        placeholder="Paste official notice text here, or upload a document/scanned image on the left. You can also select a synthetic demo notice below."
+        placeholder={t('bufferPlaceholder') || 'Paste official notice text here, or upload a document/scanned image on the left. You can also select a synthetic demo notice below.'}
         className="w-full bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#08785D] focus:ring-1 focus:ring-[#08785D] focus:outline-hidden rounded-xl p-3.5 text-sm text-[#12233D] placeholder-[#68778B] font-mono resize-y leading-relaxed"
       />
 
@@ -40,7 +42,7 @@ export const NoticeBuffer: React.FC = () => {
       <div className="space-y-2.5 pt-2 border-t border-[#E1E7EE]">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold text-[#526176] uppercase tracking-wider flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#08785D]" /> Sample Notice Presets:
+            <Sparkles className="w-3.5 h-3.5 text-[#08785D]" /> {t('sampleNotices') || 'Sample Notice Presets'}:
           </span>
           <button
             type="button"
@@ -49,7 +51,7 @@ export const NoticeBuffer: React.FC = () => {
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-[#B42318] hover:bg-[#FEE8E7] border border-transparent hover:border-[#FCA5A5] transition disabled:opacity-40 cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Clear Buffer
+            {t('clearBuffer') || 'Clear Buffer'}
           </button>
         </div>
 

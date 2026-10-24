@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { apiClient } from '../services/apiClient';
 import { UploadCloud, AlertCircle } from 'lucide-react';
 
 export const FileDropzone: React.FC = () => {
   const { setRawNoticeText, setUploadedImage } = useNotice();
+  const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,10 +78,10 @@ export const FileDropzone: React.FC = () => {
           </div>
           <div>
             <div className="text-sm font-bold text-[#12233D]">
-              Drag & Drop notice document, image, or PDF
+              {t('dropzoneTitle') || 'Drag & Drop notice document, image, or PDF'}
             </div>
             <div className="text-xs text-[#526176] mt-1">
-              Supports <span className="text-[#08785D] font-mono font-semibold">PDF, PNG, JPG, WEBP, TXT</span> up to 25MB
+              {t('dropzoneSubtitle') || 'Supports PDF, PNG, JPG, WEBP, TXT up to 25MB'}
             </div>
           </div>
         </div>

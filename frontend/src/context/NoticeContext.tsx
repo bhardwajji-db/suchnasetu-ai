@@ -16,6 +16,7 @@ import type {
   AccessibilityPreferences,
 } from '../types/api';
 import { apiClient } from '../services/apiClient';
+import { useTranslation } from '../i18n';
 
 export interface HistoryRecord {
   id: string;
@@ -186,7 +187,8 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [localizedSummary, setLocalizedSummary] = useState<PlainLanguageSummary | null>(null);
   const [localizedChecklist, setLocalizedChecklist] = useState<ActionChecklist | null>(null);
 
-  const [selectedLang, setSelectedLangState] = useState<string>(() => {
+  const i18n = useTranslation();
+  const [localLang, setLocalLang] = useState<string>(() => {
     try {
       return localStorage.getItem('suchnasetu_user_language') || 'en';
     } catch {
@@ -194,14 +196,18 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
+  const selectedLang = i18n?.language || localLang;
   const setSelectedLang = useCallback((lang: string) => {
-    setSelectedLangState(lang);
+    setLocalLang(lang);
+    if (i18n?.setLanguage) {
+      i18n.setLanguage(lang as any);
+    }
     try {
       localStorage.setItem('suchnasetu_user_language', lang);
       document.documentElement.lang = lang;
       document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
     } catch {}
-  }, []);
+  }, [i18n]);
 
   const [outputLang, setOutputLang] = useState<string>('en');
   const [sourceLang, setSourceLang] = useState<string>('auto');

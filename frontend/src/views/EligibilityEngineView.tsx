@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { apiClient } from '../services/apiClient';
 import type { ApplicantProfile, EligibilityAssessment, EvaluationStatus } from '../types/api';
 import {
@@ -25,6 +26,7 @@ export const EligibilityEngineView: React.FC = () => {
     openEvidenceInspector,
     setActiveTab,
   } = useNotice();
+  const { t } = useTranslation();
   const [activeNoticeText, setActiveNoticeText] = useState<string>(rawNoticeText || '');
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,10 +152,10 @@ export const EligibilityEngineView: React.FC = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#12233D] flex items-center gap-2.5">
             <UserCheck className="w-6 h-6 text-[#08785D]" />
-            Explainable Applicant Eligibility Engine
+            {t('eligibilityTitle') || 'Explainable Applicant Eligibility Engine'}
           </h1>
           <p className="text-xs sm:text-sm text-[#526176] mt-1">
-            Compare your qualifications, marks, age, and category against official notice rules with deterministic Python verification.
+            {t('eligibilitySubtitle') || 'Compare your qualifications, marks, age, and category against official notice rules with deterministic Python verification.'}
           </p>
         </div>
 

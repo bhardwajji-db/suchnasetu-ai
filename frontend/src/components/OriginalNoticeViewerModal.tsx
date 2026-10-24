@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { FileText, Image as ImageIcon, Copy, Check, X, Search, ZoomIn, ZoomOut } from 'lucide-react';
 
 export const OriginalNoticeViewerModal: React.FC = () => {
   const { isOriginalNoticeOpen, closeOriginalNoticeModal, rawNoticeText, uploadedImage } = useNotice();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'text' | 'image'>(uploadedImage ? 'image' : 'text');
   const [copied, setCopied] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -53,7 +55,7 @@ export const OriginalNoticeViewerModal: React.FC = () => {
             </div>
             <div>
               <h2 id="original-notice-title" className="text-sm font-bold text-[#12233D] flex items-center gap-2">
-                Original Notice Document Viewer
+                {t('originalNoticeModalTitle') || 'Original Notice Document Viewer'}
                 {uploadedImage && (
                   <span className="text-[10px] font-mono uppercase bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2] px-1.5 py-0.5 rounded font-semibold">
                     OCR Scanned

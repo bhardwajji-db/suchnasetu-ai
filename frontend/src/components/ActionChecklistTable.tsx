@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { apiClient } from '../services/apiClient';
 import {
   CheckSquare,
@@ -24,6 +25,7 @@ export const ActionChecklistTable: React.FC = () => {
     summaryHi,
     localizedSummary,
   } = useNotice();
+  const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
 
   const checklist = (outputLang && outputLang !== 'en' && localizedChecklist)
@@ -115,12 +117,12 @@ export const ActionChecklistTable: React.FC = () => {
         <div>
           <h2 className="text-base font-bold text-[#12233D] flex items-center gap-2">
             <CheckSquare className="w-4 h-4 text-[#08785D]" />
-            {selectedLang === 'hi' ? 'कार्रवाई योग्य चेकलिस्ट' : 'Sequential Action Checklist'}
+            {t('checklistTitle') || (selectedLang === 'hi' ? 'कार्रवाई योग्य चेकलिस्ट' : 'Sequential Action Checklist')}
           </h2>
           <p className="text-xs text-[#526176] mt-0.5">
-            {selectedLang === 'hi'
+            {t('checklistSubtitle') || (selectedLang === 'hi'
               ? 'सत्यापित सूचना तथ्यों से प्राप्त आवश्यक चरण।'
-              : 'Actionable steps derived strictly from verified facts.'}
+              : 'Actionable steps derived strictly from verified facts.')}
           </p>
         </div>
 
@@ -173,7 +175,7 @@ export const ActionChecklistTable: React.FC = () => {
             <div className="flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs font-bold text-[#526176]">
-                  Step {item.step_number}
+                  {t('step', { number: item.step_number }) || `Step ${item.step_number}`}
                 </span>
                 {getCategoryBadge(item.category)}
                 <span
@@ -183,7 +185,7 @@ export const ActionChecklistTable: React.FC = () => {
                       : 'bg-slate-100 text-[#526176] border border-slate-200'
                   }`}
                 >
-                  {item.is_mandatory ? 'Mandatory' : 'Advisory'}
+                  {item.is_mandatory ? (t('mandatory') || 'Mandatory') : (t('advisory') || 'Advisory')}
                 </span>
               </div>
 
@@ -228,7 +230,7 @@ export const ActionChecklistTable: React.FC = () => {
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#12233D] bg-white hover:bg-[#F8FAFC] border border-[#CBD5E1] transition cursor-pointer"
           >
             <FileDown className="w-3.5 h-3.5 text-[#08785D]" />
-            Download Markdown (.md)
+            {t('downloadMarkdown') || 'Download Markdown (.md)'}
           </button>
 
           <button
@@ -238,7 +240,7 @@ export const ActionChecklistTable: React.FC = () => {
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs cursor-pointer"
           >
             <Calendar className="w-3.5 h-3.5" />
-            Add to Calendar (.ics)
+            {t('addToCalendar') || 'Add to Calendar (.ics)'}
           </button>
         </div>
       </div>
