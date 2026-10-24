@@ -11,7 +11,7 @@ export const VoiceGuidanceBar: React.FC = () => {
   return (
     <aside
       aria-label="Voice Guidance Read-Aloud"
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-2xl bg-white/95 border border-[#B7E7D2] shadow-2xl backdrop-blur-md rounded-2xl p-3.5 flex items-center justify-between gap-4 animate-fadeIn"
+      className="fixed bottom-16 md:bottom-4 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-2xl bg-white/95 border border-[#B7E7D2] shadow-2xl backdrop-blur-md rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-3 sm:gap-4 animate-fadeIn"
       role="region"
     >
       <div className="flex items-center gap-3 min-w-0">

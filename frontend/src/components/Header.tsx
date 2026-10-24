@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { useTranslation, SUPPORTED_LANGUAGES, LANGUAGE_CODES } from '../i18n';
-import { Cpu, CheckCircle2, AlertTriangle, XCircle, Eye, Server, Globe } from 'lucide-react';
+import { Cpu, CheckCircle2, AlertTriangle, XCircle, Eye, Server, Globe, Menu, X } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const {
@@ -14,6 +14,8 @@ export const Header: React.FC = () => {
     openOriginalNoticeModal,
     rawNoticeText,
     setActiveTab,
+    isMobileMenuOpen,
+    toggleMobileMenu,
   } = useNotice();
 
   const { setLanguage } = useTranslation();
@@ -52,28 +54,39 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 py-3 bg-white/95 backdrop-blur-sm border-b border-[#E1E7EE] shadow-xs">
-      {/* Brand Identity & Tagline */}
-      <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-30 flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3 bg-white/95 backdrop-blur-sm border-b border-[#E1E7EE] shadow-xs w-full min-w-0">
+      {/* Brand Identity & Navigation Toggle */}
+      <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+        {/* Mobile Hamburger Drawer Toggle */}
+        <button
+          type="button"
+          onClick={toggleMobileMenu}
+          className="md:hidden p-1.5 sm:p-2 rounded-xl text-[#12233D] hover:bg-[#E8F7F0] hover:text-[#08785D] border border-[#E1E7EE] transition cursor-pointer"
+          aria-label={isMobileMenuOpen ? 'Close navigation drawer' : 'Open navigation drawer'}
+          title={isMobileMenuOpen ? 'Close navigation drawer' : 'Open navigation drawer'}
+        >
+          {isMobileMenuOpen ? <X className="w-5 h-5 text-[#B42318]" /> : <Menu className="w-5 h-5 text-[#08785D]" />}
+        </button>
+
         <button
           type="button"
           onClick={() => setActiveTab(0)}
-          className="flex items-center gap-2.5 text-left group cursor-pointer focus:outline-hidden"
+          className="flex items-center gap-2 sm:gap-2.5 text-left group cursor-pointer focus:outline-hidden min-w-0"
           title="Return to Home"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#08785D] to-[#06664E] flex items-center justify-center shadow-xs shadow-[#08785D]/20 font-black text-white text-lg">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-[#08785D] to-[#06664E] flex items-center justify-center shadow-xs shadow-[#08785D]/20 font-black text-white text-base sm:text-lg shrink-0">
             स
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5 leading-none">
-              <span className="text-lg font-extrabold tracking-tight text-[#12233D]">
-                Suchna<span className="text-[#08785D]">Setu</span> AI
+              <span className="text-base sm:text-lg font-extrabold tracking-tight text-[#12233D] truncate">
+                Suchna<span className="text-[#08785D]">Setu</span> <span className="hidden xs:inline">AI</span>
               </span>
-              <span className="text-[10px] font-mono uppercase bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2] px-1.5 py-0.5 rounded-md font-bold">
+              <span className="text-[9px] sm:text-[10px] font-mono uppercase bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2] px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded-md font-bold shrink-0">
                 PS02
               </span>
             </div>
-            <span className="text-[11px] font-medium text-[#526176] mt-0.5 hidden sm:inline">
+            <span className="text-[11px] font-medium text-[#526176] mt-0.5 hidden md:inline truncate">
               Understand the notice. Know your next step.
             </span>
           </div>
@@ -85,7 +98,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Center / Right Control Cluster */}
-      <div className="flex items-center gap-2.5 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* System Health Badge */}
         <div className="hidden md:flex">{getStatusBadge()}</div>
 
@@ -94,10 +107,11 @@ export const Header: React.FC = () => {
           type="button"
           onClick={openOriginalNoticeModal}
           disabled={!rawNoticeText}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#12233D] hover:text-[#08785D] bg-[#F8FAFC] hover:bg-[#E8F7F0] border border-[#E1E7EE] hover:border-[#B7E7D2] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold text-[#12233D] hover:text-[#08785D] bg-[#F8FAFC] hover:bg-[#E8F7F0] border border-[#E1E7EE] hover:border-[#B7E7D2] transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           title="View Original Ground-Truth Notice Document"
+          aria-label="View Original Ground-Truth Notice Document"
         >
-          <Eye className="w-3.5 h-3.5 text-[#08785D]" />
+          <Eye className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-[#08785D]" />
           <span className="hidden sm:inline">Original Notice</span>
         </button>
 
@@ -108,7 +122,7 @@ export const Header: React.FC = () => {
         </div>
 
         {/* LLM Provider Selector */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-[#526176] bg-[#F8FAFC] border border-[#E1E7EE]">
+        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-[#526176] bg-[#F8FAFC] border border-[#E1E7EE]">
           <Server className="w-3.5 h-3.5 text-[#08785D]" />
           <select
             value={activeProvider}
@@ -132,8 +146,8 @@ export const Header: React.FC = () => {
         </div>
 
         {/* 10-Language Switcher Cluster */}
-        <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#F8FAFC] border border-[#E1E7EE]">
-          <div className="hidden sm:flex items-center gap-1 pl-1">
+        <div className="flex items-center gap-0.5 sm:gap-1 p-0.5 rounded-lg bg-[#F8FAFC] border border-[#E1E7EE]">
+          <div className="hidden md:flex items-center gap-1 pl-1">
             <Globe className="w-3.5 h-3.5 text-[#08785D]" />
           </div>
           <button
@@ -142,7 +156,7 @@ export const Header: React.FC = () => {
               setSelectedLang('en');
               setLanguage('en');
             }}
-            className={`px-2 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+            className={`px-1.5 sm:px-2 py-1 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
               selectedLang === 'en'
                 ? 'bg-[#08785D] text-white shadow-xs'
                 : 'text-[#526176] hover:text-[#12233D]'
@@ -158,7 +172,7 @@ export const Header: React.FC = () => {
               setSelectedLang('hi');
               setLanguage('hi');
             }}
-            className={`px-2 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+            className={`px-1.5 sm:px-2 py-1 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
               selectedLang === 'hi'
                 ? 'bg-[#08785D] text-white shadow-xs'
                 : 'text-[#526176] hover:text-[#12233D]'
@@ -177,7 +191,7 @@ export const Header: React.FC = () => {
             }}
             aria-label="Select Website Language (10 Indian Languages)"
             title="Select Website Language"
-            className="bg-transparent text-[#12233D] text-xs font-bold px-1.5 py-1 rounded-md border-l border-[#E1E7EE] outline-hidden cursor-pointer"
+            className="bg-transparent text-[#12233D] text-[11px] sm:text-xs font-bold px-1 sm:px-1.5 py-1 rounded-md border-l border-[#E1E7EE] outline-hidden cursor-pointer max-w-[85px] sm:max-w-none"
           >
             {LANGUAGE_CODES.map((code) => (
               <option key={code} value={code} className="bg-white text-[#12233D]">

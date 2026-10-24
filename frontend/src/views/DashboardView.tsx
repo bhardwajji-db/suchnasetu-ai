@@ -81,13 +81,13 @@ export const DashboardView: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-12 animate-fadeIn pb-12">
+    <div className="space-y-8 sm:space-y-12 animate-fadeIn pb-8 sm:pb-12">
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-3xl bg-white border border-[#E1E7EE] p-6 sm:p-10 shadow-xs">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-white border border-[#E1E7EE] p-4 sm:p-8 md:p-10 shadow-xs">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-center">
           {/* Left Column: Value Proposition & CTAs */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="space-y-3">
+          <div className="lg:col-span-7 space-y-5 sm:space-y-6">
+            <div className="space-y-2.5 sm:space-y-3">
               <div
                 className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${status.color}`}
               >
@@ -97,7 +97,7 @@ export const DashboardView: React.FC = () => {
               <div className="text-xs font-bold uppercase tracking-wider text-[#08785D]">
                 Notice Intelligence for Everyone
               </div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#12233D] tracking-tight leading-tight">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-[#12233D] tracking-tight leading-tight">
                 From complex notices to <span className="text-[#08785D]">clear next steps.</span>
               </h1>
               <p className="text-base text-[#526176] leading-relaxed max-w-xl">

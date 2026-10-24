@@ -95,6 +95,9 @@ interface NoticeContextType {
   samples: SampleFixture[];
   activeTab: number;
   setActiveTab: (tab: number) => void;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
+  toggleMobileMenu: () => void;
   history: HistoryRecord[];
   loadFromHistory: (item: HistoryRecord) => void;
   clearHistory: () => void;
@@ -224,7 +227,13 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [providers, setProviders] = useState<LLMProviderStatus[]>([]);
   const [activeProvider, setActiveProvider] = useState<string>('ollama');
   const [samples, setSamples] = useState<SampleFixture[]>([]);
-  const [activeTab, setActiveTab] = useState<number>(0);
+  const [activeTab, setActiveTabState] = useState<number>(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const toggleMobileMenu = useCallback(() => setIsMobileMenuOpen((prev) => !prev), []);
+  const setActiveTab = useCallback((tab: number) => {
+    setActiveTabState(tab);
+    setIsMobileMenuOpen(false);
+  }, []);
   const [history, setHistory] = useState<HistoryRecord[]>(() => {
     try {
       const saved = localStorage.getItem('notice2action_history');
@@ -904,6 +913,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         samples,
         activeTab,
         setActiveTab,
+        isMobileMenuOpen,
+        setIsMobileMenuOpen,
+        toggleMobileMenu,
         history,
         loadFromHistory,
         clearHistory,

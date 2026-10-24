@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { useTranslation } from '../i18n';
 import {
@@ -19,6 +19,7 @@ import {
   Compass,
   Layers,
   BookOpen,
+  X,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -26,6 +27,8 @@ export const Sidebar: React.FC = () => {
   const {
     activeTab,
     setActiveTab,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
     samples,
     loadSampleFixture,
     resetSession,
@@ -36,6 +39,17 @@ export const Sidebar: React.FC = () => {
 
   const [selectedSample, setSelectedSample] = useState<string>('sample_scholarship_notice.txt');
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
+
+  // Close mobile drawer on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileMenuOpen, setIsMobileMenuOpen]);
 
   const navItems = [
     { id: 0, label: 'Dashboard', icon: LayoutDashboard },
@@ -52,20 +66,25 @@ export const Sidebar: React.FC = () => {
     { id: 11, label: t('navDemoLibrary') || '11. Demo Library', icon: BookOpen, badge: '32 Demos' },
   ];
 
+  const handleSelectTab = (id: number) => {
+    setActiveTab(id);
+    setIsMobileMenuOpen(false);
+  };
+
   const handleCompetitionDemo = () => {
     loadSampleFixture('synthetic_scholarship_notice.txt');
-    setActiveTab(1);
+    handleSelectTab(1);
   };
 
   const handleLoadSelectedSample = () => {
     if (selectedSample) {
       loadSampleFixture(selectedSample);
-      setActiveTab(1);
+      handleSelectTab(1);
     }
   };
 
-  return (
-    <aside className="w-64 sm:w-68 bg-[#F8FAFC] border-r border-[#E1E7EE] flex flex-col justify-between h-[calc(100vh-61px)] overflow-y-auto shrink-0 shadow-xs">
+  const renderSidebarContent = () => (
+    <>
       <div className="p-4 space-y-6">
         {/* Navigation Group */}
         <div>
@@ -80,7 +99,7 @@ export const Sidebar: React.FC = () => {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => handleSelectTab(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     isActive
                       ? 'bg-[#08785D] text-white shadow-xs font-bold'
@@ -212,6 +231,56 @@ export const Sidebar: React.FC = () => {
           HackDay 2026 • PS02 Team
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop / Large Screen Docked Sidebar */}
+      <aside className="hidden md:flex flex-col w-64 lg:w-68 bg-[#F8FAFC] border-r border-[#E1E7EE] justify-between h-[calc(100vh-61px)] overflow-y-auto shrink-0 shadow-xs">
+        {renderSidebarContent()}
+      </aside>
+
+      {/* Mobile / Tablet Slide-Over Drawer with Backdrop */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex" role="dialog" aria-modal="true" aria-label="Navigation Drawer">
+          {/* Dark Backdrop */}
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Slide-over Panel */}
+          <aside className="relative z-10 w-72 max-w-[85vw] bg-[#F8FAFC] border-r border-[#E1E7EE] flex flex-col justify-between h-full overflow-y-auto shadow-2xl animate-in slide-in-from-left duration-200">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-3.5 border-b border-[#E1E7EE] bg-white shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#08785D] to-[#06664E] flex items-center justify-center font-black text-white text-sm">
+                  स
+                </div>
+                <div className="flex flex-col leading-none">
+                  <span className="font-extrabold text-[#12233D] text-sm">SuchnaSetu AI</span>
+                  <span className="text-[10px] text-[#68778B] mt-0.5">Navigation Menu</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1.5 rounded-lg text-[#526176] hover:text-[#B42318] hover:bg-[#FEE8E7] transition cursor-pointer"
+                aria-label="Dismiss navigation drawer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Inner Content */}
+            <div className="flex-1 overflow-y-auto flex flex-col justify-between">
+              {renderSidebarContent()}
+            </div>
+          </aside>
+        </div>
+      )}
+    </>
   );
 };

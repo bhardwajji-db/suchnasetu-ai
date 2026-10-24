@@ -19,6 +19,7 @@ import { ConfirmationModal } from './ConfirmationModal';
 import { OriginalNoticeViewerModal } from './OriginalNoticeViewerModal';
 import { EvidenceInspectorDrawer } from './EvidenceInspectorDrawer';
 import { VoiceGuidanceBar } from './VoiceGuidanceBar';
+import { MobileBottomNav } from './MobileBottomNav';
 
 export const ApplicationLayout: React.FC = () => {
   const { activeTab, accessibilityPrefs } = useNotice();
@@ -77,14 +78,15 @@ export const ApplicationLayout: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans selection:bg-[#08785D] selection:text-white pb-16 ${themeClass} ${textSizeClass} ${lineSpacingClass} ${motionClass}`}>
+    <div className={`min-h-screen flex flex-col font-sans selection:bg-[#08785D] selection:text-white pb-20 md:pb-12 overflow-x-hidden w-full ${themeClass} ${textSizeClass} ${lineSpacingClass} ${motionClass}`}>
       <Header />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-w-0 w-full">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 max-w-7xl mx-auto w-full min-w-0">
           {renderActiveView()}
         </main>
       </div>
+      <MobileBottomNav />
       <AnalysisProgressModal />
       <ConfirmationModal />
       <OriginalNoticeViewerModal />
