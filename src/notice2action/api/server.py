@@ -105,17 +105,10 @@ app = FastAPI(
     description="REST backend for SuchnaSetu AI Notice-to-Action Accessibility Assistant (PS02)",
 )
 
-# Enable CORS for local Vite dev and frontend clients
+# Enable CORS for local Vite dev, mobile devices on WiFi, and network clients
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8501",
-        "http://127.0.0.1:8501",
-    ],
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

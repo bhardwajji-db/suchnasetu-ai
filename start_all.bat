@@ -39,15 +39,18 @@ if %errorlevel% neq 0 (
     echo       Ollama server is already running and responsive.
 )
 
-:: 3. Launch FastAPI Backend Daemon
-echo [2/3] Launching FastAPI Backend Server on http://127.0.0.1:8000...
-start "SochnaSetu Backend (FastAPI)" cmd /k "title SochnaSetu Backend && cd /d "%PROJECT_ROOT%" && call .venv\Scripts\activate.bat && python -m uvicorn notice2action.api.server:app --app-dir src --host 127.0.0.1 --port 8000"
+:: 3. Launch FastAPI Backend Daemon (Bound to 0.0.0.0 for phone/network access)
+echo [2/3] Launching FastAPI Backend Server on http://0.0.0.0:8000...
+start "SochnaSetu Backend (FastAPI)" cmd /k "title SochnaSetu Backend && cd /d "%PROJECT_ROOT%" && call .venv\Scripts\activate.bat && python -m uvicorn notice2action.api.server:app --app-dir src --host 0.0.0.0 --port 8000"
 
-:: 4. Launch React 19 Frontend
-echo [3/3] Launching React 19 + Vite Frontend on http://127.0.0.1:5173...
-start "SochnaSetu Frontend (React/Vite)" cmd /k "title SochnaSetu Frontend && cd /d "%PROJECT_ROOT%frontend" && npm run dev -- --host 127.0.0.1 --port 5173"
+:: 4. Launch React 19 Frontend (Bound to 0.0.0.0 for phone/network access)
+echo [3/3] Launching React 19 + Vite Frontend on http://0.0.0.0:5173...
+start "SochnaSetu Frontend (React/Vite)" cmd /k "title SochnaSetu Frontend && cd /d "%PROJECT_ROOT%frontend" && npm run dev -- --host 0.0.0.0 --port 5173"
 
-:: 5. Wait for servers to spin up and open browser
+:: 5. Detect local Wi-Fi IP and wait for servers to spin up
+set "WIFI_IP=127.0.0.1"
+for /f "usebackq tokens=*" %%i in (`powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias '*Wi-Fi*','*Wireless*' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty IPAddress -First 1)"`) do set "WIFI_IP=%%i"
+
 echo.
 echo Waiting 4 seconds for services to initialize...
 ping -n 5 127.0.0.1 >nul
@@ -58,10 +61,11 @@ start http://localhost:5173
 echo.
 echo ======================================================================
 echo  All services launched successfully!
-echo   * React Frontend: http://localhost:5173
-echo   * FastAPI Backend: http://127.0.0.1:8000
-echo   * API Docs: http://127.0.0.1:8000/docs
-echo   * Ollama Server: http://127.0.0.1:11434
+echo   * Local PC Access:     http://localhost:5173
+echo   * On Phone (Same WiFi): http://%WIFI_IP%:5173
+echo   * FastAPI Backend:     http://%WIFI_IP%:8000
+echo   * API Interactive Docs:http://%WIFI_IP%:8000/docs
+echo   * Ollama Server:       http://127.0.0.1:11434
 echo ======================================================================
 echo Press any key to exit this launcher window (services keep running).
 pause >nul
