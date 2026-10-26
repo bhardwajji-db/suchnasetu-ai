@@ -615,8 +615,9 @@ export const IngestionView: React.FC = () => {
             {/* Left: File Upload & Tesseract OCR */}
             <div className="space-y-4">
               <div className="border border-[#E1E7EE] rounded-xl p-4 bg-[#F8FAFC] space-y-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#12233D] block">
-                  📁 {t('uploadDocOrCircular')}
+                <span className="text-xs font-bold uppercase tracking-wider text-[#12233D] flex items-center gap-1.5">
+                  <FolderOpen className="w-3.5 h-3.5 text-[#08785D]" />
+                  <span>{t('uploadDocOrCircular')}</span>
                 </span>
                 <FileDropzone />
               </div>

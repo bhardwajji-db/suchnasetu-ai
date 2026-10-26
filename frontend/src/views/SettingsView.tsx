@@ -158,7 +158,12 @@ export const SettingsView: React.FC = () => {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-[#12233D] flex items-center gap-1.5">
-                      {p.is_local ? '🔒' : '☁️'} {p.name}
+                      {p.is_local ? (
+                        <Lock className="w-3.5 h-3.5 text-[#08785D]" />
+                      ) : (
+                        <Server className="w-3.5 h-3.5 text-blue-600" />
+                      )}
+                      <span>{p.name}</span>
                     </span>
                     {isActive ? (
                       <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#08785D] text-white">

@@ -37,7 +37,8 @@ export const SummaryActionsView: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-[#12233D] tracking-tight flex items-center gap-2">
-          <span>📋 {t('summaryTitle') || '3. Plain-Language Summary & Grounded Action Checklist'}</span>
+          <ListTodo className="w-5 h-5 text-[#08785D]" />
+          <span>{t('summaryTitle') || '3. Plain-Language Summary & Grounded Action Checklist'}</span>
         </h1>
         <p className="text-xs text-[#526176] mt-1">
           {t('summarySubtitle') || 'Transform convoluted legal circulars into simplified answers and an interactive sequential checklist with iCalendar deadline export.'}

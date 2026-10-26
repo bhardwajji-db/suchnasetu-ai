@@ -80,7 +80,8 @@ export const GroundedFactsView: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-[#12233D] tracking-tight flex items-center gap-2">
-          <span>🔍 {t('factsTitle') || '2. Grounded Fact Breakdown'}</span>
+          <Search className="w-5 h-5 text-[#08785D]" />
+          <span>{t('factsTitle') || '2. Grounded Fact Breakdown'}</span>
         </h1>
         <p className="text-xs text-[#526176] mt-1">
           {t('factsSubtitle') || 'Discrete semantic dimensions extracted from the notice. Every stated fact references verbatim quotation proof to prevent hallucinations.'}
