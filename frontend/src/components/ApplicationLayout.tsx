@@ -14,6 +14,7 @@ import { CrossNoticeTimelineView } from '../views/CrossNoticeTimelineView';
 import { NoticeHistoryView } from '../views/NoticeHistoryView';
 import { SettingsView } from '../views/SettingsView';
 import { DemoLibraryView } from '../views/DemoLibraryView';
+import { AuthPageView } from '../views/AuthPageView';
 import { ErrorBoundary } from './ErrorBoundary';
 import { AnalysisProgressModal } from './AnalysisProgressModal';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -23,7 +24,7 @@ import { VoiceGuidanceBar } from './VoiceGuidanceBar';
 import { MobileBottomNav } from './MobileBottomNav';
 
 export const ApplicationLayout: React.FC = () => {
-  const { activeTab, accessibilityPrefs } = useNotice();
+  const { activeTab, setActiveTab, authPageMode, accessibilityPrefs } = useNotice();
 
   const textSizeClass =
     accessibilityPrefs?.textSize === 'extra-large'
@@ -77,6 +78,10 @@ export const ApplicationLayout: React.FC = () => {
         return <DashboardView />;
     }
   };
+
+  if (activeTab === 99) {
+    return <AuthPageView initialMode={authPageMode} onComplete={() => setActiveTab(0)} />;
+  }
 
   return (
     <div className={`min-h-screen flex flex-col font-sans selection:bg-[#08785D] selection:text-white pb-20 md:pb-12 overflow-x-hidden w-full ${themeClass} ${textSizeClass} ${lineSpacingClass} ${motionClass}`}>

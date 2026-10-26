@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Sidebar } from '../components/Sidebar';
 import { NoticeProvider } from '../context/NoticeContext';
 
@@ -20,5 +20,18 @@ describe('Sidebar Component', () => {
     expect(screen.getByText(/Competition Demo/i)).toBeInTheDocument();
     expect(screen.getByText(/Load Selected Notice/i)).toBeInTheDocument();
     expect(screen.getByText(/Reset Workspace/i)).toBeInTheDocument();
+  });
+
+  it('renders subtle citizen account access in the sidebar for guests', () => {
+    render(
+      <NoticeProvider>
+        <Sidebar />
+      </NoticeProvider>
+    );
+
+    const accountButton = screen.getByRole('button', { name: /Sign In to citizen account/i });
+    expect(accountButton).toBeInTheDocument();
+    expect(accountButton).toHaveTextContent(/Sign In \/ Register/i);
+    expect(accountButton).toHaveTextContent(/Save notices & progress/i);
   });
 });

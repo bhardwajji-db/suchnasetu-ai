@@ -100,6 +100,9 @@ interface NoticeContextType {
   setIsAuthModalOpen: (open: boolean) => void;
   openAuthModal: () => void;
   closeAuthModal: () => void;
+  openAuthPage: (initialMode?: 'login' | 'signup') => void;
+  authPageMode: 'login' | 'signup';
+  setAuthPageMode: (mode: 'login' | 'signup') => void;
   followUpHistory: FollowUpAnswer[];
   systemHealth: PreflightReport | null;
   providers: LLMProviderStatus[];
@@ -219,6 +222,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       document.documentElement.lang = lang;
       document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
     } catch {}
+      if (currentUser) {
+        apiClient.saveUserPreferences({ language: lang }).catch(() => {});
+      }
   }, [i18n]);
 
   const [outputLang, setOutputLang] = useState<string>('en');
@@ -240,8 +246,13 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [analysisDuration, setAnalysisDuration] = useState<number | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [authPageMode, setAuthPageMode] = useState<'login' | 'signup'>('login');
   const openAuthModal = useCallback(() => setIsAuthModalOpen(true), []);
   const closeAuthModal = useCallback(() => setIsAuthModalOpen(false), []);
+  const openAuthPage = useCallback((initialMode?: 'login' | 'signup') => {
+    setAuthPageMode(initialMode || 'login');
+    setActiveTab(99);
+  }, []);
   const clearAnalysisError = useCallback(() => setAnalysisError(null), []);
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -251,6 +262,28 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const user = await fetchAuthMe();
       setCurrentUser(user);
+      if (user) {
+        try {
+          const prefData = await apiClient.getUserPreferences();
+          if (prefData?.preferences) {
+            const p = prefData.preferences;
+            if (p.language) {
+              setLocalLang(p.language);
+              if (i18n?.setLanguage) {
+                i18n.setLanguage(p.language as any);
+              }
+              try {
+                localStorage.setItem('suchnasetu_user_language', p.language);
+                document.documentElement.lang = p.language;
+                document.documentElement.dir = p.language === 'ur' ? 'rtl' : 'ltr';
+              } catch {}
+            }
+            if (p.reading_level && ['simple', 'standard', 'detailed'].includes(p.reading_level)) {
+              setReadingLevel(p.reading_level);
+            }
+          }
+        } catch {}
+      }
       return user;
     } catch {
       setCurrentUser(null);
@@ -258,7 +291,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } finally {
       setIsAuthLoading(false);
     }
-  }, []);
+  }, [i18n]);
 
   useEffect(() => {
     refreshAuth();
@@ -876,6 +909,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const changeReadingLevel = useCallback(async (level: 'simple' | 'standard' | 'detailed') => {
     setReadingLevel(level);
+    if (currentUser) {
+      apiClient.saveUserPreferences({ reading_level: level }).catch(() => {});
+    }
     if (!structuredNotice) return;
     try {
       const targetLang = outputLang || selectedLang || 'en';
@@ -1070,6 +1106,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setIsAuthModalOpen,
         openAuthModal,
         closeAuthModal,
+        openAuthPage,
+        authPageMode,
+        setAuthPageMode,
         followUpHistory,
         systemHealth,
         providers,

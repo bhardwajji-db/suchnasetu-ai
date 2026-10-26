@@ -4,7 +4,7 @@ import { useNotice } from '../context/NoticeContext';
 
 import { useTranslation, SUPPORTED_LANGUAGES, LANGUAGE_CODES } from '../i18n';
 
-import { Cpu, CheckCircle2, AlertTriangle, XCircle, Eye, Server, Globe, Menu, X, LogIn, LogOut, UserCheck } from 'lucide-react';
+import { Cpu, CheckCircle2, AlertTriangle, XCircle, Eye, Server, Globe, Menu, X, LogOut, UserCheck } from 'lucide-react';
 
 import { AuthModal } from './auth/AuthModal';
 
@@ -244,59 +244,22 @@ export const Header: React.FC = () => {
 
 
 
-        {/* Citizen Authentication / Account Status */}
-
+        {/* Citizen Authentication / Account Status (Compact pill when authenticated; top-bar cleaned up for guests) */}
         {currentUser ? (
-
           <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
-
             <UserCheck className="w-3.5 h-3.5 text-[#08785D]" />
-
             <span className="hidden sm:inline max-w-[90px] truncate">{currentUser.name}</span>
-
             <button
-
               type="button"
-
               onClick={handleLogout}
-
               className="ml-1 text-[11px] text-[#B42318] hover:underline cursor-pointer"
-
               title="Sign Out"
-
               aria-label="Sign Out"
-
             >
-
               <LogOut className="w-3.5 h-3.5 inline" />
-
             </button>
-
           </div>
-
-        ) : (
-
-          <button
-
-            type="button"
-
-            onClick={() => setIsAuthModalOpen(true)}
-
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-[#08785D] bg-[#E8F7F0] hover:bg-[#D1F0E2] border border-[#B7E7D2] transition cursor-pointer"
-
-            title="Sign In / Register"
-
-            aria-label="Sign In to citizen account"
-
-          >
-
-            <LogIn className="w-3.5 h-3.5" />
-
-            <span className="hidden sm:inline">{t('signIn') || 'Sign In'}</span>
-
-          </button>
-
-        )}
+        ) : null}
 
 
 

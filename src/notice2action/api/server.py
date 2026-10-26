@@ -3743,6 +3743,76 @@ async def get_user_activities_endpoint(
 
 # ---------------------------------------------------------
 
+# ---------------------------------------------------------
+# Feature: Protected User Profile, Preferences & Checklist Progress
+# ---------------------------------------------------------
+
+@app.get("/api/user/profile")
+async def get_user_profile_endpoint(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Returns strictly authenticated user profile. Rejects guests with HTTP 401."""
+    return current_user
+
+
+@app.get("/api/user/preferences")
+async def get_user_preferences_endpoint(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Returns persistent user preferences (language, accessibility, theme) for authenticated user."""
+    user_id = current_user["id"]
+    prefs = get_db().get_user_preferences(user_id=user_id)
+    return {"status": "success", "user_id": user_id, "preferences": prefs}
+
+
+@app.put("/api/user/preferences")
+async def update_user_preferences_endpoint(
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Persists user preferences across sessions for authenticated user."""
+    user_id = current_user["id"]
+    prefs = payload.get("preferences", payload)
+    get_db().set_user_preferences(user_id=user_id, preferences=prefs)
+    return {"status": "success", "user_id": user_id, "preferences": prefs}
+
+
+@app.get("/api/user/checklist-progress")
+async def get_user_checklist_progress_endpoint(
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Retrieves map of completed checklist tasks strictly isolated for current user."""
+    user_id = current_user["id"]
+    progress = get_db().get_user_checklist_progress(user_id=user_id)
+    return {
+        "status": "success",
+        "user_id": user_id,
+        "progress": progress,
+        "checklist_progress": progress,
+    }
+
+
+@app.post("/api/user/checklist/{item_id}/toggle")
+async def toggle_user_checklist_progress_endpoint(
+    item_id: str,
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Persists checklist item completion state strictly under authenticated user ID."""
+    user_id = current_user["id"]
+    completed = bool(payload.get("completed", payload.get("is_completed", True)))
+    get_db().set_user_checklist_progress(user_id=user_id, item_id=item_id, completed=completed)
+    get_db().set_checklist_item_completed(item_id=item_id, completed=completed)
+    return {
+        "status": "success",
+        "user_id": user_id,
+        "item_id": item_id,
+        "completed": completed,
+        "is_completed": completed,
+    }
+
+
+
 # Feature: Production Frontend SPA Serving (Single-Port Deployment)
 
 # ---------------------------------------------------------

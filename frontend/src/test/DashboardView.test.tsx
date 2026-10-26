@@ -114,6 +114,15 @@ describe('DashboardView Upgraded Redesign Component', () => {
       item_id: 'task_0',
       is_completed: true,
     });
+    vi.spyOn(apiClient, 'getUserChecklistProgress').mockResolvedValue({
+      checklist_progress: {},
+    });
+    vi.spyOn(apiClient, 'toggleUserChecklistProgress').mockResolvedValue({
+      success: true,
+      item_id: 'task_0',
+      completed: true,
+      completed_at: new Date().toISOString(),
+    });
     vi.spyOn(apiClient, 'markAllNotificationsRead').mockResolvedValue({
       status: 'success',
       marked_read: 1,

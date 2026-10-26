@@ -83,12 +83,13 @@ export const DashboardView: React.FC = () => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [userRes, savedRes, weeklyRes, notifsRes, actsRes] = await Promise.allSettled([
+      const [userRes, savedRes, weeklyRes, notifsRes, actsRes, checklistRes] = await Promise.allSettled([
         fetchAuthMe(),
         apiClient.getSavedNotices(),
         apiClient.getWeeklyTasks(),
         apiClient.getUserNotifications(),
         apiClient.getUserActivities(15),
+        apiClient.getUserChecklistProgress(),
       ]);
 
       if (userRes.status === 'fulfilled') {
@@ -106,6 +107,10 @@ export const DashboardView: React.FC = () => {
       }
       if (actsRes.status === 'fulfilled') {
         setActivities(actsRes.value || []);
+      }
+      if (checklistRes.status === 'fulfilled') {
+        const progress = checklistRes.value?.checklist_progress || {};
+        setCompletedTaskIds((prev) => ({ ...prev, ...progress }));
       }
     } catch (err: any) {
       setLoadError(err.message || 'Failed to refresh dashboard data.');
@@ -213,9 +218,12 @@ export const DashboardView: React.FC = () => {
     const nextCompleted = !currentCompleted;
     setCompletedTaskIds((prev) => ({ ...prev, [taskId]: nextCompleted }));
     try {
-      await apiClient.toggleChecklistItemPersistent(taskId, nextCompleted);
+      await Promise.allSettled([
+        apiClient.toggleUserChecklistProgress(taskId, nextCompleted),
+        apiClient.toggleChecklistItemPersistent(taskId, nextCompleted),
+      ]);
     } catch {
-      // Revert on failure
+      // Revert on complete failure
       setCompletedTaskIds((prev) => ({ ...prev, [taskId]: currentCompleted }));
     }
   };
@@ -1005,14 +1013,30 @@ export const DashboardView: React.FC = () => {
             </div>
 
             {savedNotices.length === 0 ? (
-              <div className="text-center py-6 px-3 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE] space-y-1.5">
-                <FileText className="w-6 h-6 text-[#94A3B8] mx-auto" />
+              <div className="text-center py-6 px-3 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE] space-y-2">
+                <FileText className="w-7 h-7 text-[#94A3B8] mx-auto" />
                 <div className="text-xs font-bold text-[#12233D]">
                   {t('noRecentNotices') || 'No saved notices yet.'}
                 </div>
-                <p className="text-[10px] text-[#64748B]">
-                  Bookmark or analyze notices to track their updates here.
+                <p className="text-[11px] text-[#64748B] max-w-xs mx-auto leading-relaxed">
+                  Start by uploading your first official notice or explore the 32 real-world government circulars in the Demo Library.
                 </p>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(1)}
+                    className="px-2.5 py-1 text-xs font-semibold text-white bg-[#08785D] hover:bg-[#06664E] rounded-lg shadow-2xs transition cursor-pointer"
+                  >
+                    Upload Notice
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(11)}
+                    className="px-2.5 py-1 text-xs font-semibold text-[#12233D] bg-white hover:bg-[#E8F7F0] hover:text-[#08785D] border border-[#CBD5E1] rounded-lg transition cursor-pointer"
+                  >
+                    Explore 32 Demos
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-2.5">

@@ -20,6 +20,8 @@ import {
   Layers,
   BookOpen,
   X,
+  LogIn,
+  LogOut,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -35,6 +37,9 @@ export const Sidebar: React.FC = () => {
     systemHealth,
     structuredNotice,
     history,
+    currentUser,
+    logout,
+    openAuthPage,
   } = useNotice();
 
   const [selectedSample, setSelectedSample] = useState<string>('sample_scholarship_notice.txt');
@@ -188,6 +193,87 @@ export const Sidebar: React.FC = () => {
             <span>{t('resetWorkspace')}</span>
           </button>
         </div>
+      </div>
+
+      {/* Account / Citizen Identity Entry */}
+      <div className="p-3 bg-white border-t border-[#E1E7EE]">
+        {currentUser ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#08785D] to-[#06664E] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                {(currentUser.name || currentUser.email || 'C')[0].toUpperCase()}
+              </div>
+              <div className="flex flex-col min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-[#12233D] truncate max-w-[100px]" title={currentUser.name}>
+                    {currentUser.name || 'Citizen'}
+                  </span>
+                  <span className="text-[9px] font-bold text-[#08785D] bg-[#E8F7F0] border border-[#B7E7D2] px-1 py-0.2 rounded-sm shrink-0">
+                    Verified
+                  </span>
+                </div>
+                <span className="text-[10px] text-[#68778B] truncate font-mono" title={currentUser.email}>
+                  {currentUser.email}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab(10);
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1 rounded-lg text-[11px] font-semibold text-[#526176] hover:text-[#08785D] bg-[#F8FAFC] hover:bg-[#E8F7F0] border border-[#E1E7EE] hover:border-[#B7E7D2] transition cursor-pointer"
+                title="Citizen Settings & Diagnostics"
+                aria-label="Citizen Settings"
+              >
+                <Settings className="w-3 h-3" />
+                <span>Settings</span>
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await logout();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center justify-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-[#B42318] hover:bg-[#FEE8E7] border border-transparent hover:border-[#FCA5A5] transition cursor-pointer"
+                title="Sign Out"
+                aria-label="Sign Out"
+              >
+                <LogOut className="w-3 h-3" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              openAuthPage('login');
+              setIsMobileMenuOpen(false);
+            }}
+            className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold bg-[#F8FAFC] hover:bg-[#E8F7F0] text-[#12233D] hover:text-[#08785D] border border-[#E1E7EE] hover:border-[#B7E7D2] transition cursor-pointer group"
+            aria-label="Sign In to citizen account"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <div className="w-6 h-6 rounded-lg bg-[#E8F7F0] group-hover:bg-[#08785D] text-[#08785D] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                <LogIn className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex flex-col text-left leading-tight truncate">
+                <span className="font-bold text-[#12233D] group-hover:text-[#08785D] truncate">
+                  {t('signIn') || 'Sign In'} / {t('register') || 'Register'}
+                </span>
+                <span className="text-[10px] text-[#68778B] font-normal truncate">
+                  Save notices & progress
+                </span>
+              </div>
+            </div>
+            <span className="text-[10px] uppercase font-bold text-[#08785D] bg-[#E8F7F0] px-1.5 py-0.5 rounded-md border border-[#B7E7D2] shrink-0">
+              Free
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Diagnostics Accordion / Status Footer */}

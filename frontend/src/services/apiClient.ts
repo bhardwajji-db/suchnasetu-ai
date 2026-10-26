@@ -769,4 +769,56 @@ export const apiClient = {
     const res = await apiFetch(`${BASE_URL}/api/user/activities?limit=${limit}`, { credentials: 'include' });
     return handleResponse<UserActivity[]>(res);
   },
+
+  /**
+   * User Preferences API (Language, Accessibility, Theme)
+   */
+  async getUserPreferences(): Promise<Record<string, any>> {
+    try {
+      const res = await apiFetch(`${BASE_URL}/api/user/preferences`, { credentials: 'include' });
+      if (!res.ok) return {};
+      const data = await handleResponse<{ status: string; preferences: Record<string, any> }>(res);
+      return data.preferences || {};
+    } catch {
+      return {};
+    }
+  },
+
+  async saveUserPreferences(preferences: Record<string, any>): Promise<any> {
+    try {
+      const res = await apiFetch(`${BASE_URL}/api/user/preferences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ preferences }),
+      });
+      return handleResponse<any>(res);
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * User Checklist Progress API (Isolated per Authenticated Citizen)
+   */
+  async getUserChecklistProgress(): Promise<Record<string, boolean>> {
+    try {
+      const res = await apiFetch(`${BASE_URL}/api/user/checklist-progress`, { credentials: 'include' });
+      if (!res.ok) return {};
+      const data = await handleResponse<{ status: string; progress: Record<string, boolean> }>(res);
+      return data.progress || {};
+    } catch {
+      return {};
+    }
+  },
+
+  async toggleUserChecklistProgress(itemId: string, completed: boolean): Promise<any> {
+    const res = await apiFetch(`${BASE_URL}/api/user/checklist/${encodeURIComponent(itemId)}/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ completed, is_completed: completed }),
+    });
+    return handleResponse<any>(res);
+  },
 };

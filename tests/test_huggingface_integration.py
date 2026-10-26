@@ -344,8 +344,11 @@ def test_api_providers_select_huggingface(monkeypatch):
     from notice2action.api.server import app
 
     client = TestClient(app)
-    response = client.post("/api/providers/select", json={"provider": "huggingface"})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["active_provider"] == "huggingface"
-    assert data["status"]["provider"] == "huggingface"
+    try:
+        response = client.post("/api/providers/select", json={"provider": "huggingface"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["active_provider"] == "huggingface"
+        assert data["status"]["provider"] == "huggingface"
+    finally:
+        client.post("/api/providers/select", json={"provider": "ollama"})

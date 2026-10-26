@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { Header } from '../components/Header';
 import { NoticeProvider } from '../context/NoticeContext';
 
@@ -27,16 +27,15 @@ describe('Header Component', () => {
     expect(screen.getByText('हिन्दी')).toBeInTheDocument();
   });
 
-  it('renders accessible sign in control and opens auth modal', () => {
+  it('preserves clean top-bar navigation without cluttered guest sign in button', () => {
     render(
       <NoticeProvider>
         <Header />
       </NoticeProvider>
     );
 
-    const signInBtn = screen.getByRole('button', { name: /Sign In/i });
-    expect(signInBtn).toBeInTheDocument();
-    fireEvent.click(signInBtn);
-    expect(screen.getByRole('dialog', { name: /Citizen Authentication/i })).toBeInTheDocument();
+    // Standalone top-bar sign in is removed in favor of sidebar account entry
+    const headerSignInBtn = screen.queryByRole('button', { name: /^Sign In$/i });
+    expect(headerSignInBtn).not.toBeInTheDocument();
   });
 });
