@@ -22,6 +22,11 @@ import {
   X,
   LogIn,
   LogOut,
+  Briefcase,
+  Cpu,
+  Sliders,
+  Palette,
+  User,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -61,6 +66,7 @@ export const Sidebar: React.FC = () => {
   const navGroups = [
     {
       title: 'Workspace',
+      groupIcon: Briefcase,
       items: [
         { id: 0, label: t('navDashboard') || 'Dashboard', icon: LayoutDashboard },
         { id: 1, label: t('navIngestion') || '1. Ingestion & OCR', icon: FileText },
@@ -70,6 +76,7 @@ export const Sidebar: React.FC = () => {
     },
     {
       title: 'Intelligence',
+      groupIcon: Cpu,
       items: [
         { id: 4, label: t('navRevision') || '4. Revision Ledger', icon: GitCompare, badge: 'Impact' },
         { id: 5, label: t('navEligibility') || '5. Eligibility Check', icon: UserCheck, badge: 'Rules' },
@@ -80,6 +87,7 @@ export const Sidebar: React.FC = () => {
     },
     {
       title: 'Library',
+      groupIcon: BookOpen,
       items: [
         { id: 9, label: t('navHistory') || 'Notice History', icon: History, badge: history.length > 0 ? `${history.length}` : undefined },
         { id: 11, label: t('navDemoLibrary') || '11. Demo Library', icon: BookOpen, badge: '32 Demos' },
@@ -87,6 +95,7 @@ export const Sidebar: React.FC = () => {
     },
     {
       title: 'Preferences',
+      groupIcon: Sliders,
       items: [
         { id: 10, label: t('navSettings') || 'Settings & Health', icon: Settings },
       ],
@@ -117,8 +126,9 @@ export const Sidebar: React.FC = () => {
         <div className="space-y-4">
           {navGroups.map((group) => (
             <div key={group.title}>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#68778B] block mb-1.5 px-1">
-                {group.title}
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#68778B] mb-1.5 px-1 flex items-center gap-1.5">
+                <group.groupIcon className="w-3 h-3 text-[#68778B]" />
+                <span>{group.title}</span>
               </span>
               <nav className="space-y-1">
                 {group.items.map((item) => {
@@ -160,8 +170,9 @@ export const Sidebar: React.FC = () => {
 
         {/* Quick Demo Notices Group */}
         <div className="pt-2 border-t border-[#E1E7EE] space-y-3">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#68778B] block px-1">
-            {t('sampleNotices') || 'Demo Notices'}
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#68778B] px-1 flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3 text-[#68778B]" />
+            <span>{t('sampleNotices') || 'Demo Notices'}</span>
           </span>
 
           {/* Golden Benchmark / Competition Demo Button */}
@@ -223,8 +234,9 @@ export const Sidebar: React.FC = () => {
 
       {/* Account / Citizen Identity Entry */}
       <div className="p-3 bg-white border-t border-[#E1E7EE] space-y-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#68778B] block px-1">
-          Account
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#68778B] px-1 flex items-center gap-1.5">
+          <User className="w-3 h-3 text-[#68778B]" />
+          <span>Account</span>
         </span>
         {currentUser ? (
           <div className="space-y-2">
@@ -307,8 +319,9 @@ export const Sidebar: React.FC = () => {
 
       {/* Appearance / Theme Selector */}
       <div className="p-3 bg-white border-t border-[#E1E7EE] space-y-2">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[#68778B] block px-1">
-          Appearance / Theme
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[#68778B] px-1 flex items-center gap-1.5">
+          <Palette className="w-3 h-3 text-[#68778B]" />
+          <span>Appearance / Theme</span>
         </span>
         <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE]">
           {/* Option 1: Slate + Deep Green */}

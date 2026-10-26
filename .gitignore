@@ -109,3 +109,5 @@ data/*.db-wal
 data/uploads/*
 !data/uploads/.gitkeep
 !data/.gitkeep
+
+test_reports/

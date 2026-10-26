@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import { useNotice } from '../context/NoticeContext';
 
 import { useTranslation, SUPPORTED_LANGUAGES, LANGUAGE_CODES } from '../i18n';
 
-import { Cpu, CheckCircle2, AlertTriangle, XCircle, Eye, Server, Globe, Menu, X, LogOut, UserCheck, Sun, Moon, Bell } from 'lucide-react';
+import { Cpu, CheckCircle2, AlertTriangle, XCircle, Eye, Server, Globe, Menu, X, LogOut, Sun, Moon, Bell, User, Settings, BookMarked, ChevronDown } from 'lucide-react';
 
 import { AuthModal } from './auth/AuthModal';
 
@@ -45,6 +45,7 @@ export const Header: React.FC = () => {
     theme,
     toggleTheme,
     unreadNotificationsCount,
+    openAuthPage,
   } = useNotice();
 
   const { setLanguage, t } = useTranslation();
@@ -82,6 +83,33 @@ export const Header: React.FC = () => {
   };
 
 
+
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getInitials = (name?: string, email?: string): string => {
+    if (name && name.trim()) {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    if (email && email.trim()) {
+      return email.slice(0, 2).toUpperCase();
+    }
+    return 'CZ';
+  };
 
   const getStatusBadge = () => {
 
@@ -247,22 +275,7 @@ export const Header: React.FC = () => {
 
 
 
-        {/* Citizen Authentication / Account Status (Compact pill when authenticated; top-bar cleaned up for guests) */}
-        {currentUser ? (
-          <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
-            <UserCheck className="w-3.5 h-3.5 text-[#08785D]" />
-            <span className="hidden sm:inline max-w-[90px] truncate">{currentUser.name}</span>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="ml-1 text-[11px] text-[#B42318] hover:underline cursor-pointer"
-              title="Sign Out"
-              aria-label="Sign Out"
-            >
-              <LogOut className="w-3.5 h-3.5 inline" />
-            </button>
-          </div>
-        ) : null}
+
 
 
 
@@ -412,6 +425,110 @@ export const Header: React.FC = () => {
             {theme === 'dark' ? 'Light' : 'Dark'}
           </span>
         </button>
+
+        {/* Top-Right Profile Avatar & Dropdown / Guest Auth CTA */}
+        <div className="relative" ref={profileMenuRef}>
+          {currentUser ? (
+            <div>
+              <button
+                type="button"
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-xl text-xs font-semibold bg-[#F8FAFC] hover:bg-[#E8F7F0] border border-[#E1E7EE] hover:border-[#B7E7D2] transition cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#08785D]"
+                aria-expanded={isProfileMenuOpen}
+                aria-haspopup="true"
+                aria-label="Citizen Account Menu"
+                title={`${currentUser.name} (${currentUser.email})`}
+              >
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#08785D] to-[#06664E] text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                  {getInitials(currentUser.name, currentUser.email)}
+                </div>
+                <span className="hidden sm:inline font-bold text-[#12233D] max-w-[100px] truncate">
+                  {currentUser.name}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-[#68778B] transition-transform duration-200 ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isProfileMenuOpen && (
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-[#E1E7EE] shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {/* User Profile Summary */}
+                  <div className="px-4 py-3 border-b border-[#E1E7EE] space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#08785D] to-[#06664E] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                        {getInitials(currentUser.name, currentUser.email)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-[#12233D] truncate">{currentUser.name}</span>
+                          {currentUser.is_verified && (
+                            <span className="text-[9px] font-bold text-[#08785D] bg-[#E8F7F0] border border-[#B7E7D2] px-1 py-0.2 rounded-sm shrink-0">
+                              Verified
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#64748B] font-mono truncate" title={currentUser.email}>
+                          {currentUser.email}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Account Actions */}
+                  <div className="p-1.5 space-y-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(10);
+                        setIsProfileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#12233D] hover:bg-[#F8FAFC] hover:text-[#08785D] transition cursor-pointer"
+                    >
+                      <Settings className="w-4 h-4 text-[#68778B]" />
+                      <span>Settings & Diagnostics</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(9);
+                        setIsProfileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#12233D] hover:bg-[#F8FAFC] hover:text-[#08785D] transition cursor-pointer"
+                    >
+                      <BookMarked className="w-4 h-4 text-[#68778B]" />
+                      <span>Saved Notices Tracker</span>
+                    </button>
+                  </div>
+
+                  {/* Sign Out Action */}
+                  <div className="pt-1.5 px-1.5 border-t border-[#E1E7EE]">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsProfileMenuOpen(false);
+                        await handleLogout();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#B42318] hover:bg-[#FEE8E7] transition cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => openAuthPage('login')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] shadow-2xs transition cursor-pointer"
+              aria-label="Sign In or Create Citizen Account"
+              title="Sign In to access persistent notices and tasks"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </button>
+          )}
+        </div>
 
 
       </div>

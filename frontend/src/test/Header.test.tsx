@@ -34,16 +34,16 @@ describe('Header Component', () => {
     expect(notifBtn).toBeInTheDocument();
   });
 
-  it('preserves clean top-bar navigation without cluttered guest sign in button', () => {
+  it('renders top-right profile avatar or citizen sign-in access', () => {
     render(
       <NoticeProvider>
         <Header />
       </NoticeProvider>
     );
 
-    // Standalone top-bar sign in is removed in favor of sidebar account entry
-    const headerSignInBtn = screen.queryByRole('button', { name: /^Sign In$/i });
-    expect(headerSignInBtn).not.toBeInTheDocument();
+    // Guest state renders the accessible Sign In CTA with User icon
+    const headerSignInBtn = screen.getByRole('button', { name: /Sign In or Create Citizen Account/i });
+    expect(headerSignInBtn).toBeInTheDocument();
   });
 
   it('renders dark theme quick toggle and switches between Slate Green and Midnight Teal', async () => {
