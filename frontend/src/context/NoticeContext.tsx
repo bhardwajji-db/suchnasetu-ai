@@ -70,6 +70,7 @@ interface NoticeContextType {
   setOutputLang: (lang: string) => void;
   sourceLang: string;
   setSourceLang: (lang: string) => void;
+  regenerateInLanguage: (newLang: string) => Promise<void>;
   detectedLangMeta: { detected_language: string; confidence: number; is_mixed: boolean } | null;
   setDetectedLangMeta: (meta: { detected_language: string; confidence: number; is_mixed: boolean } | null) => void;
   documentId: string | null;
@@ -829,14 +830,23 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const p2Timer = setTimeout(() => setAnalysisPhase(3), 2500);
 
       try {
-        const targetLang = overrideLang || outputLang || selectedLang || 'en';
-        const res = await apiClient.analyzeNotice(
-          textToAnalyze,
-          targetLang,
-          readingLevel,
-          sessionId,
-          activeProvider
-        );
+        const targetLang = overrideLang || outputLang || 'en';
+        const res = (sourceLang && sourceLang !== 'auto')
+          ? await apiClient.analyzeNotice(
+              textToAnalyze,
+              targetLang,
+              readingLevel,
+              sessionId,
+              activeProvider,
+              sourceLang
+            )
+          : await apiClient.analyzeNotice(
+              textToAnalyze,
+              targetLang,
+              readingLevel,
+              sessionId,
+              activeProvider
+            );
         if (res.session_id) {
           setSessionId(res.session_id);
         }
@@ -928,6 +938,16 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     ]
   );
 
+  const regenerateInLanguage = useCallback(
+    async (newLang: string) => {
+      setOutputLang(newLang);
+      const text = rawNoticeText.trim();
+      if (!text) return;
+      await runAnalysis(text, newLang);
+    },
+    [rawNoticeText, runAnalysis]
+  );
+
   const openOriginalNoticeModal = useCallback(() => setIsOriginalNoticeOpen(true), []);
   const closeOriginalNoticeModal = useCallback(() => setIsOriginalNoticeOpen(false), []);
 
@@ -975,7 +995,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     if (!structuredNotice) return;
     try {
-      const targetLang = outputLang || selectedLang || 'en';
+      const targetLang = outputLang || 'en';
       const res = await apiClient.getReadingLevelSummary(
         structuredNotice,
         level,
@@ -1091,7 +1111,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const askQuestion = async (question: string) => {
     if (!question.trim() || !rawNoticeText.trim()) return;
     try {
-      const langForQuery = outputLang || selectedLang || 'en';
+      const langForQuery = outputLang || 'en';
       const answer = await apiClient.askFollowUp(question, rawNoticeText, sessionId, langForQuery);
       setFollowUpHistory((prev) => [answer, ...prev]);
     } catch (err: any) {
@@ -1135,6 +1155,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setOutputLang,
         sourceLang,
         setSourceLang,
+        regenerateInLanguage,
         detectedLangMeta,
         setDetectedLangMeta,
         documentId,

@@ -8,7 +8,6 @@ export const PlainLanguageSummaryView: React.FC = () => {
     summaryEn,
     summaryHi,
     localizedSummary,
-    selectedLang,
     outputLang,
     readingLevel,
     changeReadingLevel,
@@ -17,11 +16,11 @@ export const PlainLanguageSummaryView: React.FC = () => {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
 
-  const summary = (outputLang && outputLang !== 'en' && localizedSummary)
-    ? localizedSummary
-    : (selectedLang === 'hi' || outputLang === 'hi')
+  const summary = (outputLang === 'hi')
     ? (summaryHi || localizedSummary || summaryEn)
-    : (summaryEn || localizedSummary || summaryHi);
+    : (outputLang === 'en')
+    ? (summaryEn || localizedSummary || summaryHi)
+    : (localizedSummary || summaryEn || summaryHi);
   if (!summary) return null;
 
   const handleReadAloud = () => {
@@ -45,7 +44,7 @@ export const PlainLanguageSummaryView: React.FC = () => {
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(fullText);
-      utterance.lang = selectedLang === 'hi' ? 'hi-IN' : 'en-US';
+      utterance.lang = outputLang === 'hi' ? 'hi-IN' : 'en-US';
       utterance.rate = 0.95;
       utterance.onstart = () => setIsPlayingAudio(true);
       utterance.onend = () => setIsPlayingAudio(false);

@@ -598,6 +598,8 @@ class AnalyzeRequest(BaseModel):
 
     target_language: str = Field(default="en", description="Target language code: en, hi, bn, ta, te, mr, gu, pa, kn, ur")
 
+    output_language: Optional[str] = Field(default=None, description="Alias for target_language")
+
     reading_level: str = Field(default="standard", description="'simple', 'standard', 'detailed'")
 
     session_id: Optional[str] = Field(default=None, description="Optional persistent session ID")
@@ -809,6 +811,10 @@ class ExtractCriteriaRequest(BaseModel):
     session_id: Optional[str] = None
 
     notice_text: Optional[str] = None
+
+    target_language: str = "en"
+
+    output_language: Optional[str] = None
 
 
 
@@ -1785,7 +1791,11 @@ async def analyze_endpoint(
 
         fp = hashlib.sha256(text.encode("utf-8")).hexdigest()
 
-        cache_key = f"{fp}:{payload.provider or config.llm_provider}"
+        req_lang = (payload.output_language or payload.target_language or "en").lower().strip()
+
+        src_lang_req = (payload.source_language or "").lower().strip() or None
+
+        cache_key = f"{fp}:{req_lang}:{payload.reading_level}:{payload.provider or config.llm_provider}"
 
 
 
@@ -1819,7 +1829,7 @@ async def analyze_endpoint(
 
                 else:
 
-                    task = asyncio.create_task(asyncio.to_thread(analyzer.analyze_notice, text))
+                    task = asyncio.create_task(asyncio.to_thread(analyzer.analyze_notice, text, target_lang=req_lang, source_lang=src_lang_req))
 
                     _IN_FLIGHT_ANALYSES[cache_key] = task
 
@@ -1859,7 +1869,7 @@ async def analyze_endpoint(
 
         # Summaries & Checklists (deterministic, fast)
 
-        summary_en = generate_deterministic_summary(structured, reading_level=payload.reading_level)
+        summary_en = generate_deterministic_summary(structured, reading_level=payload.reading_level, target_lang="en")
 
         checklist_en = generate_action_checklist(structured)
 
@@ -1867,19 +1877,31 @@ async def analyze_endpoint(
 
         # Bilingual translations
 
-        summary_hi = translate_summary(summary_en, target_lang="hi", client=None)
+        summary_hi = generate_deterministic_summary(structured, reading_level=payload.reading_level, target_lang="hi")
 
-        checklist_hi = translate_checklist(checklist_en, target_lang="hi", client=None)
+        checklist_hi = translate_checklist(checklist_en, target_lang="hi", client=custom_client)
 
 
 
         # Localized target language translations
 
-        req_lang = payload.target_language.lower().strip() if payload.target_language else "en"
+        if req_lang == "hi":
 
-        localized_summary = translate_summary(summary_en, target_lang=req_lang, client=None)
+            localized_summary = summary_hi
 
-        localized_checklist = translate_checklist(checklist_en, target_lang=req_lang, client=None)
+            localized_checklist = checklist_hi
+
+        elif req_lang == "en":
+
+            localized_summary = summary_en
+
+            localized_checklist = checklist_en
+
+        else:
+
+            localized_summary = translate_summary(summary_en, target_lang=req_lang, client=custom_client)
+
+            localized_checklist = translate_checklist(checklist_en, target_lang=req_lang, client=custom_client)
 
 
 
@@ -2255,13 +2277,23 @@ def reading_level_endpoint(payload: ReadingLevelRequest):
 
         lvl = "standard"
 
-    summary_en = generate_deterministic_summary(payload.structured_notice, reading_level=lvl)
+    req_lang = (payload.target_language or "en").lower().strip()
 
-    summary_hi = translate_summary(summary_en, target_lang="hi", client=None)
+    summary_en = generate_deterministic_summary(payload.structured_notice, reading_level=lvl, target_lang="en")
 
-    req_lang = payload.target_language.lower().strip() if payload.target_language else "en"
+    summary_hi = generate_deterministic_summary(payload.structured_notice, reading_level=lvl, target_lang="hi")
 
-    localized_summary = translate_summary(summary_en, target_lang=req_lang, client=None)
+    if req_lang == "hi":
+
+        localized_summary = summary_hi
+
+    elif req_lang == "en":
+
+        localized_summary = summary_en
+
+    else:
+
+        localized_summary = translate_summary(summary_en, target_lang=req_lang, client=None)
 
 
 
@@ -2687,6 +2719,8 @@ async def compare_revision_ledger_endpoint(payload: CompareNoticesRequest):
 
 
 
+    req_lang = (payload.output_language or payload.target_language or "en").lower().strip()
+
     return await asyncio.to_thread(
 
         revision_engine.build_revision_ledger,
@@ -2702,6 +2736,8 @@ async def compare_revision_ledger_endpoint(payload: CompareNoticesRequest):
         source_raw_text=src_text,
 
         target_raw_text=tgt_text,
+
+        target_language=req_lang,
 
     )
 
@@ -2837,6 +2873,8 @@ async def evaluate_eligibility_endpoint(payload: EvaluateEligibilityRequest):
 
     criteria = eligibility_engine.extract_criteria(notice)
 
+    req_lang = (payload.output_language or payload.target_language or "en").lower().strip()
+
     return eligibility_engine.evaluate_profile(
 
         criteria=criteria,
@@ -2844,6 +2882,8 @@ async def evaluate_eligibility_endpoint(payload: EvaluateEligibilityRequest):
         profile=payload.applicant_profile,
 
         session_id=payload.session_id,
+
+        target_language=req_lang,
 
     )
 
@@ -2963,6 +3003,8 @@ async def generate_action_plan_endpoint(payload: GenerateActionPlanRequest):
 
 
 
+    req_lang = (payload.output_language or payload.target_language or "en").lower().strip()
+
     return await asyncio.to_thread(
 
         ActionNavigatorService.generate_plan,
@@ -2976,6 +3018,8 @@ async def generate_action_plan_endpoint(payload: GenerateActionPlanRequest):
         eligibility=payload.eligibility_assessment,
 
         revision_ledger=payload.revision_ledger,
+
+        target_language=req_lang,
 
     )
 

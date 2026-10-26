@@ -45,10 +45,12 @@ def _get_fact_value(fact: Optional[ExtractedFact]) -> str:
 def generate_deterministic_summary(
     notice: StructuredNotice,
     reading_level: str = "standard",
+    target_lang: str = "en",
 ) -> PlainLanguageSummary:
     """
     Builds a plain-language summary directly from verified grounded facts.
-    Guarantees zero hallucination and clear answers to the 7 core citizen questions.
+    Guarantees zero hallucination, clear answers to the 7 core citizen questions,
+    and supports multiple explanation languages (English and Hindi).
 
     Supports reading levels:
     - 'simple': Short, beginner-friendly sentences focusing strictly on essential facts.
@@ -60,6 +62,8 @@ def generate_deterministic_summary(
     lvl = (reading_level or "standard").lower().strip()
     if lvl not in ("simple", "standard", "detailed"):
         lvl = "standard"
+
+    is_hi = (target_lang or "en").lower().strip() == "hi"
 
     # Extract all procedural and administrative fact values
     purpose_val = _get_fact_value(notice.purpose)
@@ -111,51 +115,98 @@ def generate_deterministic_summary(
     # 1. SIMPLE READING LEVEL (Beginner-Friendly, Short Sentences, Essential Facts)
     # =========================================================================
     if lvl == "simple":
-        # 1. About
-        if purpose_stated:
-            about = f"Topic: {purpose_val}"
-            if auth_stated:
-                about += f". From: {auth_val}."
-        else:
-            about = "Not stated in this notice."
+        if is_hi:
+            # 1. About
+            if purpose_stated:
+                about = f"विषय: {purpose_val}"
+                if auth_stated:
+                    about += f"। जारीकर्ता: {auth_val}।"
+            else:
+                about = "सूचना में उल्लेख नहीं है।"
 
-        # 2. Eligible
-        if elig_stated:
-            eligible = f"Who can apply: {elig_val}"
-            if fee_stated:
-                eligible += f". Cost: {fee_val}."
-        else:
-            eligible = "No rules stated."
+            # 2. Eligible
+            if elig_stated:
+                eligible = f"पात्रता: {elig_val}"
+                if fee_stated:
+                    eligible += f"। लागत/शुल्क: {fee_val}।"
+            else:
+                eligible = "कोई नियम उल्लिखित नहीं हैं।"
 
-        # 3. Actions
-        if actions_stated:
-            actions = f"Steps: {actions_val}"
-        else:
-            actions = "No steps given."
+            # 3. Actions
+            if actions_stated:
+                actions = f"कदम: {actions_val}"
+            else:
+                actions = "कोई कदम नहीं दिए गए हैं।"
 
-        # 4. Documents
-        if doc_stated:
-            documents = f"Bring: {doc_val}"
-        else:
-            documents = "No documents needed."
+            # 4. Documents
+            if doc_stated:
+                documents = f"दस्तावेज़: {doc_val}"
+            else:
+                documents = "कोई दस्तावेज़ आवश्यक नहीं हैं।"
 
-        # 5. Deadline
-        if dl_stated:
-            deadline = f"Due date: {dl_val}"
-        else:
-            deadline = "No deadline given. Check immediately."
+            # 5. Deadline
+            if dl_stated:
+                deadline = f"अंतिम तिथि: {dl_val}"
+            else:
+                deadline = "कोई अंतिम तिथि नहीं दी गई है। तुरंत कार्यालय से संपर्क करें।"
 
-        # 6. Contact
-        if contact_stated:
-            help_contact = f"Contact: {contact_val}"
-        else:
-            help_contact = "No contact details given."
+            # 6. Contact
+            if contact_stated:
+                help_contact = f"संपर्क: {contact_val}"
+            else:
+                help_contact = "कोई संपर्क विवरण नहीं दिया गया है।"
 
-        # 7. Missing
-        if missing_list:
-            missing = "Missing: " + ", ".join(missing_list)
+            # 7. Missing
+            if missing_list:
+                missing = "अनुपलब्ध: " + ", ".join(missing_list)
+            else:
+                missing = "सभी प्रमुख विवरण शामिल हैं।"
         else:
-            missing = "All key details are covered."
+            # 1. About
+            if purpose_stated:
+                about = f"Topic: {purpose_val}"
+                if auth_stated:
+                    about += f". From: {auth_val}."
+            else:
+                about = "Not stated in this notice."
+
+            # 2. Eligible
+            if elig_stated:
+                eligible = f"Who can apply: {elig_val}"
+                if fee_stated:
+                    eligible += f". Cost: {fee_val}."
+            else:
+                eligible = "No rules stated."
+
+            # 3. Actions
+            if actions_stated:
+                actions = f"Steps: {actions_val}"
+            else:
+                actions = "No steps given."
+
+            # 4. Documents
+            if doc_stated:
+                documents = f"Bring: {doc_val}"
+            else:
+                documents = "No documents needed."
+
+            # 5. Deadline
+            if dl_stated:
+                deadline = f"Due date: {dl_val}"
+            else:
+                deadline = "No deadline given. Check immediately."
+
+            # 6. Contact
+            if contact_stated:
+                help_contact = f"Contact: {contact_val}"
+            else:
+                help_contact = "No contact details given."
+
+            # 7. Missing
+            if missing_list:
+                missing = "Missing: " + ", ".join(missing_list)
+            else:
+                missing = "All key details are covered."
 
         return PlainLanguageSummary(
             about=about,
@@ -171,73 +222,142 @@ def generate_deterministic_summary(
     # 2. STANDARD READING LEVEL (Everyday Clear Language, Moderate Context)
     # =========================================================================
     if lvl == "standard":
-        # 1. About
-        if purpose_stated:
-            about_parts = [f"This notice announces {purpose_val}."]
-            if auth_stated:
-                about_parts.append(f"It was issued by {auth_val}.")
-            if ref_stated or date_stated:
-                meta_bits = []
-                if ref_stated:
-                    meta_bits.append(f"Notice Ref: {ref_val}")
-                if date_stated:
-                    meta_bits.append(f"Date: {date_val}")
-                about_parts.append(f"({', '.join(meta_bits)})")
-            if subject_stated and subject_val.lower() not in purpose_val.lower():
-                about_parts.append(f"Subject: {subject_val}.")
-            about = " ".join(about_parts)
-        else:
-            about = "The main purpose and subject matter are not explicitly stated in this notice."
+        if is_hi:
+            # 1. About
+            if purpose_stated:
+                about_parts = [f"यह सूचना {purpose_val} के संबंध में जारी की गई है।"]
+                if auth_stated:
+                    about_parts.append(f"यह {auth_val} द्वारा जारी की गई है।")
+                if ref_stated or date_stated:
+                    meta_bits = []
+                    if ref_stated:
+                        meta_bits.append(f"संदर्भ सं: {ref_val}")
+                    if date_stated:
+                        meta_bits.append(f"दिनांक: {date_val}")
+                    about_parts.append(f"({', '.join(meta_bits)})")
+                if subject_stated and subject_val.lower() not in purpose_val.lower():
+                    about_parts.append(f"विषय: {subject_val}।")
+                about = " ".join(about_parts)
+            else:
+                about = "इस सूचना में मुख्य उद्देश्य व विषय वस्तु का स्पष्ट उल्लेख नहीं है।"
 
-        # 2. Eligible
-        if elig_stated:
-            elig_parts = [f"Eligibility is open to: {elig_val}."]
-            if fee_stated:
-                elig_parts.append(f"Application Fee / Cost: {fee_val}.")
-            if conditions_stated:
-                elig_parts.append(f"Important Conditions & Exceptions: {conditions_val}.")
-            eligible = " ".join(elig_parts)
-        else:
-            eligible = "No specific eligibility requirements or participant criteria are stated. Check with the organizer."
+            # 2. Eligible
+            if elig_stated:
+                elig_parts = [f"पात्रता: {elig_val}।"]
+                if fee_stated:
+                    elig_parts.append(f"आवेदन शुल्क / लागत: {fee_val}।")
+                if conditions_stated:
+                    elig_parts.append(f"महत्वपूर्ण शर्तें व नियम: {conditions_val}।")
+                eligible = " ".join(elig_parts)
+            else:
+                eligible = "सूचना में कोई विशिष्ट पात्रता मानदंड निर्दिष्ट नहीं हैं। अधिकृत कार्यालय से पुष्टि करें।"
 
-        # 3. Actions
-        if actions_stated:
-            act_parts = [f"Required actions: {actions_val}."]
-            if action_dl_stated and action_dl_val.lower() not in actions_val.lower():
-                act_parts.append(f"Key Action & Deadline: {action_dl_val}.")
-            actions = " ".join(act_parts)
-        else:
-            actions = "No specific steps or submission procedures are outlined in the notice."
+            # 3. Actions
+            if actions_stated:
+                act_parts = [f"आवश्यक कदम: {actions_val}।"]
+                if action_dl_stated and action_dl_val.lower() not in actions_val.lower():
+                    act_parts.append(f"प्रमुख कार्रवाई एवं अंतिम तिथि: {action_dl_val}।")
+                actions = " ".join(act_parts)
+            else:
+                actions = "सूचना में कोई विशिष्ट कदम या आवेदन प्रक्रिया उल्लिखित नहीं है।"
 
-        # 4. Documents
-        if doc_stated:
-            documents = f"Required documents: {doc_val}."
-        else:
-            documents = "No required documents or proof certificates are specified in the notice."
+            # 4. Documents
+            if doc_stated:
+                documents = f"आवश्यक दस्तावेज़: {doc_val}।"
+            else:
+                documents = "सूचना में कोई आवश्यक दस्तावेज़ या प्रमाण पत्र निर्दिष्ट नहीं हैं।"
 
-        # 5. Deadline
-        if dl_stated:
-            dl_parts = [f"Submission deadline: {dl_val}."]
-            if notice.deadline.status in (CertaintyStatus.UNCERTAIN, CertaintyStatus.CONFLICTING):
-                dl_parts.append("(Please note: this deadline is marked as provisional or tentative).")
-            deadline = " ".join(dl_parts)
-        else:
-            deadline = "No deadline is mentioned. Please verify with the official office immediately."
+            # 5. Deadline
+            if dl_stated:
+                dl_parts = [f"आवेदन की अंतिम तिथि: {dl_val}।"]
+                if notice.deadline.status in (CertaintyStatus.UNCERTAIN, CertaintyStatus.CONFLICTING):
+                    dl_parts.append("(कृपया ध्यान दें: यह अंतिम तिथि अनंतिम अथवा संभावित है)।")
+                deadline = " ".join(dl_parts)
+            else:
+                deadline = "अंतिम तिथि का उल्लेख नहीं है। कृपया तुरंत आधिकारिक कार्यालय से सत्यापन करें।"
 
-        # 6. Contact
-        if contact_stated:
-            contact_parts = [f"Official contact: {contact_val}."]
-            if auth_stated:
-                contact_parts.append(f"(Office: {auth_val}).")
-            help_contact = " ".join(contact_parts)
-        else:
-            help_contact = "No contact person, phone number, or email is provided in the notice."
+            # 6. Contact
+            if contact_stated:
+                contact_parts = [f"आधिकारिक संपर्क: {contact_val}।"]
+                if auth_stated:
+                    contact_parts.append(f"(कार्यालय: {auth_val})।")
+                help_contact = " ".join(contact_parts)
+            else:
+                help_contact = "सूचना में कोई संपर्क विवरण नहीं दिया गया है।"
 
-        # 7. Missing
-        if missing_list:
-            missing = "The notice is missing important standard information: " + ", ".join(missing_list) + "."
+            # 7. Missing
+            if missing_list:
+                missing = "सूचना में निम्नलिखित महत्वपूर्ण प्रशासनिक जानकारी का अभाव है: " + ", ".join(missing_list) + "।"
+            else:
+                missing = "सूचना में सभी मानक प्रशासनिक विवरण शामिल प्रतीत होते हैं।"
         else:
-            missing = "All key standard administrative details appear to be covered in the notice."
+            # 1. About
+            if purpose_stated:
+                about_parts = [f"This notice announces {purpose_val}."]
+                if auth_stated:
+                    about_parts.append(f"It was issued by {auth_val}.")
+                if ref_stated or date_stated:
+                    meta_bits = []
+                    if ref_stated:
+                        meta_bits.append(f"Notice Ref: {ref_val}")
+                    if date_stated:
+                        meta_bits.append(f"Date: {date_val}")
+                    about_parts.append(f"({', '.join(meta_bits)})")
+                if subject_stated and subject_val.lower() not in purpose_val.lower():
+                    about_parts.append(f"Subject: {subject_val}.")
+                about = " ".join(about_parts)
+            else:
+                about = "The main purpose and subject matter are not explicitly stated in this notice."
+
+            # 2. Eligible
+            if elig_stated:
+                elig_parts = [f"Eligibility is open to: {elig_val}."]
+                if fee_stated:
+                    elig_parts.append(f"Application Fee / Cost: {fee_val}.")
+                if conditions_stated:
+                    elig_parts.append(f"Important Conditions & Exceptions: {conditions_val}.")
+                eligible = " ".join(elig_parts)
+            else:
+                eligible = "No specific eligibility requirements or participant criteria are stated. Check with the organizer."
+
+            # 3. Actions
+            if actions_stated:
+                act_parts = [f"Required actions: {actions_val}."]
+                if action_dl_stated and action_dl_val.lower() not in actions_val.lower():
+                    act_parts.append(f"Key Action & Deadline: {action_dl_val}.")
+                actions = " ".join(act_parts)
+            else:
+                actions = "No specific steps or submission procedures are outlined in the notice."
+
+            # 4. Documents
+            if doc_stated:
+                documents = f"Required documents: {doc_val}."
+            else:
+                documents = "No required documents or proof certificates are specified in the notice."
+
+            # 5. Deadline
+            if dl_stated:
+                dl_parts = [f"Submission deadline: {dl_val}."]
+                if notice.deadline.status in (CertaintyStatus.UNCERTAIN, CertaintyStatus.CONFLICTING):
+                    dl_parts.append("(Please note: this deadline is marked as provisional or tentative).")
+                deadline = " ".join(dl_parts)
+            else:
+                deadline = "No deadline is mentioned. Please verify with the official office immediately."
+
+            # 6. Contact
+            if contact_stated:
+                contact_parts = [f"Official contact: {contact_val}."]
+                if auth_stated:
+                    contact_parts.append(f"(Office: {auth_val}).")
+                help_contact = " ".join(contact_parts)
+            else:
+                help_contact = "No contact person, phone number, or email is provided in the notice."
+
+            # 7. Missing
+            if missing_list:
+                missing = "The notice is missing important standard information: " + ", ".join(missing_list) + "."
+            else:
+                missing = "All key standard administrative details appear to be covered in the notice."
 
         return PlainLanguageSummary(
             about=about,
@@ -252,7 +372,138 @@ def generate_deterministic_summary(
     # =========================================================================
     # 3. DETAILED READING LEVEL (Comprehensive Multi-Section Expansion & Evidence)
     # =========================================================================
-    # 1. About
+    if is_hi:
+        about_sections: List[str] = []
+        if purpose_stated:
+            about_sections.append(f"सूचना उद्देश्य एवं निर्देश: {purpose_val}।")
+        else:
+            about_sections.append("सूचना उद्देश्य: दस्तावेज़ में स्पष्ट रूप से उल्लिखित नहीं है।")
+
+        if auth_stated:
+            about_sections.append(f"जारीकर्ता विभाग: {auth_val}।")
+        else:
+            about_sections.append("जारीकर्ता विभाग: सूचना में निर्दिष्ट नहीं है।")
+
+        if ref_stated:
+            about_sections.append(f"आधिकारिक संदर्भ संख्या: {ref_val}।")
+        else:
+            about_sections.append("आधिकारिक संदर्भ संख्या: सूचना में निर्दिष्ट नहीं है।")
+
+        if date_stated:
+            about_sections.append(f"सूचना दिनांक: {date_val}।")
+        else:
+            about_sections.append("सूचना दिनांक: सूचना में निर्दिष्ट नहीं है।")
+
+        if recipient_stated:
+            about_sections.append(f"लक्षित प्राप्तकर्ता / पाठक: {recipient_val}।")
+        else:
+            about_sections.append("लक्षित प्राप्तकर्ता: सामान्य जन / पाठ में कोई प्रतिबंध नहीं है।")
+
+        if subject_stated and subject_val.lower() not in purpose_val.lower():
+            about_sections.append(f"प्राथमिक विषय: {subject_val}।")
+
+        if getattr(notice.purpose, "evidence_quote", None):
+            about_sections.append(f'[प्रमाण उद्धरण: "{notice.purpose.evidence_quote}"]')
+
+        detailed_about = " ".join(about_sections)
+
+        elig_sections: List[str] = []
+        if elig_stated:
+            elig_sections.append(f"विस्तृत पात्रता मानदंड: {elig_val}।")
+        else:
+            elig_sections.append("पात्रता मानदंड: सूचना में कोई विशिष्ट योग्यता अथवा नियम उल्लिखित नहीं हैं।")
+
+        if fee_stated:
+            elig_sections.append(f"वित्तीय आवश्यकताएं / शुल्क: {fee_val}।")
+        else:
+            elig_sections.append("वित्तीय आवश्यकताएं: आवेदन शुल्क या भुगतान विवरण निर्दिष्ट नहीं हैं।")
+
+        if conditions_stated:
+            elig_sections.append(f"अनिवार्य शर्तें, अपवाद व छूट: {conditions_val}।")
+        else:
+            elig_sections.append("अनिवार्य शर्तें: कोई विशेष अपवाद अथवा आरक्षण दर्ज नहीं है।")
+
+        if getattr(notice.eligibility, "evidence_quote", None):
+            elig_sections.append(f'[प्रमाण उद्धरण: "{notice.eligibility.evidence_quote}"]')
+
+        detailed_eligible = " ".join(elig_sections)
+
+        act_sections: List[str] = []
+        if actions_stated:
+            act_sections.append(f"चरण-दर-चरण प्रक्रिया: {actions_val}।")
+        else:
+            act_sections.append("कदम: सूचना में आवेदन प्रक्रियाओं पर विस्तृत निर्देश नहीं हैं।")
+
+        if action_dl_stated:
+            act_sections.append(f"प्रक्रियात्मक एवं प्रस्तुति निर्देश: {action_dl_val}।")
+
+        if getattr(notice.required_actions, "evidence_quote", None):
+            act_sections.append(f'[प्रमाण उद्धरण: "{notice.required_actions.evidence_quote}"]')
+
+        detailed_actions = " ".join(act_sections)
+
+        doc_sections: List[str] = []
+        if doc_stated:
+            doc_sections.append(f"दस्तावेज़ चेकलिस्ट: {doc_val}।")
+        else:
+            doc_sections.append("आवश्यक दस्तावेज़: सूचना में विशिष्ट प्रमाणपत्रों की सूची नहीं है।")
+
+        if getattr(notice.required_documents, "evidence_quote", None):
+            doc_sections.append(f'[प्रमाण उद्धरण: "{notice.required_documents.evidence_quote}"]')
+
+        detailed_documents = " ".join(doc_sections)
+
+        dl_sections: List[str] = []
+        if dl_stated:
+            dl_sections.append(f"आधिकारिक अंतिम तिथि: {dl_val}।")
+            if action_dl_stated and action_dl_val.lower() not in dl_val.lower():
+                dl_sections.append(f"कट-ऑफ आवश्यकताएं: {action_dl_val}।")
+        else:
+            dl_sections.append("आधिकारिक अंतिम तिथि: सूचना में कोई समय सीमा निर्दिष्ट नहीं है। तुरंत कार्यालय से सत्यापन करें।")
+
+        if getattr(notice.deadline, "evidence_quote", None):
+            dl_sections.append(f'[प्रमाण उद्धरण: "{notice.deadline.evidence_quote}"]')
+
+        detailed_deadline = " ".join(dl_sections)
+
+        contact_sections: List[str] = []
+        if contact_stated:
+            contact_sections.append(f"आधिकारिक पूछताछ एवं सहायता केंद्र: {contact_val}।")
+        else:
+            contact_sections.append("आधिकारिक संपर्क विवरण: सूचना में कोई संपर्क नंबर या ईमेल नहीं दिया गया है।")
+
+        if auth_stated:
+            contact_sections.append(f"प्रशासनिक कार्यालय: {auth_val}।")
+
+        if getattr(notice.contact_details, "evidence_quote", None):
+            contact_sections.append(f'[प्रमाण उद्धरण: "{notice.contact_details.evidence_quote}"]')
+
+        detailed_contact = " ".join(contact_sections)
+
+        missing_sections: List[str] = []
+        if missing_list:
+            items_str = "; ".join(f"({i + 1}) {item}" for i, item in enumerate(missing_list))
+            missing_sections.append(f"अनुपलब्ध प्रशासनिक विवरण: {items_str}।")
+        else:
+            missing_sections.append("अनुपलब्ध विवरण: कोई मानक प्रशासनिक घटक पूर्णतः अनुपलब्ध नहीं दिखता।")
+
+        if uncertain_list:
+            uncertain_str = "; ".join(f"({i + 1}) {item}" for i, item in enumerate(uncertain_list))
+            missing_sections.append(f"अस्पष्ट अथवा परस्पर विरोधी तथ्य: {uncertain_str}।")
+
+        detailed_missing = " ".join(missing_sections)
+
+        return PlainLanguageSummary(
+            about=detailed_about,
+            eligible=detailed_eligible,
+            actions=detailed_actions,
+            documents=detailed_documents,
+            deadline=detailed_deadline,
+            help_contact=detailed_contact,
+            missing=detailed_missing,
+        )
+
+    # 1. About (English Detailed)
     about_sections: List[str] = []
     if purpose_stated:
         about_sections.append(f"Notice Purpose & Directive: {purpose_val}.")

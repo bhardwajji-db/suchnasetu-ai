@@ -88,7 +88,9 @@ class ActionNavigatorService:
         profile: Optional[ApplicantProfile] = None,
         eligibility: Optional[EligibilityAssessment] = None,
         revision_ledger: Optional[RevisionLedger] = None,
+        target_language: str = "en",
     ) -> PersonalizedActionPlan:
+        is_hi = (target_language or "en").lower().strip() == "hi"
         """
         Synthesizes a structured, dependency-aware action roadmap based on notice facts,
         user profile, and eligibility assessment.

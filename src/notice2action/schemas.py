@@ -432,6 +432,8 @@ class CompareNoticesRequest(BaseModel):
     target_session_id: Optional[str] = None
     source_text: Optional[str] = None
     target_text: Optional[str] = None
+    target_language: str = "en"
+    output_language: Optional[str] = None
 
 
 # =========================================================
@@ -535,6 +537,8 @@ class EvaluateEligibilityRequest(BaseModel):
     session_id: Optional[str] = None
     notice_text: Optional[str] = None
     applicant_profile: ApplicantProfile
+    target_language: str = "en"
+    output_language: Optional[str] = None
 
 
 # =========================================================
@@ -687,6 +691,8 @@ class GenerateActionPlanRequest(BaseModel):
     applicant_profile: Optional[ApplicantProfile] = None
     eligibility_assessment: Optional[EligibilityAssessment] = None
     revision_ledger: Optional[RevisionLedger] = None
+    target_language: str = "en"
+    output_language: Optional[str] = None
 
 
 class UpdateActionStatusRequest(BaseModel):

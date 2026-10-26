@@ -70,6 +70,7 @@ export const IngestionView: React.FC = () => {
     setOutputLang,
     sourceLang,
     setSourceLang,
+    regenerateInLanguage,
     detectedLangMeta,
     detectDocumentLanguage,
     readingLevel,
@@ -161,14 +162,14 @@ export const IngestionView: React.FC = () => {
     fontSizeLevel === 1 ? 'text-xs' : fontSizeLevel === 3 ? 'text-base' : 'text-sm';
 
   const currentSummary = useMemo(() => {
-    if (outputLang && outputLang !== 'en' && localizedSummary) {
-      return localizedSummary;
-    }
-    if (selectedLang === 'hi' || outputLang === 'hi') {
+    if (outputLang === 'hi') {
       return summaryHi || localizedSummary || summaryEn;
     }
-    return summaryEn || localizedSummary || summaryHi;
-  }, [outputLang, localizedSummary, selectedLang, summaryHi, summaryEn]);
+    if (outputLang === 'en') {
+      return summaryEn || localizedSummary || summaryHi;
+    }
+    return localizedSummary || summaryEn || summaryHi;
+  }, [outputLang, localizedSummary, summaryHi, summaryEn]);
 
   // Render individual fact row
   const renderFactItem = (
@@ -392,7 +393,13 @@ export const IngestionView: React.FC = () => {
           <div className="flex items-center gap-2">
             <select
               value={outputLang}
-              onChange={(e) => setOutputLang(e.target.value)}
+              onChange={(e) => {
+                const newLang = e.target.value;
+                setOutputLang(newLang);
+                if (structuredNotice && rawNoticeText.trim()) {
+                  regenerateInLanguage(newLang);
+                }
+              }}
               aria-label={t("aiOutputLanguage")}
               className="flex-1 bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1.5 text-xs font-bold text-[#12233D] outline-hidden focus:border-[#245DC1] cursor-pointer"
             >
@@ -402,6 +409,18 @@ export const IngestionView: React.FC = () => {
                 </option>
               ))}
             </select>
+            {structuredNotice && (
+              <button
+                type="button"
+                onClick={() => regenerateInLanguage(outputLang)}
+                disabled={isAnalyzing}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-[#245DC1] hover:bg-[#1D4BA8] transition disabled:opacity-50 cursor-pointer shadow-xs shrink-0"
+                title="Regenerate citizen explanations in the selected output language without re-running OCR"
+              >
+                <RefreshCw className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                <span>{t("reAnalyzeNotice") || "Regenerate"}</span>
+              </button>
+            )}
           </div>
           <span className="text-[10px] text-[#68778B]">
             {t('aiOutputLanguageDesc')}

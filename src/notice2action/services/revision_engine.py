@@ -137,7 +137,9 @@ class RevisionEngine:
         target_raw_text: str = "",
         source_title: str = "Original Notice",
         target_title: str = "Revised Notice / Corrigendum",
+        target_language: str = "en",
     ) -> RevisionLedger:
+        is_hi = (target_language or "en").lower().strip() == "hi"
         """
         Builds a comprehensive RevisionLedger comparing source_notice and target_notice.
         """
@@ -169,7 +171,7 @@ class RevisionEngine:
             new_page = getattr(new_fact, "page_number", None) if new_fact else None
 
             category, requires_review, explanation = self._classify_change(
-                field_key, old_val, new_val, old_fact, new_fact
+                field_key, old_val, new_val, old_fact, new_fact, is_hi=is_hi
             )
 
             if category == ChangeCategory.MODIFIED:
@@ -225,6 +227,7 @@ class RevisionEngine:
         new_val: str,
         old_fact,
         new_fact,
+        is_hi: bool = False,
     ) -> Tuple[ChangeCategory, bool, str]:
         old_norm = self._normalize_string(old_val)
         new_norm = self._normalize_string(new_val)
@@ -240,23 +243,23 @@ class RevisionEngine:
 
         # Case 1: Both unstated
         if old_is_unstated and new_is_unstated:
-            return ChangeCategory.UNCHANGED, False, "Not specified in either notice version."
+            return ChangeCategory.UNCHANGED, False, ("दोनों परिपत्रों में उल्लेख नहीं है।" if is_hi else "Not specified in either notice version.")
 
         # Case 2: Added in revised notice
         if old_is_unstated and not new_is_unstated:
-            return ChangeCategory.ADDED, False, "Newly introduced in the revised circular."
+            return ChangeCategory.ADDED, False, ("संशोधित परिपत्र में नई शर्त जोड़ी गई है।" if is_hi else "Newly introduced in the revised circular.")
 
         # Case 3: Removed or omitted in revised notice
         if not old_is_unstated and new_is_unstated:
             return (
                 ChangeCategory.REMOVED,
                 True,
-                "Clause was present in the base notice but is omitted or silent in the revised circular.",
+                ("मूल सूचना में उपलब्ध था परंतु संशोधित परिपत्र में हटा दिया गया है।" if is_hi else "Clause was present in the base notice but is omitted or silent in the revised circular."),
             )
 
         # Case 4: Identical normalized content
         if old_norm == new_norm:
-            return ChangeCategory.UNCHANGED, False, "Terms remain identical across notice versions."
+            return ChangeCategory.UNCHANGED, False, ("दोनों परिपत्रों में नियम समान हैं।" if is_hi else "Terms remain identical across notice versions.")
 
         # Case 5: Uncertain status in either notice
         old_uncertain = old_fact and old_fact.status in (CertaintyStatus.UNCERTAIN, CertaintyStatus.CONFLICTING)
@@ -265,7 +268,7 @@ class RevisionEngine:
             return (
                 ChangeCategory.UNCERTAIN,
                 True,
-                "One or both notices report uncertain or tentative values for this field; official verification advised.",
+                ("एक या दोनों परिपत्रों में यह तथ्य अनंतिम है; आधिकारिक पुष्टि आवश्यक है।" if is_hi else "One or both notices report uncertain or tentative values for this field; official verification advised."),
             )
 
         # Case 6: Modified terms (e.g. deadline extended, fee altered)

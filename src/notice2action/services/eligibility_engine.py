@@ -86,7 +86,9 @@ class EligibilityEngine:
         criteria: List[EligibilityCriterion],
         profile: ApplicantProfile,
         session_id: Optional[str] = None,
+        target_language: str = "en",
     ) -> EligibilityAssessment:
+        is_hi = (target_language or "en").lower().strip() == "hi"
         """
         Deterministically evaluates an ApplicantProfile against extracted notice criteria.
         """
@@ -125,13 +127,13 @@ class EligibilityEngine:
         # Determine overall status
         if has_fail:
             overall = "NOT_ELIGIBLE"
-            summary = "One or more mandatory eligibility criteria were not satisfied."
+            summary = "एक या अधिक अनिवार्य पात्रता शर्तें पूरी नहीं हुईं।" if is_hi else "One or more mandatory eligibility criteria were not satisfied."
         elif has_unknown:
             overall = "INCONCLUSIVE"
-            summary = "Certain criteria could not be evaluated due to missing applicant information or ambiguous notice terms."
+            summary = "अपूर्ण जानकारी या अस्पष्ट शर्तों के कारण पात्रता अनिर्णायक है।" if is_hi else "Certain criteria could not be evaluated due to missing applicant information or ambiguous notice terms."
         else:
             overall = "ELIGIBLE"
-            summary = "All evaluated eligibility criteria appear to be satisfied based on available documentation."
+            summary = "उपलब्ध दस्तावेज़ों के अनुसार सभी पात्रता शर्तें पूरी होती हैं।" if is_hi else "All evaluated eligibility criteria appear to be satisfied based on available documentation."
 
         return EligibilityAssessment(
             session_id=session_id,

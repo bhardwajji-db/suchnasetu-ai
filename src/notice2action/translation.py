@@ -57,6 +57,9 @@ DETERMINISTIC_TRANSLATION_MAPS: Dict[str, Dict[str, str]] = {
         "pay_fee": "Pay Application Fee",
         "verify_eligibility": "Verify Eligibility Requirements",
         "prepare_documents": "Prepare Required Documents",
+        "review_notice": "Review Notification Details",
+        "note_deadline": "Note Submission Deadline",
+        "contact_helpdesk": "Contact Helpdesk for Clarifications",
     },
     "hi": {
         "prefix_about": "सूचना विवरण",
@@ -71,6 +74,9 @@ DETERMINISTIC_TRANSLATION_MAPS: Dict[str, Dict[str, str]] = {
         "pay_fee": "आवेदन शुल्क का भुगतान करें",
         "verify_eligibility": "पात्रता शर्तों की जांच करें",
         "prepare_documents": "आवश्यक दस्तावेज़ तैयार करें",
+        "review_notice": "सूचना विवरण की समीक्षा करें",
+        "note_deadline": "आवेदन की अंतिम तिथि नोट करें",
+        "contact_helpdesk": "सहायता केंद्र से संपर्क करें",
     },
     "bn": {
         "prefix_about": "বিজ্ঞপ্তি বিবরণ",
@@ -307,10 +313,19 @@ def translate_checklist(
         action_text = item.action
 
         # Replace standard action phrases with localized terms
-        for en_key in ["Submit Application Form", "Pay Application Fee", "Verify Eligibility Requirements", "Prepare Required Documents"]:
-            map_key = en_key.lower().replace(" ", "_")
-            if en_key in action_text and map_key in glossary:
-                action_text = action_text.replace(en_key, glossary[map_key])
+        phrase_maps = [
+            ("Submit Application Form", "submit_form"),
+            ("Pay Application Fee", "pay_fee"),
+            ("Verify Eligibility Requirements", "verify_eligibility"),
+            ("Prepare Required Documents", "prepare_documents"),
+            ("Review Notification Details", "review_notice"),
+            ("Note Submission Deadline", "note_deadline"),
+            ("Contact Helpdesk for Clarifications", "contact_helpdesk"),
+        ]
+        for en_key, map_key in phrase_maps:
+            if en_key.lower() in action_text.lower() and map_key in glossary:
+                pattern = re.compile(re.escape(en_key), re.IGNORECASE)
+                action_text = pattern.sub(glossary[map_key], action_text)
 
         translated_items.append(
             ChecklistItem(

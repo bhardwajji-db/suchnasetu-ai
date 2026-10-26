@@ -197,7 +197,8 @@ export const apiClient = {
     targetLanguage: string = 'en',
     readingLevel: string = 'standard',
     sessionId?: string | null,
-    provider?: string | null
+    provider?: string | null,
+    sourceLanguage?: string | null
   ): Promise<AnalyzeResponse> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 180000);
@@ -209,6 +210,8 @@ export const apiClient = {
         body: JSON.stringify({
           notice_text: noticeText,
           target_language: targetLanguage,
+          output_language: targetLanguage,
+          source_language: sourceLanguage || undefined,
           reading_level: readingLevel,
           session_id: sessionId || undefined,
           provider: provider || undefined,
@@ -284,6 +287,7 @@ export const apiClient = {
         structured_notice: structuredNotice,
         reading_level: readingLevel,
         target_language: targetLanguage,
+        output_language: targetLanguage,
         session_id: sessionId || undefined,
       }),
     });
@@ -307,6 +311,7 @@ export const apiClient = {
         notice_text: noticeText,
         session_id: sessionId || undefined,
         target_language: targetLanguage,
+        output_language: targetLanguage,
       }),
     });
     return handleResponse<FollowUpAnswer>(res);
@@ -401,7 +406,8 @@ export const apiClient = {
     sourceSessionId?: string,
     targetSessionId?: string,
     sourceText?: string,
-    targetText?: string
+    targetText?: string,
+    targetLanguage: string = 'en'
   ): Promise<RevisionLedger> {
     const res = await apiFetch(`${BASE_URL}/api/revision-ledger/compare`, {
       method: 'POST',
@@ -411,6 +417,8 @@ export const apiClient = {
         target_session_id: targetSessionId || undefined,
         source_text: sourceText || undefined,
         target_text: targetText || undefined,
+        target_language: targetLanguage,
+        output_language: targetLanguage,
       }),
     });
     return handleResponse<RevisionLedger>(res);
@@ -421,7 +429,8 @@ export const apiClient = {
    */
   async extractEligibilityCriteria(
     sessionId?: string,
-    noticeText?: string
+    noticeText?: string,
+    targetLanguage: string = 'en'
   ): Promise<EligibilityCriterion[]> {
     const res = await apiFetch(`${BASE_URL}/api/eligibility/extract-criteria`, {
       method: 'POST',
@@ -429,6 +438,8 @@ export const apiClient = {
       body: JSON.stringify({
         session_id: sessionId || undefined,
         notice_text: noticeText || undefined,
+        target_language: targetLanguage,
+        output_language: targetLanguage,
       }),
     });
     return handleResponse<EligibilityCriterion[]>(res);
@@ -440,7 +451,8 @@ export const apiClient = {
   async evaluateEligibility(
     profile: ApplicantProfile,
     sessionId?: string,
-    noticeText?: string
+    noticeText?: string,
+    targetLanguage: string = 'en'
   ): Promise<EligibilityAssessment> {
     const res = await apiFetch(`${BASE_URL}/api/eligibility/evaluate`, {
       method: 'POST',
@@ -449,6 +461,8 @@ export const apiClient = {
         session_id: sessionId || undefined,
         notice_text: noticeText || undefined,
         applicant_profile: profile,
+        target_language: targetLanguage,
+        output_language: targetLanguage,
       }),
     });
     return handleResponse<EligibilityAssessment>(res);
@@ -507,6 +521,7 @@ export const apiClient = {
     profile?: ApplicantProfile;
     eligibility?: EligibilityAssessment;
     revisionLedger?: RevisionLedger;
+    targetLanguage?: string;
   }): Promise<PersonalizedActionPlan> {
     const res = await apiFetch(`${BASE_URL}/api/actions/generate`, {
       method: 'POST',
@@ -517,6 +532,8 @@ export const apiClient = {
         applicant_profile: params.profile,
         eligibility_assessment: params.eligibility,
         revision_ledger: params.revisionLedger,
+        target_language: params.targetLanguage || 'en',
+        output_language: params.targetLanguage || 'en',
       }),
     });
     return handleResponse<PersonalizedActionPlan>(res);
