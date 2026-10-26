@@ -4,7 +4,7 @@ import { useNotice } from '../context/NoticeContext';
 
 import { useTranslation, SUPPORTED_LANGUAGES, LANGUAGE_CODES } from '../i18n';
 
-import { Cpu, CheckCircle2, AlertTriangle, XCircle, Eye, Server, Globe, Menu, X, LogOut, UserCheck } from 'lucide-react';
+import { Cpu, CheckCircle2, AlertTriangle, XCircle, Eye, Server, Globe, Menu, X, LogOut, UserCheck, Sun, Moon } from 'lucide-react';
 
 import { AuthModal } from './auth/AuthModal';
 
@@ -42,6 +42,8 @@ export const Header: React.FC = () => {
     currentUser,
     setCurrentUser,
     logout,
+    theme,
+    toggleTheme,
   } = useNotice();
 
   const { setLanguage, t } = useTranslation();
@@ -458,6 +460,24 @@ export const Header: React.FC = () => {
           </select>
 
         </div>
+        {/* Dark Theme Quick Toggle */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold text-[#12233D] hover:text-[#08785D] bg-[#F8FAFC] hover:bg-[#E8F7F0] border border-[#E1E7EE] hover:border-[#B7E7D2] transition cursor-pointer"
+          title={theme === 'dark' ? 'Switch to light theme (Slate + Deep Green)' : 'Switch to dark theme (Midnight Navy + Teal)'}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-4 h-4 text-[#14B8A6]" />
+          ) : (
+            <Moon className="w-4 h-4 text-[#526176]" />
+          )}
+          <span className="hidden xl:inline text-[11px] font-medium">
+            {theme === 'dark' ? 'Light' : 'Dark'}
+          </span>
+        </button>
+
 
       </div>
 

@@ -31,6 +31,8 @@ export const SettingsView: React.FC = () => {
     updateAccessibilityPrefs,
     resetAccessibilityPrefs,
     speakText,
+    theme,
+    setTheme,
   } = useNotice();
   const { t } = useTranslation();
 
@@ -383,6 +385,40 @@ export const SettingsView: React.FC = () => {
             >
               {accessibilityPrefs?.reducedMotion ? 'ON' : 'OFF'}
             </button>
+          </div>
+
+          {/* Theme Option */}
+          <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE] space-y-2">
+            <div>
+              <span className="text-xs font-bold text-[#12233D] block">Application Theme</span>
+              <span className="text-[11px] text-[#68778B] block mt-0.5">Slate Green (Light) or Midnight Teal (Dark)</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setTheme('light')}
+                className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                  theme === 'light'
+                    ? 'bg-white text-[#12233D] border-[#08785D] shadow-xs font-bold ring-1 ring-[#08785D]'
+                    : 'bg-white text-[#526176] border-[#CBD5E1] hover:bg-slate-100'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-[#08785D] shrink-0" />
+                <span>Slate Green</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                  theme === 'dark'
+                    ? 'bg-[#17243A] text-[#14B8A6] border-[#14B8A6] shadow-xs font-bold ring-1 ring-[#14B8A6]'
+                    : 'bg-white text-[#526176] border-[#CBD5E1] hover:bg-slate-100'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-[#14B8A6] shrink-0" />
+                <span>Midnight Teal</span>
+              </button>
+            </div>
           </div>
         </div>
 

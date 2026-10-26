@@ -24,7 +24,7 @@ import { VoiceGuidanceBar } from './VoiceGuidanceBar';
 import { MobileBottomNav } from './MobileBottomNav';
 
 export const ApplicationLayout: React.FC = () => {
-  const { activeTab, setActiveTab, authPageMode, accessibilityPrefs } = useNotice();
+  const { activeTab, setActiveTab, authPageMode, accessibilityPrefs, theme } = useNotice();
 
   const textSizeClass =
     accessibilityPrefs?.textSize === 'extra-large'
@@ -40,7 +40,9 @@ export const ApplicationLayout: React.FC = () => {
       ? 'leading-relaxed'
       : 'leading-normal';
 
-  const themeClass = accessibilityPrefs?.highContrast
+  const themeClass = theme === 'dark'
+    ? 'theme-dark bg-[#0B1220] text-[#E8EEF7]'
+    : accessibilityPrefs?.highContrast
     ? 'bg-slate-900 text-white font-medium high-contrast'
     : accessibilityPrefs?.warmBackground
     ? 'bg-[#FAF6EE] text-[#1D1E20]'

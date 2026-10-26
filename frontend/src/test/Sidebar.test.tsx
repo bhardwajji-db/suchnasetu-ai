@@ -34,4 +34,26 @@ describe('Sidebar Component', () => {
     expect(accountButton).toHaveTextContent(/Sign In \/ Register/i);
     expect(accountButton).toHaveTextContent(/Save notices & progress/i);
   });
+
+  it('renders Appearance / Theme selector with Slate Green and Midnight Teal options', () => {
+    render(
+      <NoticeProvider>
+        <Sidebar />
+      </NoticeProvider>
+    );
+
+    expect(screen.getByText(/Appearance \/ Theme/i)).toBeInTheDocument();
+    const slateBtn = screen.getByRole('button', { name: /Slate \+ Deep Green light theme/i });
+    const tealBtn = screen.getByRole('button', { name: /Midnight Navy \+ Teal dark theme/i });
+    expect(slateBtn).toBeInTheDocument();
+    expect(tealBtn).toBeInTheDocument();
+    expect(slateBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(tealBtn).toHaveAttribute('aria-pressed', 'false');
+
+    // Click Midnight Teal option
+    fireEvent.click(tealBtn);
+    expect(tealBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(slateBtn).toHaveAttribute('aria-pressed', 'false');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+  });
 });

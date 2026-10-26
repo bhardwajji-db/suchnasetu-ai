@@ -33,7 +33,11 @@
 }
 
 @layer base {
-  :root {
+  /* =========================================================================
+     Theme 1: Slate + Deep Green (Default Light)
+     ========================================================================= */
+  :root,
+  html[data-theme="light"] {
     --brand-primary: #08785D;
     --brand-primary-hover: #06664E;
     --brand-primary-soft: #E8F7F0;
@@ -59,9 +63,40 @@
     --brand-info-soft: #EAF2FF;
   }
 
+  /* =========================================================================
+     Theme 2: Midnight Navy + Teal (Dark Theme)
+     ========================================================================= */
+  html[data-theme="dark"],
+  html.dark,
+  :root[data-theme="dark"] {
+    --brand-primary: #14B8A6;
+    --brand-primary-hover: #2DD4BF;
+    --brand-primary-soft: rgba(20, 184, 166, 0.15);
+    --brand-primary-border: rgba(45, 212, 191, 0.35);
+    --brand-navy: #E8EEF7;
+    --brand-secondary: #A8B6C9;
+    --brand-muted: #7E8FA6;
+    --brand-bg: #0B1220;
+    --brand-surface: #111C2F;
+    --brand-surface-subtle: #17243A;
+    --brand-border: #29384D;
+    --brand-border-strong: #3D4F66;
+    --brand-focus: #14B8A6;
+    --brand-link: #38BDF8;
+
+    --brand-success: #10B981;
+    --brand-success-soft: rgba(16, 185, 129, 0.15);
+    --brand-warning: #F59E0B;
+    --brand-warning-soft: rgba(245, 158, 11, 0.15);
+    --brand-danger: #EF4444;
+    --brand-danger-soft: rgba(239, 68, 68, 0.15);
+    --brand-info: #38BDF8;
+    --brand-info-soft: rgba(56, 189, 248, 0.15);
+  }
+
   html, body {
-    background-color: #F5F8FA;
-    color: #12233D;
+    background-color: var(--brand-bg, #F5F8FA);
+    color: var(--brand-navy, #12233D);
     font-family: 'Inter', 'Noto Sans Devanagari', 'Segoe UI', system-ui, -apple-system, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
@@ -74,7 +109,7 @@
 
   /* Accessible focus indicators conforming to WCAG 2.2 AA */
   *:focus-visible {
-    outline: 2px solid #2563EB;
+    outline: 2px solid var(--brand-focus, #2563EB);
     outline-offset: 2px;
   }
 
@@ -93,6 +128,220 @@
   ::-webkit-scrollbar-thumb:hover {
     background: #94A3B8;
   }
+}
+
+/* =========================================================================
+   Midnight Navy + Teal Dark Theme Full Application Overrides
+   ========================================================================= */
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  background-color: #0B1220 !important;
+  color: #E8EEF7 !important;
+}
+
+/* Top Navigation Header */
+html[data-theme="dark"] header {
+  background-color: rgba(15, 23, 42, 0.96) !important;
+  border-bottom-color: #29384D !important;
+  color: #E8EEF7 !important;
+}
+
+/* Sidebar Navigation Drawer & Desktop Aside */
+html[data-theme="dark"] aside,
+html[data-theme="dark"] [data-sidebar="true"],
+html[data-theme="dark"] .bg-white.border-r,
+html[data-theme="dark"] .border-r {
+  background-color: #0F172A !important;
+  border-color: #29384D !important;
+}
+
+/* Core Container Backgrounds & Main Workspaces */
+html[data-theme="dark"] main {
+  background-color: #0B1220 !important;
+}
+
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] .bg-\[\#FFFFFF\],
+html[data-theme="dark"] .bg-\[\#ffffff\] {
+  background-color: #111C2F !important;
+  color: #E8EEF7;
+}
+
+html[data-theme="dark"] .bg-\[\#F5F8FA\] {
+  background-color: #0B1220 !important;
+}
+
+html[data-theme="dark"] .bg-\[\#F8FAFC\],
+html[data-theme="dark"] .bg-slate-50,
+html[data-theme="dark"] .bg-slate-100 {
+  background-color: #17243A !important;
+}
+
+html[data-theme="dark"] .bg-slate-200 {
+  background-color: #29384D !important;
+}
+
+/* Typography Hierarchy */
+html[data-theme="dark"] .text-\[\#12233D\],
+html[data-theme="dark"] .text-slate-900,
+html[data-theme="dark"] .text-slate-800 {
+  color: #E8EEF7 !important;
+}
+
+html[data-theme="dark"] .text-\[\#526176\],
+html[data-theme="dark"] .text-slate-600,
+html[data-theme="dark"] .text-slate-700 {
+  color: #A8B6C9 !important;
+}
+
+html[data-theme="dark"] .text-\[\#68778B\],
+html[data-theme="dark"] .text-slate-500,
+html[data-theme="dark"] .text-slate-400 {
+  color: #7E8FA6 !important;
+}
+
+/* Borders and Dividers */
+html[data-theme="dark"] .border-\[\#E1E7EE\],
+html[data-theme="dark"] .border-\[\#CBD5E1\],
+html[data-theme="dark"] .border-slate-200,
+html[data-theme="dark"] .border-slate-300,
+html[data-theme="dark"] .border-slate-100 {
+  border-color: #29384D !important;
+}
+
+html[data-theme="dark"] .divide-\[\#E1E7EE\] > * + *,
+html[data-theme="dark"] .divide-slate-200 > * + * {
+  border-color: #29384D !important;
+}
+
+/* Primary Teal Accents & Buttons */
+html[data-theme="dark"] .bg-\[\#08785D\],
+html[data-theme="dark"] .bg-\[\#06664E\] {
+  background-color: #0D9488 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] .hover\:bg-\[\#06664E\]:hover,
+html[data-theme="dark"] .hover\:bg-\[\#08785D\]:hover {
+  background-color: #14B8A6 !important;
+  color: #0B1220 !important;
+}
+
+html[data-theme="dark"] .text-\[\#08785D\],
+html[data-theme="dark"] .text-\[\#06664E\] {
+  color: #2DD4BF !important;
+}
+
+html[data-theme="dark"] .bg-\[\#E8F7F0\] {
+  background-color: rgba(20, 184, 166, 0.15) !important;
+}
+
+html[data-theme="dark"] .hover\:bg-\[\#E8F7F0\]:hover {
+  background-color: rgba(20, 184, 166, 0.25) !important;
+  color: #2DD4BF !important;
+}
+
+html[data-theme="dark"] .border-\[\#B7E7D2\] {
+  border-color: rgba(45, 212, 191, 0.35) !important;
+}
+
+/* Amber / Warning Semantic Cards */
+html[data-theme="dark"] .bg-\[\#FFFBEB\],
+html[data-theme="dark"] .bg-\[\#FFF4D6\] {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+html[data-theme="dark"] .text-\[\#92500A\],
+html[data-theme="dark"] .text-amber-800,
+html[data-theme="dark"] .text-amber-900 {
+  color: #FBBF24 !important;
+}
+
+html[data-theme="dark"] .border-amber-300,
+html[data-theme="dark"] .border-amber-200 {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+/* Red / Danger Semantic Cards */
+html[data-theme="dark"] .bg-\[\#FEE8E7\] {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+html[data-theme="dark"] .text-\[\#B42318\] {
+  color: #F87171 !important;
+}
+
+html[data-theme="dark"] .border-\[\#FCA5A5\] {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+/* Blue / Info Semantic Cards */
+html[data-theme="dark"] .bg-\[\#EAF2FF\] {
+  background-color: rgba(56, 189, 248, 0.12) !important;
+  border-color: rgba(56, 189, 248, 0.35) !important;
+}
+
+html[data-theme="dark"] .text-\[\#245DC1\] {
+  color: #38BDF8 !important;
+}
+
+/* Forms, Inputs, Textareas, Selects */
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select {
+  background-color: #17243A !important;
+  color: #E8EEF7 !important;
+  border-color: #29384D !important;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: #7E8FA6 !important;
+}
+
+html[data-theme="dark"] input:focus,
+html[data-theme="dark"] textarea:focus,
+html[data-theme="dark"] select:focus {
+  border-color: #14B8A6 !important;
+  outline: 2px solid rgba(20, 184, 166, 0.4) !important;
+}
+
+html[data-theme="dark"] option {
+  background-color: #111C2F !important;
+  color: #E8EEF7 !important;
+}
+
+/* Modals & Dialogs */
+html[data-theme="dark"] .fixed.inset-0 .bg-white,
+html[data-theme="dark"] [role="dialog"] .bg-white,
+html[data-theme="dark"] .modal-content {
+  background-color: #111C2F !important;
+  border-color: #29384D !important;
+  color: #E8EEF7 !important;
+}
+
+/* Accessible focus indicators in dark mode */
+html[data-theme="dark"] *:focus-visible {
+  outline: 2px solid #14B8A6 !important;
+  outline-offset: 2px !important;
+}
+
+/* Scrollbars in Dark Theme */
+html[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #0F172A !important;
+}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #29384D !important;
+  border-radius: 3px;
+}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #3E526A !important;
 }
 
 /* Reduced motion accessibility rule */

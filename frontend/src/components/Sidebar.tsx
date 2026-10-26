@@ -40,6 +40,8 @@ export const Sidebar: React.FC = () => {
     currentUser,
     logout,
     openAuthPage,
+    theme,
+    setTheme,
   } = useNotice();
 
   const [selectedSample, setSelectedSample] = useState<string>('sample_scholarship_notice.txt');
@@ -274,6 +276,54 @@ export const Sidebar: React.FC = () => {
             </span>
           </button>
         )}
+      </div>
+
+      {/* Appearance / Theme Selector */}
+      <div className="p-3 bg-white border-t border-[#E1E7EE] space-y-2">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[#68778B] block px-1">
+          Appearance / Theme
+        </span>
+        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE]">
+          {/* Option 1: Slate + Deep Green */}
+          <button
+            type="button"
+            onClick={() => setTheme('light')}
+            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+              theme === 'light'
+                ? 'bg-white text-[#12233D] shadow-xs border border-[#CBD5E1] font-bold'
+                : 'text-[#68778B] hover:text-[#12233D]'
+            }`}
+            aria-pressed={theme === 'light'}
+            aria-label="Slate + Deep Green light theme"
+            title="Slate + Deep Green light theme"
+          >
+            <span className="flex items-center -space-x-1 shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#526176] ring-1 ring-white" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#08785D] ring-1 ring-white" />
+            </span>
+            <span className="truncate">Slate Green</span>
+          </button>
+
+          {/* Option 2: Midnight Navy + Teal */}
+          <button
+            type="button"
+            onClick={() => setTheme('dark')}
+            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+              theme === 'dark'
+                ? 'bg-[#17243A] text-[#14B8A6] shadow-xs border border-[#29384D] font-bold'
+                : 'text-[#68778B] hover:text-[#12233D]'
+            }`}
+            aria-pressed={theme === 'dark'}
+            aria-label="Midnight Navy + Teal dark theme"
+            title="Midnight Navy + Teal dark theme"
+          >
+            <span className="flex items-center -space-x-1 shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0B1220] ring-1 ring-[#29384D]" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#14B8A6] ring-1 ring-[#29384D]" />
+            </span>
+            <span className="truncate">Midnight Teal</span>
+          </button>
+        </div>
       </div>
 
       {/* Diagnostics Accordion / Status Footer */}

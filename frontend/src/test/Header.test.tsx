@@ -38,4 +38,30 @@ describe('Header Component', () => {
     const headerSignInBtn = screen.queryByRole('button', { name: /^Sign In$/i });
     expect(headerSignInBtn).not.toBeInTheDocument();
   });
+
+  it('renders dark theme quick toggle and switches between Slate Green and Midnight Teal', async () => {
+    const { fireEvent } = await import('@testing-library/react');
+    render(
+      <NoticeProvider>
+        <Header />
+      </NoticeProvider>
+    );
+
+    // Initial state: Light theme (Slate + Deep Green)
+    const toggleBtn = screen.getByRole('button', { name: /Switch to dark theme/i });
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn).toHaveAttribute('title', expect.stringContaining('Midnight Navy + Teal'));
+
+    // Click to switch to Dark theme
+    fireEvent.click(toggleBtn);
+    expect(screen.getByRole('button', { name: /Switch to light theme/i })).toBeInTheDocument();
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+
+    // Click again to switch back to Light theme
+    fireEvent.click(screen.getByRole('button', { name: /Switch to light theme/i }));
+    expect(screen.getByRole('button', { name: /Switch to dark theme/i })).toBeInTheDocument();
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+  });
 });

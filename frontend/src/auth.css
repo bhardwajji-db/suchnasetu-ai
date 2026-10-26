@@ -992,3 +992,76 @@
     border: none !important;
   }
 }
+
+/* =========================================================================
+   Midnight Navy + Teal Dark Theme for Auth Flow
+   ========================================================================= */
+html[data-theme="dark"] .auth-shell {
+  background: radial-gradient(circle at top right, #111C2F 0%, #0B1220 50%, #0F172A 100%) !important;
+  color: #E8EEF7 !important;
+}
+
+html[data-theme="dark"] .auth-header {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  border-bottom-color: #29384D !important;
+}
+
+html[data-theme="dark"] .auth-card-wrapper {
+  background-color: #111C2F !important;
+  border-color: #29384D !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2) !important;
+}
+
+html[data-theme="dark"] .auth-card-top-accent {
+  background: linear-gradient(90deg, #0D9488 0%, #14B8A6 50%, #2DD4BF 100%) !important;
+}
+
+html[data-theme="dark"] .auth-card-title,
+html[data-theme="dark"] .brand-name {
+  color: #E8EEF7 !important;
+}
+
+html[data-theme="dark"] .auth-card-subtitle,
+html[data-theme="dark"] .brand-tagline,
+html[data-theme="dark"] .form-label,
+html[data-theme="dark"] .auth-switch-prompt {
+  color: #A8B6C9 !important;
+}
+
+html[data-theme="dark"] .auth-badge-kicker {
+  background-color: rgba(20, 184, 166, 0.15) !important;
+  border-color: rgba(45, 212, 191, 0.35) !important;
+  color: #2DD4BF !important;
+}
+
+html[data-theme="dark"] .form-input {
+  background-color: #17243A !important;
+  border-color: #29384D !important;
+  color: #E8EEF7 !important;
+}
+
+html[data-theme="dark"] .form-input:focus {
+  border-color: #14B8A6 !important;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.25) !important;
+}
+
+html[data-theme="dark"] .auth-primary-btn {
+  background: linear-gradient(135deg, #0D9488 0%, #14B8A6 100%) !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] .auth-primary-btn:hover {
+  background: linear-gradient(135deg, #14B8A6 0%, #2DD4BF 100%) !important;
+  color: #0B1220 !important;
+}
+
+html[data-theme="dark"] .auth-footer-bar {
+  background-color: #0F172A !important;
+  border-top-color: #29384D !important;
+}
+
+html[data-theme="dark"] .auth-privacy-notice {
+  background-color: #17243A !important;
+  border-color: #29384D !important;
+  color: #A8B6C9 !important;
+}

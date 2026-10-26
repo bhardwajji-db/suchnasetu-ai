@@ -20,6 +20,8 @@ import { apiClient } from '../services/apiClient';
 import { fetchAuthMe, logoutAccount } from '../services/api';
 import { useTranslation } from '../i18n';
 
+export type AppTheme = 'light' | 'dark';
+
 export interface HistoryRecord {
   id: string;
   title: string;
@@ -72,6 +74,9 @@ interface NoticeContextType {
   setDetectedLangMeta: (meta: { detected_language: string; confidence: number; is_mixed: boolean } | null) => void;
   documentId: string | null;
   setDocumentId: (id: string | null) => void;
+  theme: AppTheme;
+  setTheme: (theme: AppTheme) => void;
+  toggleTheme: () => void;
   loadDemoItem: (demoId: string, autoAnalyze?: boolean) => Promise<void>;
   detectDocumentLanguage: () => Promise<void>;
   readingLevel: 'simple' | 'standard' | 'detailed';
@@ -256,6 +261,47 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const clearAnalysisError = useCallback(() => setAnalysisError(null), []);
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
+  const [theme, setThemeState] = useState<AppTheme>(() => {
+    try {
+      const saved = localStorage.getItem('suchnasetu_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      return 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  const setTheme = useCallback((newTheme: AppTheme) => {
+    setThemeState(newTheme);
+    try {
+      localStorage.setItem('suchnasetu_theme', newTheme);
+      document.documentElement.setAttribute('data-theme', newTheme);
+      if (newTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch {}
+    if (currentUser) {
+      apiClient.saveUserPreferences({ theme: newTheme }).catch(() => {});
+    }
+  }, [currentUser]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  }, [theme, setTheme]);
+
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch {}
+  }, [theme]);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
 
   const refreshAuth = useCallback(async (): Promise<UserProfile | null> => {
@@ -280,6 +326,18 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             }
             if (p.reading_level && ['simple', 'standard', 'detailed'].includes(p.reading_level)) {
               setReadingLevel(p.reading_level);
+            }
+            if (p.theme && ['light', 'dark'].includes(p.theme)) {
+              setThemeState(p.theme as AppTheme);
+              try {
+                localStorage.setItem('suchnasetu_theme', p.theme);
+                document.documentElement.setAttribute('data-theme', p.theme);
+                if (p.theme === 'dark') {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch {}
             }
           }
         } catch {}
@@ -1154,6 +1212,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         askQuestion,
         clearFollowUpHistory,
         refreshHealth,
+        theme,
+        setTheme,
+        toggleTheme,
       }}
     >
       {children}
