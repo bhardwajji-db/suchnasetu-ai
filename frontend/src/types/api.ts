@@ -134,6 +134,7 @@ export interface IngestTextResponse {
   line_count: number;
   security_warning?: string | null;
   fingerprint: string;
+  document_id?: string | null;
 }
 
 export interface OCRResponse {

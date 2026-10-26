@@ -214,7 +214,8 @@ class AuthService:
         normalized_email = email.strip().lower()
 
         # Enforce rate limit on registrations: max 5 per 10 minutes per IP
-        if not self.check_rate_limit(f"reg_ip:{client_ip}", 5, 600):
+        is_dev = _is_dev_client_ip(client_ip) and getattr(config, "app_env", "development").lower() != "production"
+        if not is_dev and not self.check_rate_limit(f"reg_ip:{client_ip}", 5, 600):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many registration attempts. Please wait a few minutes before trying again."
@@ -669,7 +670,8 @@ class AuthService:
         """Send a password recovery 6-digit code or magic link."""
         norm_email = email.strip().lower()
 
-        if not self.check_rate_limit(f"pw_reset_ip:{client_ip}", 5, 900):
+        is_dev = _is_dev_client_ip(client_ip) and getattr(config, "app_env", "development").lower() != "production"
+        if not is_dev and not self.check_rate_limit(f"pw_reset_ip:{client_ip}", 5, 900):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many password reset requests. Please wait before trying again."

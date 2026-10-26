@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { I18nProvider, useTranslation, LANGUAGE_CODES, SUPPORTED_LANGUAGES, I18N_STORAGE_KEY } from '../i18n';
+import { I18nProvider, useTranslation, LANGUAGE_CODES, I18N_STORAGE_KEY } from '../i18n';
 import { en } from '../i18n/locales/en';
 import { hi } from '../i18n/locales/hi';
 import { kn } from '../i18n/locales/kn';

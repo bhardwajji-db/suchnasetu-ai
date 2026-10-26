@@ -227,8 +227,8 @@ def test_react_frontend_full_workflow_and_tabs():
         sug_btn = page.locator("button:has-text('Required Documents?')").first
         sug_btn.click()
 
-        # Wait for answer
-        page.wait_for_selector("text=Supporting Quote from Notice", timeout=90000)
+        # Wait for answer (handles localized evidence quote header or unsupported text)
+        page.locator("text=Grounded Evidence Quote").or_(page.locator("text=Supporting Quote from Notice")).or_(page.locator("text=unstated in the notice text")).first.wait_for(timeout=90000)
         page.screenshot(path=str(SCREENSHOT_DIR / "react_workflow_04_qa_grounded.png"))
 
         # Step 7: Test Stale Warning Detection

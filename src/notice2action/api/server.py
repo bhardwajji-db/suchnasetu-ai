@@ -544,6 +544,8 @@ class IngestTextResponse(BaseModel):
 
     fingerprint: str
 
+    document_id: Optional[str] = None
+
 
 
 
@@ -1317,6 +1319,8 @@ def ingest_text_endpoint(payload: IngestTextRequest):
         security_warning=res.security_warning,
 
         fingerprint=fp,
+
+        document_id=db_doc.id,
 
     )
 

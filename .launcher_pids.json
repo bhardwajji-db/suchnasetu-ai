@@ -1,0 +1,8 @@
+{
+  "supervisor_pid": 23752,
+  "backend_pid": 35192,
+  "frontend_pid": 17488,
+  "ollama_owned": false,
+  "ollama_pid": null,
+  "created_at": 1792979788.7648103
+}
