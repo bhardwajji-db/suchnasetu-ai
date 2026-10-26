@@ -110,6 +110,8 @@ interface NoticeContextType {
   setAuthPageMode: (mode: 'login' | 'signup') => void;
   followUpHistory: FollowUpAnswer[];
   systemHealth: PreflightReport | null;
+  unreadNotificationsCount: number;
+  setUnreadNotificationsCount: React.Dispatch<React.SetStateAction<number>>;
   providers: LLMProviderStatus[];
   activeProvider: string;
   switchProvider: (providerId: string) => Promise<void>;
@@ -365,6 +367,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [followUpHistory, setFollowUpHistory] = useState<FollowUpAnswer[]>([]);
   const [systemHealth, setSystemHealth] = useState<PreflightReport | null>(null);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   const [providers, setProviders] = useState<LLMProviderStatus[]>([]);
   const [activeProvider, setActiveProvider] = useState<string>('ollama');
   const [samples, setSamples] = useState<SampleFixture[]>([]);
@@ -1215,6 +1218,8 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         theme,
         setTheme,
         toggleTheme,
+        unreadNotificationsCount,
+        setUnreadNotificationsCount,
       }}
     >
       {children}

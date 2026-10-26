@@ -16,15 +16,22 @@ describe('Header Component', () => {
     expect(screen.getByText(/Local Gemma 4/i)).toBeInTheDocument();
   });
 
-  it('renders language toggle buttons', () => {
+  it('renders single unified language selector dropdown and notification access', () => {
     render(
       <NoticeProvider>
         <Header />
       </NoticeProvider>
     );
 
-    expect(screen.getByText('EN')).toBeInTheDocument();
-    expect(screen.getByText('हिन्दी')).toBeInTheDocument();
+    // Single language selector with English and Hindi in dropdown
+    const langSelect = screen.getByRole('combobox', { name: /Select Website Language/i });
+    expect(langSelect).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^EN$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^हिन्दी$/ })).not.toBeInTheDocument();
+
+    // Notification Center access button
+    const notifBtn = screen.getByRole('button', { name: /Open notifications/i });
+    expect(notifBtn).toBeInTheDocument();
   });
 
   it('preserves clean top-bar navigation without cluttered guest sign in button', () => {

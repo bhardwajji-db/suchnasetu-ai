@@ -48,6 +48,7 @@ export const DashboardView: React.FC = () => {
     openEvidenceInspector,
     clearBuffer,  resetSession,
     currentUser: contextUser,
+    setUnreadNotificationsCount,
   } = useNotice();
 
   const { t } = useTranslation();
@@ -103,7 +104,9 @@ export const DashboardView: React.FC = () => {
       }
       if (notifsRes.status === 'fulfilled') {
         setNotifications(notifsRes.value?.notifications || []);
-        setUnreadNotifsCount(notifsRes.value?.unread_count || 0);
+        const unread = notifsRes.value?.unread_count || 0;
+        setUnreadNotifsCount(unread);
+        setUnreadNotificationsCount?.(unread);
       }
       if (actsRes.status === 'fulfilled') {
         setActivities(actsRes.value || []);
@@ -139,6 +142,7 @@ export const DashboardView: React.FC = () => {
       await apiClient.markAllNotificationsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadNotifsCount(0);
+      setUnreadNotificationsCount?.(0);
     } catch (err) {
       console.error('Failed to mark all notifications read:', err);
     }
@@ -152,6 +156,7 @@ export const DashboardView: React.FC = () => {
         const target = prev.find((n) => n.id === id);
         if (target && !target.is_read) {
           setUnreadNotifsCount((c) => Math.max(0, c - 1));
+        setUnreadNotificationsCount?.((c: number) => Math.max(0, c - 1));
         }
         return prev.filter((n) => n.id !== id);
       });
@@ -168,6 +173,7 @@ export const DashboardView: React.FC = () => {
           prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n))
         );
         setUnreadNotifsCount((c) => Math.max(0, c - 1));
+        setUnreadNotificationsCount?.((c: number) => Math.max(0, c - 1));
       } catch (err) {
         console.error('Failed to mark notification read:', err);
       }

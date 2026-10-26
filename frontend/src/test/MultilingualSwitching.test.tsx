@@ -68,10 +68,10 @@ describe('Multilingual Language Switching & RTL Engine', () => {
       </I18nProvider>
     );
 
-    // Switch to Hindi via quick toggle button in Header
-    const hindiBtn = screen.getByRole('button', { name: /हिन्दी/i });
+    // Switch to Hindi via single language selector dropdown in Header
+    const langSelect = screen.getByRole('combobox', { name: /Select Website Language/i });
     act(() => {
-      fireEvent.click(hindiBtn);
+      fireEvent.change(langSelect, { target: { value: 'hi' } });
     });
 
     expect(screen.getByTestId('current-lang')).toHaveTextContent('hi');

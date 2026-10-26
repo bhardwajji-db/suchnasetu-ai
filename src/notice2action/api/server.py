@@ -823,41 +823,38 @@ class ExtractCriteriaRequest(BaseModel):
 
 
 @app.get("/api/health")
-
 def get_health() -> Dict[str, Any]:
-
     """Runs preflight diagnostics and returns system health status."""
-
     report = run_preflight_diagnostics()
 
+    ollama_item = next((i for i in report.items if i.name == "Ollama Server"), None)
+    tesseract_item = next((i for i in report.items if "Tesseract" in i.name), None)
+    model_item = next(
+        (i for i in report.items if "LLM Model" in i.name or "API Key" in i.name or "Token" in i.name),
+        None,
+    )
+
+    ollama_connected = (ollama_item.status == "ok") if ollama_item else False
+    tesseract_available = (tesseract_item.status == "ok") if tesseract_item else False
+    model_ready = (model_item.status == "ok") if model_item else False
+
     return {
-
         "overall_status": report.overall_status,
-
         "active_provider": config.llm_provider,
-
         "model_name": config.ollama_model if config.llm_provider == "ollama" else getattr(config, f"{config.llm_provider}_model", "unknown"),
-
         "is_ready_for_inference": report.is_ready_for_inference(),
-
+        "ollama_connected": ollama_connected,
+        "tesseract_available": tesseract_available,
+        "model_ready": model_ready,
         "items": [
-
             {
-
                 "name": item.name,
-
                 "status": item.status,
-
                 "details": item.details,
-
                 "remedy": item.remedy,
-
             }
-
             for item in report.items
-
         ],
-
     }
 
 

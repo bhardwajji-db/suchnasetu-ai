@@ -4,7 +4,7 @@ import { useNotice } from '../context/NoticeContext';
 
 import { useTranslation, SUPPORTED_LANGUAGES, LANGUAGE_CODES } from '../i18n';
 
-import { Cpu, CheckCircle2, AlertTriangle, XCircle, Eye, Server, Globe, Menu, X, LogOut, UserCheck, Sun, Moon } from 'lucide-react';
+import { Cpu, CheckCircle2, AlertTriangle, XCircle, Eye, Server, Globe, Menu, X, LogOut, UserCheck, Sun, Moon, Bell } from 'lucide-react';
 
 import { AuthModal } from './auth/AuthModal';
 
@@ -44,6 +44,7 @@ export const Header: React.FC = () => {
     logout,
     theme,
     toggleTheme,
+    unreadNotificationsCount,
   } = useNotice();
 
   const { setLanguage, t } = useTranslation();
@@ -351,114 +352,48 @@ export const Header: React.FC = () => {
 
 
 
-        {/* 10-Language Switcher Cluster */}
+        {/* Notification Center Access Button */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab(0);
+            setTimeout(() => {
+              const el = document.getElementById('notification-center-section');
+              el?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+          }}
+          className="relative flex items-center justify-center p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold text-[#12233D] hover:text-[#08785D] bg-[#F8FAFC] hover:bg-[#E8F7F0] border border-[#E1E7EE] hover:border-[#B7E7D2] transition cursor-pointer"
+          title="Notification Center"
+          aria-label="Open notifications"
+        >
+          <Bell className="w-4 h-4 text-[#526176]" />
+          {unreadNotificationsCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-purple-600 text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
+              {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+            </span>
+          )}
+        </button>
 
-        <div className="flex items-center gap-0.5 sm:gap-1 p-0.5 rounded-lg bg-[#F8FAFC] border border-[#E1E7EE]">
-
-          <div className="hidden md:flex items-center gap-1 pl-1">
-
-            <Globe className="w-3.5 h-3.5 text-[#08785D]" />
-
-          </div>
-
-          <button
-
-            type="button"
-
-            onClick={() => {
-
-              setSelectedLang('en');
-
-              setLanguage('en');
-
-            }}
-
-            className={`px-1.5 sm:px-2 py-1 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
-
-              selectedLang === 'en'
-
-                ? 'bg-[#08785D] text-white shadow-xs'
-
-                : 'text-[#526176] hover:text-[#12233D]'
-
-            }`}
-
-            aria-label={selectedLang === 'en' ? 'English language selected' : 'Switch interface language to English (अंग्रेजी चुनें)'}
-
-            aria-pressed={selectedLang === 'en'}
-
-          >
-
-            EN
-
-          </button>
-
-          <button
-
-            type="button"
-
-            onClick={() => {
-
-              setSelectedLang('hi');
-
-              setLanguage('hi');
-
-            }}
-
-            className={`px-1.5 sm:px-2 py-1 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
-
-              selectedLang === 'hi'
-
-                ? 'bg-[#08785D] text-white shadow-xs'
-
-                : 'text-[#526176] hover:text-[#12233D]'
-
-            }`}
-
-            aria-label={selectedLang === 'hi' ? 'हिन्दी भाषा चयनित है' : 'Switch interface language to Hindi (हिन्दी भाषा चुनें)'}
-
-            aria-pressed={selectedLang === 'hi'}
-
-          >
-
-            हिन्दी
-
-          </button>
-
+        {/* Single Unified Language Selector */}
+        <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#E1E7EE]">
+          <Globe className="w-3.5 h-3.5 text-[#08785D] shrink-0" />
           <select
-
             value={selectedLang}
-
             onChange={(e) => {
-
               const code = e.target.value as any;
-
               setSelectedLang(code);
-
               setLanguage(code);
-
             }}
-
-            aria-label="Select Website Language (10 Indian Languages)"
-
+            aria-label="Select Website Language"
             title="Select Website Language"
-
-            className="bg-transparent text-[#12233D] text-[11px] sm:text-xs font-bold px-1 sm:px-1.5 py-1 rounded-md border-l border-[#E1E7EE] outline-hidden cursor-pointer max-w-[85px] sm:max-w-none"
-
+            className="bg-transparent text-[#12233D] text-[11px] sm:text-xs font-bold outline-hidden cursor-pointer"
           >
-
             {LANGUAGE_CODES.map((code) => (
-
               <option key={code} value={code} className="bg-white text-[#12233D]">
-
                 {SUPPORTED_LANGUAGES[code].nativeName} ({SUPPORTED_LANGUAGES[code].name})
-
               </option>
-
             ))}
-
           </select>
-
         </div>
         {/* Dark Theme Quick Toggle */}
         <button

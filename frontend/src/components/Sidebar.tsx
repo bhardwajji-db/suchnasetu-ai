@@ -58,19 +58,39 @@ export const Sidebar: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isMobileMenuOpen, setIsMobileMenuOpen]);
 
-  const navItems = [
-    { id: 0, label: t('navDashboard') || 'Dashboard', icon: LayoutDashboard },
-    { id: 1, label: t('navIngestion') || '1. Ingestion & OCR', icon: FileText },
-    { id: 2, label: t('navFacts') || '2. Grounded Facts', icon: Search, badge: structuredNotice ? '8 Facts' : undefined },
-    { id: 3, label: t('navSummary') || '3. Summary & Actions', icon: ListTodo, badge: structuredNotice ? 'Ready' : undefined },
-    { id: 4, label: t('navRevision') || '4. Revision Ledger', icon: GitCompare, badge: 'Impact' },
-    { id: 5, label: t('navEligibility') || '5. Eligibility Check', icon: UserCheck, badge: 'Rules' },
-    { id: 6, label: t('navQA') || '6. Follow-Up Q&A', icon: MessageSquare },
-    { id: 7, label: t('navActionNavigator') || '7. Action Navigator', icon: Compass, badge: 'Roadmap' },
-    { id: 8, label: t('navTimeline') || '8. Multi-Notice Timeline', icon: Layers, badge: 'Graph' },
-    { id: 9, label: t('navHistory') || 'Notice History', icon: History, badge: history.length > 0 ? `${history.length}` : undefined },
-    { id: 10, label: t('navSettings') || 'Settings & Health', icon: Settings },
-    { id: 11, label: t('navDemoLibrary') || '11. Demo Library', icon: BookOpen, badge: '32 Demos' },
+  const navGroups = [
+    {
+      title: 'Workspace',
+      items: [
+        { id: 0, label: t('navDashboard') || 'Dashboard', icon: LayoutDashboard },
+        { id: 1, label: t('navIngestion') || '1. Ingestion & OCR', icon: FileText },
+        { id: 2, label: t('navFacts') || '2. Grounded Facts', icon: Search, badge: structuredNotice ? '8 Facts' : undefined },
+        { id: 3, label: t('navSummary') || '3. Summary & Actions', icon: ListTodo, badge: structuredNotice ? 'Ready' : undefined },
+      ],
+    },
+    {
+      title: 'Intelligence',
+      items: [
+        { id: 4, label: t('navRevision') || '4. Revision Ledger', icon: GitCompare, badge: 'Impact' },
+        { id: 5, label: t('navEligibility') || '5. Eligibility Check', icon: UserCheck, badge: 'Rules' },
+        { id: 6, label: t('navQA') || '6. Follow-Up Q&A', icon: MessageSquare },
+        { id: 7, label: t('navActionNavigator') || '7. Action Navigator', icon: Compass, badge: 'Roadmap' },
+        { id: 8, label: t('navTimeline') || '8. Multi-Notice Timeline', icon: Layers, badge: 'Graph' },
+      ],
+    },
+    {
+      title: 'Library',
+      items: [
+        { id: 9, label: t('navHistory') || 'Notice History', icon: History, badge: history.length > 0 ? `${history.length}` : undefined },
+        { id: 11, label: t('navDemoLibrary') || '11. Demo Library', icon: BookOpen, badge: '32 Demos' },
+      ],
+    },
+    {
+      title: 'Preferences',
+      items: [
+        { id: 10, label: t('navSettings') || 'Settings & Health', icon: Settings },
+      ],
+    },
   ];
 
   const handleSelectTab = (id: number) => {
@@ -93,45 +113,49 @@ export const Sidebar: React.FC = () => {
   const renderSidebarContent = () => (
     <>
       <div className="p-4 space-y-6">
-        {/* Navigation Group */}
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#68778B] block mb-2 px-1">
-            {t('sidebarTitle') || 'Navigation'}
-          </span>
-          <nav className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleSelectTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-[#08785D] text-white shadow-xs font-bold'
-                      : 'text-[#526176] hover:bg-[#E8F7F0] hover:text-[#08785D]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 truncate">
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-[#68778B]'}`} />
-                    <span className="truncate">{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span
-                      className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-md shrink-0 ${
+        {/* Grouped Navigation: Workspace, Intelligence, Library, Preferences */}
+        <div className="space-y-4">
+          {navGroups.map((group) => (
+            <div key={group.title}>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#68778B] block mb-1.5 px-1">
+                {group.title}
+              </span>
+              <nav className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleSelectTab(item.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                         isActive
-                          ? 'bg-[#06664E] text-[#E8F7F0]'
-                          : 'bg-white text-[#08785D] border border-[#B7E7D2]'
+                          ? 'bg-[#08785D] text-white shadow-xs font-bold'
+                          : 'text-[#526176] hover:bg-[#E8F7F0] hover:text-[#08785D]'
                       }`}
                     >
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+                      <div className="flex items-center gap-2.5 truncate">
+                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-[#68778B]'}`} />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span
+                          className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-md shrink-0 ${
+                            isActive
+                              ? 'bg-[#06664E] text-[#E8F7F0]'
+                              : 'bg-white text-[#08785D] border border-[#B7E7D2]'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          ))}
         </div>
 
         {/* Quick Demo Notices Group */}
@@ -198,7 +222,10 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Account / Citizen Identity Entry */}
-      <div className="p-3 bg-white border-t border-[#E1E7EE]">
+      <div className="p-3 bg-white border-t border-[#E1E7EE] space-y-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#68778B] block px-1">
+          Account
+        </span>
         {currentUser ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -345,19 +372,25 @@ export const Sidebar: React.FC = () => {
             <div className="flex justify-between items-center">
               <span className="text-[#68778B]">{t('ollamaDaemon')}:</span>
               <span className={systemHealth?.ollama_connected ? 'text-[#08785D] font-bold' : 'text-[#92500A]'}>
-                {systemHealth?.ollama_connected ? t('connected') : t('offlineMock')}
+                {systemHealth?.ollama_connected ? t('connected') : (systemHealth === null ? 'Checking...' : t('offlineMock'))}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[#68778B]">{t('tesseractOcr')}:</span>
               <span className={systemHealth?.tesseract_available ? 'text-[#08785D] font-bold' : 'text-[#92500A]'}>
-                {systemHealth?.tesseract_available ? t('installed') : t('unavailable')}
+                {systemHealth?.tesseract_available ? t('installed') : (systemHealth === null ? 'Checking...' : t('unavailable'))}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[#68778B]">Inference:</span>
+              <span className={systemHealth?.is_ready_for_inference ? 'text-[#08785D] font-bold' : 'text-[#92500A]'}>
+                {systemHealth?.is_ready_for_inference ? 'Ready' : 'Degraded'}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[#68778B]">{t('modelLabel')}:</span>
               <span className="text-[#12233D] truncate max-w-[110px]" title={systemHealth?.model_name}>
-                {systemHealth?.model_name || 'gemma2:2b'}
+                {systemHealth?.model_name || 'gemma4:latest'}
               </span>
             </div>
           </div>
