@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
-import { useTranslation } from '../i18n';
+import { useTranslation, SUPPORTED_LANGUAGES, LANGUAGE_CODES } from '../i18n';
 import {
   Settings,
   Activity,
@@ -33,8 +33,10 @@ export const SettingsView: React.FC = () => {
     speakText,
     theme,
     setTheme,
+    selectedLang,
+    setSelectedLang,
   } = useNotice();
-  const { t } = useTranslation();
+  const { t, setLanguage } = useTranslation();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [switchMessage, setSwitchMessage] = useState<string | null>(null);
@@ -423,6 +425,32 @@ export const SettingsView: React.FC = () => {
                 <span className="w-2.5 h-2.5 rounded-full bg-[#14B8A6] shrink-0" />
                 <span>Midnight Teal</span>
               </button>
+            </div>
+          </div>
+
+          {/* Interface Language Preference */}
+          <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE] space-y-2">
+            <div>
+              <span className="text-xs font-bold text-[#12233D] block">Application Language</span>
+              <span className="text-[11px] text-[#68778B] block mt-0.5">Website UI localization language</span>
+            </div>
+            <div className="pt-1">
+              <select
+                value={selectedLang}
+                onChange={(e) => {
+                  const code = e.target.value as any;
+                  setSelectedLang(code);
+                  setLanguage(code);
+                }}
+                className="w-full bg-white text-[#12233D] border border-[#CBD5E1] rounded-lg px-2.5 py-1.5 text-xs font-semibold outline-hidden focus:border-[#08785D] cursor-pointer"
+                aria-label="Application Language Preference"
+              >
+                {LANGUAGE_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {SUPPORTED_LANGUAGES[code].nativeName} ({SUPPORTED_LANGUAGES[code].name})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

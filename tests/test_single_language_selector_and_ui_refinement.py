@@ -86,6 +86,13 @@ def test_single_language_selector_and_persistence():
         restored_nav = sidebar.locator("text=Dashboard")
         assert restored_nav.is_visible(), "Navigation should restore English 'Dashboard'"
 
+        # Step 8: Verify settings view application language selector synchronization
+        sidebar.locator("button:has-text('Settings')").first.click()
+        page.wait_for_timeout(400)
+        settings_select = page.locator("select[aria-label='Application Language Preference']")
+        assert settings_select.is_visible(), "Settings view should have Application Language selector"
+        assert settings_select.input_value() == "en", "Settings language should match current language"
+
         browser.close()
 
 
