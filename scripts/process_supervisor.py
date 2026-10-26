@@ -2,7 +2,8 @@
 SuchnaSetu AI — Reliable Windows Process Supervisor
 Manages the lifecycle of backend, frontend, and local AI services.
 Provides deterministic startup verification, PID tree tracking, signal trapping,
-and safe shutdown without killing unrelated Node/Python processes or pre-existing Ollama services.
+dedicated stdout/stderr log capture, exit code recording, and safe shutdown
+without killing unrelated Node/Python processes or pre-existing Ollama services.
 """
 
 import os
@@ -13,15 +14,19 @@ import socket
 import signal
 import ctypes
 import shutil
+import threading
 import urllib.request
 import urllib.error
 import subprocess
 import webbrowser
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PID_LOCKFILE = PROJECT_ROOT / ".launcher_pids.json"
+LOGS_DIR = PROJECT_ROOT / "logs"
+BACKEND_LOG = LOGS_DIR / "backend.log"
+FRONTEND_LOG = LOGS_DIR / "frontend.log"
 
 # Global state for signal/cleanup handling
 supervisor_state: Dict[str, Any] = {
@@ -30,9 +35,12 @@ supervisor_state: Dict[str, Any] = {
     "ollama_proc": None,
     "ollama_owned": False,
     "backend_pid": None,
+    "backend_worker_pid": None,
     "frontend_pid": None,
     "ollama_pid": None,
     "cleaned_up": False,
+    "last_health_check": None,
+    "last_health_time": None,
 }
 
 
@@ -76,6 +84,78 @@ def get_ollama_status() -> Dict[str, Any]:
     return {"running": False, "models": [], "has_gemma4": False}
 
 
+def get_child_pids(parent_pid: Optional[int]) -> List[int]:
+    """Resolve direct child process IDs for a given PID on Windows or Unix."""
+    if not parent_pid or parent_pid <= 4:
+        return []
+    if sys.platform == "win32":
+        try:
+            cmd = [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                f"(Get-CimInstance Win32_Process -Filter 'ParentProcessId = {parent_pid}').ProcessId",
+            ]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=3.0)
+            pids = [int(p.strip()) for p in res.stdout.strip().split() if p.strip().isdigit()]
+            return pids
+        except Exception:
+            return []
+    return []
+
+
+def is_pid_alive(pid: Optional[int]) -> bool:
+    """Check if a process ID is currently running in the OS process table."""
+    if not pid or pid <= 4:
+        return False
+    if sys.platform == "win32":
+        try:
+            cmd = [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                f"[bool](Get-Process -Id {pid} -ErrorAction SilentlyContinue)",
+            ]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=2.0)
+            return res.stdout.strip().lower() == "true"
+        except Exception:
+            return False
+    else:
+        try:
+            os.kill(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except Exception:
+            return False
+
+
+def start_stream_tee(pipe, log_file_path: Path, prefix: str = ""):
+    """Background daemon thread to stream subprocess output to a log file and terminal simultaneously."""
+    def _tee_worker():
+        try:
+            with open(log_file_path, "a", encoding="utf-8", errors="replace", buffering=1) as f:
+                f.write(f"\n--- Process session started at {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
+                f.flush()
+                for line in iter(pipe.readline, ""):
+                    if not line:
+                        break
+                    f.write(line)
+                    f.flush()
+                    print(f"{prefix}{line}", end="", flush=True)
+        except Exception:
+            pass
+        finally:
+            try:
+                pipe.close()
+            except Exception:
+                pass
+
+    t = threading.Thread(target=_tee_worker, daemon=True)
+    t.start()
+    return t
+
+
 def is_project_process(pid: Optional[int], expected_type: str = "any") -> bool:
     """
     Verifies that a PID actually belongs to this project before attempting termination.
@@ -102,7 +182,7 @@ def is_project_process(pid: Optional[int], expected_type: str = "any") -> bool:
             if expected_type == "ollama":
                 return "ollama" in cmdline
             elif expected_type == "backend":
-                return any(k in cmdline for k in ("uvicorn", "notice2action", "server:app", "ps2"))
+                return any(k in cmdline for k in ("uvicorn", "notice2action", "server:app", "ps2", "python"))
             elif expected_type == "frontend":
                 return any(k in cmdline for k in ("vite", "suchnasetu", "sochnasetu", "node", "frontend"))
             elif expected_type == "supervisor":
@@ -169,7 +249,9 @@ def cleanup_launcher_processes():
     elif supervisor_state.get("frontend_pid"):
         kill_pid_tree(supervisor_state["frontend_pid"], "frontend")
 
-    # Stop Backend
+    # Stop Backend worker & wrapper
+    if supervisor_state.get("backend_worker_pid"):
+        kill_pid_tree(supervisor_state["backend_worker_pid"], "backend")
     if supervisor_state.get("backend_proc"):
         try:
             kill_pid_tree(supervisor_state["backend_proc"].pid, "backend")
@@ -219,7 +301,6 @@ def register_console_ctrl_handler():
         cleanup_launcher_processes()
         return True
 
-    # Keep a reference to prevent garbage collection
     global _ctrl_handler_ref
     _ctrl_handler_ref = HANDLER_ROUTINE(_console_ctrl_handler)
     ctypes.windll.kernel32.SetConsoleCtrlHandler(_ctrl_handler_ref, True)
@@ -230,6 +311,7 @@ def save_pid_lockfile():
     data = {
         "supervisor_pid": os.getpid(),
         "backend_pid": supervisor_state.get("backend_pid"),
+        "backend_worker_pid": supervisor_state.get("backend_worker_pid"),
         "frontend_pid": supervisor_state.get("frontend_pid"),
         "ollama_owned": supervisor_state.get("ollama_owned", False),
         "ollama_pid": supervisor_state.get("ollama_pid"),
@@ -262,6 +344,8 @@ def stop_saved_processes():
     # Terminate frontend and backend child trees
     if data.get("frontend_pid"):
         kill_pid_tree(data["frontend_pid"], "frontend")
+    if data.get("backend_worker_pid"):
+        kill_pid_tree(data["backend_worker_pid"], "backend")
     if data.get("backend_pid"):
         kill_pid_tree(data["backend_pid"], "backend")
     if data.get("ollama_owned") and data.get("ollama_pid"):
@@ -281,10 +365,13 @@ def stop_saved_processes():
 
 
 def start_supervisor():
-    """Main supervisor workflow with readiness gates and failure cleanup."""
+    """Main supervisor workflow with readiness gates, persistent log capture, and failure diagnostics."""
     log("==================================================================")
     log("        SOCHNASETU AI -- PROCESS SUPERVISOR & LAUNCHER            ")
     log("==================================================================")
+
+    # 0. Ensure logs directory exists
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1. Check if previous instance is running
     if PID_LOCKFILE.exists():
@@ -348,6 +435,7 @@ def start_supervisor():
 
     # 4. Start Backend (0.0.0.0 allows LAN/Wi-Fi phone testing while maintaining local browser access)
     log("[2/3] Launching FastAPI Backend on http://0.0.0.0:8000 (accessible on LAN & localhost)...")
+    log(f"Preserving backend stdout and stderr in dedicated log: {BACKEND_LOG}")
     backend_cmd = [
         sys.executable,
         "-m",
@@ -364,9 +452,24 @@ def start_supervisor():
         backend_proc = subprocess.Popen(
             backend_cmd,
             cwd=str(PROJECT_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            encoding="utf-8",
+            errors="replace",
         )
         supervisor_state["backend_proc"] = backend_proc
         supervisor_state["backend_pid"] = backend_proc.pid
+        start_stream_tee(backend_proc.stdout, BACKEND_LOG)
+
+        # Detect worker process PID if launcher stub spawned a child process
+        time.sleep(0.5)
+        children = get_child_pids(backend_proc.pid)
+        if children:
+            supervisor_state["backend_worker_pid"] = children[0]
+            log(f"Detected backend server worker process (PID {children[0]}).")
+
         save_pid_lockfile()
         log(f"Backend started with PID {backend_proc.pid}. Waiting for health check...")
     except Exception as e:
@@ -379,30 +482,58 @@ def start_supervisor():
     for _ in range(25):
         time.sleep(0.5)
         if backend_proc.poll() is not None:
-            log(f"Backend process terminated unexpectedly with code {backend_proc.returncode}.")
+            exit_code = backend_proc.returncode
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            log(f"[ALERT] Backend process terminated unexpectedly during startup with exit code {exit_code} at {timestamp}.")
+            if BACKEND_LOG.exists():
+                log(f"--- Diagnostic Traceback / Output from {BACKEND_LOG} (Last 25 lines) ---")
+                try:
+                    with open(BACKEND_LOG, "r", encoding="utf-8", errors="replace") as lf:
+                        for l in lf.readlines()[-25:]:
+                            print(f"  [BACKEND-STARTUP] {l.rstrip()}", flush=True)
+                except Exception:
+                    pass
             cleanup_launcher_processes()
             sys.exit(1)
         if check_http_endpoint("http://127.0.0.1:8000/api/health"):
             backend_ready = True
+            supervisor_state["last_health_check"] = "HTTP 200 OK"
+            supervisor_state["last_health_time"] = time.time()
             break
 
     if not backend_ready:
         log("Backend failed health check at /api/health within 12 seconds.")
+        if BACKEND_LOG.exists():
+            log(f"--- Diagnostic Traceback / Output from {BACKEND_LOG} (Last 25 lines) ---")
+            try:
+                with open(BACKEND_LOG, "r", encoding="utf-8", errors="replace") as lf:
+                    for l in lf.readlines()[-25:]:
+                        print(f"  [BACKEND-STARTUP] {l.rstrip()}", flush=True)
+            except Exception:
+                pass
         cleanup_launcher_processes()
         sys.exit(1)
     log("FastAPI backend is healthy (HTTP 200).")
 
     # 5. Start Frontend (0.0.0.0 allows mobile devices on same Wi-Fi to load UI)
     log("[3/3] Launching React 19 Frontend on http://0.0.0.0:5173 (LAN + localhost)...")
+    log(f"Preserving frontend stdout and stderr in dedicated log: {FRONTEND_LOG}")
     frontend_dir = PROJECT_ROOT / "frontend"
     npm_cmd = "npm.cmd" if sys.platform == "win32" else "npm"
     try:
         frontend_proc = subprocess.Popen(
             [npm_cmd, "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"],
             cwd=str(frontend_dir),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            encoding="utf-8",
+            errors="replace",
         )
         supervisor_state["frontend_proc"] = frontend_proc
         supervisor_state["frontend_pid"] = frontend_proc.pid
+        start_stream_tee(frontend_proc.stdout, FRONTEND_LOG)
         save_pid_lockfile()
         log(f"Frontend started with PID {frontend_proc.pid}. Waiting for Vite server...")
     except Exception as e:
@@ -415,7 +546,8 @@ def start_supervisor():
     for _ in range(30):
         time.sleep(0.5)
         if frontend_proc.poll() is not None:
-            log(f"Frontend process terminated unexpectedly with code {frontend_proc.returncode}.")
+            fe_exit = frontend_proc.returncode
+            log(f"Frontend process terminated unexpectedly with code {fe_exit}.")
             cleanup_launcher_processes()
             sys.exit(1)
         if check_http_endpoint("http://127.0.0.1:5173/"):
@@ -455,21 +587,110 @@ def start_supervisor():
     log(f"  * Network Backend: http://{lan_ip}:8000/docs")
     log("  * Ollama Local AI: http://127.0.0.1:11434 (Preserved on localhost)")
     log("  * PID Tracking:    .launcher_pids.json")
+    log(f"  * Backend Log:     {BACKEND_LOG}")
+    log(f"  * Frontend Log:    {FRONTEND_LOG}")
     log("  Press Ctrl+C in this window at any time to shut down cleanly.")
     log("==================================================================")
 
     # 8. Supervise until shutdown
+    log("Supervisor monitoring loop active. Monitoring processes and health status...")
+    consecutive_health_failures = 0
     try:
         while True:
             time.sleep(1.0)
+
+            # 8a. Check if backend wrapper process exited
             if backend_proc.poll() is not None:
-                log("Backend process exited unexpectedly. Initiating cleanup...")
+                exit_code = backend_proc.returncode
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                health_ok = check_http_endpoint("http://127.0.0.1:8000/api/health")
+                worker_pid = supervisor_state.get("backend_worker_pid")
+                worker_alive = is_pid_alive(worker_pid) if worker_pid else False
+
+                if health_ok and worker_alive:
+                    log(f"[INFO] Backend wrapper process (PID {backend_proc.pid}) exited with code {exit_code}, but FastAPI worker (PID {worker_pid}) is healthy and active at /api/health (HTTP 200). Continuing supervision on worker process.")
+                    supervisor_state["backend_pid"] = worker_pid
+                    save_pid_lockfile()
+                    continue
+
+                log("==================================================================")
+                log(f"[ALERT] Backend process exited unexpectedly at {timestamp} with exit code {exit_code}.")
+                log(f"[ALERT] Last known health check status: {'HTTP 200 (OK)' if health_ok else 'UNAVAILABLE (Failed)'}.")
+                log("[ALERT] Distinguishing failure mode: GENUINE PROCESS TERMINATION (Backend process exited and endpoint unresponsive).")
+                log("------------------------------------------------------------------")
+                if BACKEND_LOG.exists():
+                    log(f"--- Diagnostic Traceback / Output from {BACKEND_LOG} (Last 25 lines) ---")
+                    try:
+                        with open(BACKEND_LOG, "r", encoding="utf-8", errors="replace") as lf:
+                            tail = lf.readlines()[-25:]
+                        for line in tail:
+                            print(f"  [BACKEND-LOG] {line.rstrip()}", flush=True)
+                    except Exception as le:
+                        log(f"Could not read backend log: {le}")
+                log("------------------------------------------------------------------")
+                log("Initiating cleanup following backend exit...")
                 break
+
+            # 8b. Monitor worker PID specifically if known
+            worker_pid = supervisor_state.get("backend_worker_pid")
+            if worker_pid and not is_pid_alive(worker_pid):
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                health_ok = check_http_endpoint("http://127.0.0.1:8000/api/health")
+                if not health_ok:
+                    log("==================================================================")
+                    log(f"[ALERT] Backend worker process (PID {worker_pid}) terminated at {timestamp}.")
+                    log(f"[ALERT] Last known health check status: FAILED/OFFLINE.")
+                    log("[ALERT] Distinguishing failure mode: GENUINE PROCESS TERMINATION.")
+                    if BACKEND_LOG.exists():
+                        log(f"--- Diagnostic Traceback / Output from {BACKEND_LOG} (Last 25 lines) ---")
+                        try:
+                            with open(BACKEND_LOG, "r", encoding="utf-8", errors="replace") as lf:
+                                for line in lf.readlines()[-25:]:
+                                    print(f"  [BACKEND-LOG] {line.rstrip()}", flush=True)
+                        except Exception:
+                            pass
+                    break
+
+            # 8c. Monitor frontend process
             if frontend_proc.poll() is not None:
-                log("Frontend process exited unexpectedly. Initiating cleanup...")
+                fe_exit = frontend_proc.returncode
+                timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                fe_ok = check_http_endpoint("http://127.0.0.1:5173/")
+                log("==================================================================")
+                log(f"[ALERT] Frontend process exited at {timestamp} with exit code {fe_exit}.")
+                log(f"[ALERT] Last known frontend health: {'HTTP 200 (OK)' if fe_ok else 'FAILED/OFFLINE'}.")
+                log("[ALERT] Distinguishing failure mode: FRONTEND PROCESS TERMINATION.")
+                if FRONTEND_LOG.exists():
+                    log(f"--- Frontend Output from {FRONTEND_LOG} (Last 20 lines) ---")
+                    try:
+                        with open(FRONTEND_LOG, "r", encoding="utf-8", errors="replace") as lf:
+                            for line in lf.readlines()[-20:]:
+                                print(f"  [FRONTEND-LOG] {line.rstrip()}", flush=True)
+                    except Exception:
+                        pass
                 break
+
+            # 8d. Periodic health check verification (every 10 seconds)
+            # Avoid killing a healthy process on transient health-check timeouts
+            if int(time.time()) % 10 == 0:
+                health_ok = check_http_endpoint("http://127.0.0.1:8000/api/health", timeout=2.0)
+                if health_ok:
+                    consecutive_health_failures = 0
+                    supervisor_state["last_health_check"] = "HTTP 200 OK"
+                    supervisor_state["last_health_time"] = time.time()
+                else:
+                    consecutive_health_failures += 1
+                    supervisor_state["last_health_check"] = f"FAILED ({consecutive_health_failures} consecutive)"
+                    supervisor_state["last_health_time"] = time.time()
+                    log(f"[WARNING] Health check probe failed ({consecutive_health_failures}/5). Backend process PID {backend_proc.pid} is still alive. Retrying before taking action...")
+                    if consecutive_health_failures >= 5:
+                        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                        log("==================================================================")
+                        log(f"[ALERT] Health check failure at {timestamp}: /api/health did not respond for 5 consecutive probes (50s).")
+                        log("[ALERT] Distinguishing failure mode: UNRESPONSIVE HTTP ENDPOINT (Process is alive but hanging).")
+                        break
     except KeyboardInterrupt:
-        log("\nCtrl+C detected.")
+        log("\nCtrl+C detected. Graceful shutdown requested by user.")
     finally:
         cleanup_launcher_processes()
 

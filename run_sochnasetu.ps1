@@ -243,19 +243,17 @@ try {
     }
 
     # Prepare log directory
-    $logDir = Join-Path $ProjectRoot "data\logs"
+    $logDir = Join-Path $ProjectRoot "logs"
     if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
-    $beOutLog = Join-Path $logDir "backend_stdout.log"
-    $beErrLog = Join-Path $logDir "backend_stderr.log"
-    $feOutLog = Join-Path $logDir "frontend_stdout.log"
-    $feErrLog = Join-Path $logDir "frontend_stderr.log"
+    $beLog = Join-Path $logDir "backend.log"
+    $feLog = Join-Path $logDir "frontend.log"
 
     # -------------------------------------------------------------------------
     # Step 3: Launch FastAPI Backend Server
     # -------------------------------------------------------------------------
     Write-Host "`n[3/5] Starting FastAPI Backend Server on port $BackendPort..." -ForegroundColor White
     $backendArgs = "-m uvicorn notice2action.api.server:app --app-dir src --host $HostAddress --port $BackendPort"
-    $Global:BackendProcess = Start-Process -FilePath $PythonExe -ArgumentList $backendArgs -WorkingDirectory $ProjectRoot -RedirectStandardOutput $beOutLog -RedirectStandardError $beErrLog -PassThru -WindowStyle Hidden
+    $Global:BackendProcess = Start-Process -FilePath $PythonExe -ArgumentList $backendArgs -WorkingDirectory $ProjectRoot -RedirectStandardOutput $beLog -RedirectStandardError $beLog -PassThru -WindowStyle Hidden
     Write-Host "       FastAPI backend process spawned (PID: $($Global:BackendProcess.Id))." -ForegroundColor Gray
 
     # Wait for Backend to become healthy
@@ -283,7 +281,7 @@ try {
     Write-Host "`n[4/5] Starting React 19 / Vite Frontend on port $FrontendPort..." -ForegroundColor White
     $frontendDir = Join-Path $ProjectRoot "frontend"
     $frontendArgs = "run dev -- --host $HostAddress --port $FrontendPort"
-    $Global:FrontendProcess = Start-Process -FilePath $NpmCmd.Source -ArgumentList $frontendArgs -WorkingDirectory $frontendDir -RedirectStandardOutput $feOutLog -RedirectStandardError $feErrLog -PassThru -WindowStyle Hidden
+    $Global:FrontendProcess = Start-Process -FilePath $NpmCmd.Source -ArgumentList $frontendArgs -WorkingDirectory $frontendDir -RedirectStandardOutput $feLog -RedirectStandardError $feLog -PassThru -WindowStyle Hidden
     Write-Host "       React Vite process spawned (PID: $($Global:FrontendProcess.Id))." -ForegroundColor Gray
 
     # Persist PID lockfile for supervisor and external discovery
@@ -349,11 +347,19 @@ try {
         Start-Sleep -Seconds 2
         if ($Global:BackendProcess -and $Global:BackendProcess.HasExited) {
             $beExit = $Global:BackendProcess.ExitCode
-            Write-Host "`n[ALERT] Backend process terminated unexpectedly with exit code $beExit." -ForegroundColor Red
-            if (Test-Path $beErrLog) {
-                $snippet = Get-Content $beErrLog -Tail 15 -ErrorAction SilentlyContinue
+            $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+            $healthOk = $false
+            try {
+                $h = Invoke-RestMethod -Uri "http://127.0.0.1:$BackendPort/api/health" -Method Get -TimeoutSec 1 -ErrorAction SilentlyContinue
+                if ($h) { $healthOk = $true }
+            } catch {}
+            Write-Host "`n[ALERT] Backend process terminated unexpectedly at $timestamp with exit code $beExit." -ForegroundColor Red
+            Write-Host "[ALERT] Last known health check status: $(if ($healthOk) { 'HTTP 200 (OK)' } else { 'UNAVAILABLE (Failed)' })." -ForegroundColor Red
+            Write-Host "[ALERT] Distinguishing failure mode: GENUINE PROCESS TERMINATION." -ForegroundColor Red
+            if (Test-Path $beLog) {
+                $snippet = Get-Content $beLog -Tail 25 -ErrorAction SilentlyContinue
                 if ($snippet) {
-                    Write-Host "--- Backend Error Output ($beErrLog) ---" -ForegroundColor Yellow
+                    Write-Host "--- Backend Diagnostic Output ($beLog) ---" -ForegroundColor Yellow
                     $snippet | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
                 }
             }
@@ -361,11 +367,12 @@ try {
         }
         if ($Global:FrontendProcess -and $Global:FrontendProcess.HasExited) {
             $feExit = $Global:FrontendProcess.ExitCode
-            Write-Host "`n[ALERT] Frontend process terminated unexpectedly with exit code $feExit." -ForegroundColor Red
-            if (Test-Path $feErrLog) {
-                $snippet = Get-Content $feErrLog -Tail 15 -ErrorAction SilentlyContinue
+            $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+            Write-Host "`n[ALERT] Frontend process terminated unexpectedly at $timestamp with exit code $feExit." -ForegroundColor Red
+            if (Test-Path $feLog) {
+                $snippet = Get-Content $feLog -Tail 20 -ErrorAction SilentlyContinue
                 if ($snippet) {
-                    Write-Host "--- Frontend Error Output ($feErrLog) ---" -ForegroundColor Yellow
+                    Write-Host "--- Frontend Diagnostic Output ($feLog) ---" -ForegroundColor Yellow
                     $snippet | ForEach-Object { Write-Host "  $_" -ForegroundColor Yellow }
                 }
             }

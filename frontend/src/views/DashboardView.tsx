@@ -84,18 +84,30 @@ export const DashboardView: React.FC = () => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [userRes, savedRes, weeklyRes, notifsRes, actsRes, checklistRes] = await Promise.allSettled([
-        fetchAuthMe(),
+      // Determine if authenticated from session probe or context
+      const authUser = await fetchAuthMe().catch(() => null);
+      const activeUser = authUser || contextUser || null;
+      setCurrentUser(activeUser);
+
+      // Fetch public / guest-compatible dashboard resources
+      const calls: Promise<any>[] = [
         apiClient.getSavedNotices(),
         apiClient.getWeeklyTasks(),
         apiClient.getUserNotifications(),
         apiClient.getUserActivities(15),
-        apiClient.getUserChecklistProgress(),
-      ]);
+      ];
 
-      if (userRes.status === 'fulfilled') {
-        setCurrentUser(userRes.value);
+      // Strictly isolated user checklist is only requested for authenticated citizens
+      if (activeUser) {
+        calls.push(apiClient.getUserChecklistProgress());
       }
+
+      const results = await Promise.allSettled(calls);
+      const savedRes = results[0];
+      const weeklyRes = results[1];
+      const notifsRes = results[2];
+      const actsRes = results[3];
+      const checklistRes = activeUser ? results[4] : null;
       if (savedRes.status === 'fulfilled') {
         setSavedNotices(savedRes.value || []);
       }
