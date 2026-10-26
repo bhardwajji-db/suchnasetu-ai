@@ -416,11 +416,39 @@ def test_24_confirmation_before_uncertain_details_become_actionable():
 def test_25_fastapi_server_loads_without_import_error():
     from notice2action.api.server import app
     assert app is not None
+
+    # Safely extract all route paths across direct routes and included subrouters (FastAPI _IncludedRouter)
+    route_paths = []
+    for r in app.routes:
+        path = getattr(r, "path", None)
+        if path:
+            route_paths.append(path)
+        elif hasattr(r, "original_router") and hasattr(r.original_router, "routes"):
+            for sub_r in r.original_router.routes:
+                sub_path = getattr(sub_r, "path", None)
+                if sub_path:
+                    route_paths.append(sub_path)
+        elif hasattr(r, "routes"):
+            for sub_r in r.routes:
+                sub_path = getattr(sub_r, "path", None)
+                if sub_path:
+                    route_paths.append(sub_path)
+
     # Verify core production routes are registered
-    route_paths = [r.path for r in app.routes]
     assert "/api/health" in route_paths
     assert "/api/analyze" in route_paths
     assert "/api/followup" in route_paths
     assert "/api/providers" in route_paths
     assert "/api/export/ics" in route_paths
     assert "/api/evidence/search" in route_paths
+
+    # Verify authentication routes are registered
+    assert "/api/auth/register" in route_paths
+    assert "/api/auth/login" in route_paths
+    assert "/api/auth/logout" in route_paths
+    assert "/api/auth/me" in route_paths
+
+    # Verify SPA catch-all is registered last and does not intercept API routes
+    assert "/{full_path:path}" in route_paths
+    last_route = app.routes[-1]
+    assert getattr(last_route, "path", None) == "/{full_path:path}"

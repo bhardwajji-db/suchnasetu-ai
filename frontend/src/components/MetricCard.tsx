@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ExtractedFact } from '../types/api';
 import { Target, Calendar, UserCheck, CheckSquare, HelpCircle } from 'lucide-react';
+import { useTranslation } from '../i18n';
 
 interface MetricCardProps {
   fact?: ExtractedFact | null;
@@ -9,6 +10,8 @@ interface MetricCardProps {
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({ fact, label, iconType }) => {
+  const { t } = useTranslation();
+
   const getIcon = () => {
     switch (iconType) {
       case 'purpose':
@@ -29,25 +32,25 @@ export const MetricCard: React.FC<MetricCardProps> = ({ fact, label, iconType })
     if (fact.status === 'stated') {
       return (
         <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
-          Stated
+          {t('factStatusStated')}
         </span>
       );
     }
     if (fact.status === 'not_stated') {
       return (
         <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-[#526176] border border-slate-200">
-          Not Stated
+          {t('factStatusNotStated')}
         </span>
       );
     }
     return (
       <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-[#FFF4D6] text-[#92500A] border border-[#FDE68A]">
-        Needs Confirmation
+        {t('needsConfirmation')}
       </span>
     );
   };
 
-  const displayValue = fact?.value || 'Pending notice analysis...';
+  const displayValue = fact?.value || t('pendingNoticeAnalysis');
 
   return (
     <div className="bg-white border border-[#E1E7EE] hover:border-[#B7E7D2] transition-all rounded-xl p-4 flex flex-col justify-between shadow-xs">

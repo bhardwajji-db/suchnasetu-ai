@@ -1,18 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { apiClient } from '../services/apiClient';
-import { Eye, RefreshCw, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useTranslation } from '../i18n';
+import { Eye, RefreshCw, Trash2, AlertTriangle, ShieldCheck, Compass, FileCheck } from 'lucide-react';
 
 export const OCRPanel: React.FC = () => {
   const { uploadedImage, uploadedFile, setUploadedImage, setRawNoticeText, setOcrResult, ocrResult } = useNotice();
-  const [ocrLang, setOcrLang] = useState<string>('eng');
+  const { t } = useTranslation();
+  const [ocrLang, setOcrLang] = useState<string>('hin+eng');
   const [enhanceContrast, setEnhanceContrast] = useState<boolean>(true);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'repaired' | 'raw'>('repaired');
+  const [cooldownSec, setCooldownSec] = useState<number>(0);
+  const [isRateLimited, setIsRateLimited] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (cooldownSec <= 0) {
+      if (isRateLimited) setIsRateLimited(false);
+      return;
+    }
+    const timer = setInterval(() => {
+      setCooldownSec((prev) => {
+        if (prev <= 1) {
+          setIsRateLimited(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSec, isRateLimited]);
 
   if (!uploadedImage) return null;
 
   const handleRunOCR = async () => {
+    if (isProcessing || cooldownSec > 0) return;
     setIsProcessing(true);
     setOcrError(null);
 
@@ -29,11 +52,28 @@ export const OCRPanel: React.FC = () => {
       } else {
         setRawNoticeText(res.extracted_text);
         setOcrResult(res);
+        setViewMode('repaired');
       }
     } catch (err: any) {
-      setOcrError(err.message || 'OCR processing failed.');
+      if (err.status === 429 || /rate limit|quota/i.test(err.message || '')) {
+        setIsRateLimited(true);
+        setOcrError(err.message || t('error'));
+        setCooldownSec(15);
+      } else {
+        setOcrError(err.message || t('invalidCredentialsError'));
+      }
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleToggleViewMode = (mode: 'repaired' | 'raw') => {
+    setViewMode(mode);
+    if (!ocrResult) return;
+    if (mode === 'raw' && ocrResult.raw_ocr_text) {
+      setRawNoticeText(ocrResult.raw_ocr_text);
+    } else if (mode === 'repaired') {
+      setRawNoticeText(ocrResult.extracted_text);
     }
   };
 
@@ -42,18 +82,32 @@ export const OCRPanel: React.FC = () => {
     setOcrResult(null);
   };
 
+  const qualityScore = ocrResult?.document_quality_score ?? ocrResult?.confidence_score ?? 0;
+  const isHighQuality = qualityScore >= 80;
+  const isModerateQuality = qualityScore >= 65 && qualityScore < 80;
+
   return (
     <div className="bg-white border border-[#E1E7EE] rounded-xl p-5 space-y-4 shadow-xs">
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold uppercase tracking-wider text-[#12233D] flex items-center gap-1.5">
           <Eye className="w-4 h-4 text-[#08785D]" />
-          Notice Image Preview
+          {t('imagePreview')}
         </span>
         {ocrResult && (
-          <span className="flex items-center gap-1 text-[11px] font-bold text-[#08785D] bg-[#E8F7F0] border border-[#B7E7D2] px-2.5 py-0.5 rounded-md">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Confidence: {ocrResult.confidence_score.toFixed(1)}%
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span
+              className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-md border ${
+                isHighQuality
+                  ? 'text-[#08785D] bg-[#E8F7F0] border-[#B7E7D2]'
+                  : isModerateQuality
+                  ? 'text-[#B54708] bg-[#FFFAEB] border-[#FEDF89]'
+                  : 'text-[#B42318] bg-[#FEE8E7] border-[#FCA5A5]'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              {t('qualityScore')}: {qualityScore.toFixed(1)}% {isHighQuality ? t('qualityHigh') : isModerateQuality ? t('qualityModerate') : t('qualityUncertain')}
+            </span>
+          </div>
         )}
       </div>
 
@@ -61,25 +115,34 @@ export const OCRPanel: React.FC = () => {
       <div className="relative max-h-56 overflow-hidden rounded-xl border border-[#E1E7EE] bg-[#F8FAFC] flex items-center justify-center p-2">
         <img
           src={uploadedImage}
-          alt="Loaded notice preview"
+          alt={t('imagePreview')}
           className="max-h-52 w-auto object-contain rounded-lg shadow-xs"
         />
       </div>
+
+      {/* Alignment / Deskew indicator badges */}
+      {ocrResult && (ocrResult.deskew_angle || ocrResult.orientation_applied) ? (
+        <div className="flex items-center gap-2 text-[11px] text-[#526176] bg-[#F8FAFC] px-3 py-1.5 rounded-lg border border-[#E1E7EE]">
+          <Compass className="w-3.5 h-3.5 text-[#08785D]" />
+          {ocrResult.orientation_applied ? <span>{t('rotation')}: {ocrResult.orientation_applied}°</span> : null}
+          {ocrResult.deskew_angle ? <span>{t('deskew')}: {ocrResult.deskew_angle > 0 ? `+${ocrResult.deskew_angle}` : ocrResult.deskew_angle}°</span> : null}
+        </div>
+      ) : null}
 
       {/* OCR Controls */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
         <div>
           <label className="text-[11px] font-bold text-[#526176] uppercase tracking-wide block mb-1">
-            OCR Language Pack
+            {t('ocrLanguagePack')}
           </label>
           <select
             value={ocrLang}
             onChange={(e) => setOcrLang(e.target.value)}
-            className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-3 py-1.5 text-xs text-[#12233D] focus:border-[#08785D] focus:outline-hidden"
+            className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-3 py-1.5 text-xs text-[#12233D] focus:border-[#08785D] focus:outline-hidden font-medium"
           >
-            <option value="eng">English (eng)</option>
+            <option value="hin+eng">Bilingual (Hindi + English - Hybrid Fusion)</option>
             <option value="hin">Hindi (hin)</option>
-            <option value="eng+hin">Bilingual (eng + hin)</option>
+            <option value="eng">English (eng)</option>
           </select>
         </div>
 
@@ -91,10 +154,57 @@ export const OCRPanel: React.FC = () => {
               onChange={(e) => setEnhanceContrast(e.target.checked)}
               className="rounded border-[#CBD5E1] text-[#08785D] focus:ring-[#08785D]"
             />
-            <span>Enhance Contrast (Adaptive)</span>
+            <span>{t('adaptiveContrast')}</span>
           </label>
         </div>
       </div>
+
+      {/* Switcher between Repaired and Raw OCR */}
+      {ocrResult && ocrResult.raw_ocr_text && (
+        <div className="flex items-center justify-between p-2.5 bg-[#F8FAFC] border border-[#E1E7EE] rounded-lg text-xs">
+          <span className="font-semibold text-[#12233D] flex items-center gap-1.5">
+            <FileCheck className="w-3.5 h-3.5 text-[#08785D]" />
+            {t('viewingBufferMode')}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => handleToggleViewMode('repaired')}
+              className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
+                viewMode === 'repaired'
+                  ? 'bg-[#08785D] text-white shadow-2xs'
+                  : 'bg-white border border-[#CBD5E1] text-[#526176] hover:bg-slate-50'
+              }`}
+            >
+              {t('repairedText')}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggleViewMode('raw')}
+              className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
+                viewMode === 'raw'
+                  ? 'bg-[#08785D] text-white shadow-2xs'
+                  : 'bg-white border border-[#CBD5E1] text-[#526176] hover:bg-slate-50'
+              }`}
+            >
+              {t('rawOcr')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Low-confidence / uncertain span warnings */}
+      {ocrResult && ocrResult.uncertain_spans && ocrResult.uncertain_spans.length > 0 && (
+        <div className="p-3 rounded-lg bg-[#FFFAEB] border border-[#FEDF89] text-xs text-[#B54708] space-y-1">
+          <div className="flex items-center gap-1.5 font-bold">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{t('humanReviewAdvised')} ({ocrResult.uncertain_spans.length})</span>
+          </div>
+          <p className="text-[11px] text-[#7A271A]">
+            {t('humanReviewAdvisedDesc')}
+          </p>
+        </div>
+      )}
 
       {/* Error alert */}
       {ocrError && (
@@ -112,17 +222,17 @@ export const OCRPanel: React.FC = () => {
           className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#B42318] hover:bg-[#FEE8E7] transition cursor-pointer"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          Remove Image
+          {t('removeImage')}
         </button>
 
         <button
           type="button"
           onClick={handleRunOCR}
-          disabled={isProcessing}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs disabled:opacity-50 cursor-pointer"
+          disabled={isProcessing || cooldownSec > 0}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isProcessing ? 'animate-spin' : ''}`} />
-          {isProcessing ? 'Extracting Text...' : 'Run Tesseract OCR'}
+          {isProcessing ? t('extractingText') : cooldownSec > 0 ? `Please wait (${cooldownSec}s)...` : t('runOcr')}
         </button>
       </div>
     </div>

@@ -14,6 +14,7 @@ import { CrossNoticeTimelineView } from '../views/CrossNoticeTimelineView';
 import { NoticeHistoryView } from '../views/NoticeHistoryView';
 import { SettingsView } from '../views/SettingsView';
 import { DemoLibraryView } from '../views/DemoLibraryView';
+import { ErrorBoundary } from './ErrorBoundary';
 import { AnalysisProgressModal } from './AnalysisProgressModal';
 import { ConfirmationModal } from './ConfirmationModal';
 import { OriginalNoticeViewerModal } from './OriginalNoticeViewerModal';
@@ -83,7 +84,9 @@ export const ApplicationLayout: React.FC = () => {
       <div className="flex flex-1 overflow-hidden min-w-0 w-full">
         <Sidebar />
         <main className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 max-w-7xl mx-auto w-full min-w-0">
-          {renderActiveView()}
+          <ErrorBoundary key={activeTab}>
+            {renderActiveView()}
+          </ErrorBoundary>
         </main>
       </div>
       <MobileBottomNav />

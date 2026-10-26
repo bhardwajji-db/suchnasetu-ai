@@ -5,6 +5,8 @@ Instantiates the active client based on configuration, with fallback and status 
 
 from __future__ import annotations
 
+import os
+
 from typing import Dict, Any, Optional, List, Type
 from notice2action.config import config
 from notice2action.llm.base import BaseLLMClient, LLMConfigError
@@ -85,15 +87,21 @@ def get_all_provider_statuses() -> List[Dict[str, Any]]:
     })
 
     # 4. Hugging Face
-    hf_has_key = bool(config.huggingface_api_key or config.llm_api_key)
+    hf_has_key = bool(
+        getattr(config, "hf_token", None)
+        or config.huggingface_api_key
+        or config.llm_api_key
+        or os.getenv("HF_TOKEN")
+        or os.getenv("HUGGINGFACE_API_KEY")
+    )
     statuses.append({
         "id": "huggingface",
         "name": "Hugging Face Inference (Cloud)",
         "is_active": active_provider == "huggingface",
         "is_local": False,
         "requires_api_key": True,
-        "model": config.huggingface_model,
-        "endpoint": "https://router.huggingface.co/hf-inference/v1",
+        "model": getattr(config, "huggingface_model", "google/gemma-4-26B-A4B"),
+        "endpoint": "https://router.huggingface.co/v1",
         "key_configured": hf_has_key,
     })
 

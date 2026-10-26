@@ -29,6 +29,8 @@ import type {
   NoticeMetadata,
   WorkspaceTimelineReport,
   DemoLibraryResponse,
+  NotificationsResponse,
+  UserActivity,
 } from '../types/api';
 
 const getBaseUrl = (): string => {
@@ -43,16 +45,25 @@ const getBaseUrl = (): string => {
 
 const BASE_URL = getBaseUrl();
 
-class APIError extends Error {
+export class APIError extends Error {
   status: number;
   data: any;
+  errorType?: string;
 
   constructor(message: string, status: number, data?: any) {
     super(message);
     this.name = 'APIError';
     this.status = status;
     this.data = data;
+    this.errorType = data?.error_type;
   }
+}
+
+async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const defaultInit: RequestInit = {
+    credentials: 'include',
+  };
+  return fetch(input, { ...defaultInit, ...init });
 }
 
 async function handleResponse<T>(res: Response): Promise<T> {
@@ -77,7 +88,7 @@ export const apiClient = {
    * Diagnostic and preflight check for Ollama, Tesseract, and Python
    */
   async getHealth(): Promise<PreflightReport> {
-    const res = await fetch(`${BASE_URL}/api/health`);
+    const res = await apiFetch(`${BASE_URL}/api/health`);
     return handleResponse<PreflightReport>(res);
   },
 
@@ -85,7 +96,7 @@ export const apiClient = {
    * List all available LLM providers and their configuration status
    */
   async getProviders(): Promise<LLMProviderStatus[]> {
-    const res = await fetch(`${BASE_URL}/api/providers`);
+    const res = await apiFetch(`${BASE_URL}/api/providers`);
     return handleResponse<LLMProviderStatus[]>(res);
   },
 
@@ -93,7 +104,7 @@ export const apiClient = {
    * Select active LLM provider (ollama, openrouter, gemini, huggingface)
    */
   async selectProvider(provider: string): Promise<any> {
-    const res = await fetch(`${BASE_URL}/api/providers/select`, {
+    const res = await apiFetch(`${BASE_URL}/api/providers/select`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ provider }),
@@ -105,7 +116,7 @@ export const apiClient = {
    * List available synthetic demo fixtures
    */
   async getSamples(): Promise<SampleFixture[]> {
-    const res = await fetch(`${BASE_URL}/api/samples`);
+    const res = await apiFetch(`${BASE_URL}/api/samples`);
     return handleResponse<SampleFixture[]>(res);
   },
 
@@ -113,7 +124,7 @@ export const apiClient = {
    * Fetch sample fixture content
    */
   async getSampleText(filename: string): Promise<{ filename: string; content: string; fingerprint: string }> {
-    const res = await fetch(`${BASE_URL}/api/samples/${encodeURIComponent(filename)}`);
+    const res = await apiFetch(`${BASE_URL}/api/samples/${encodeURIComponent(filename)}`);
     return handleResponse<{ filename: string; content: string; fingerprint: string }>(res);
   },
 
@@ -121,7 +132,7 @@ export const apiClient = {
    * Fetch sample image fixture as Blob
    */
   async getSampleImage(filename: string): Promise<Blob> {
-    const res = await fetch(`${BASE_URL}/api/samples/${encodeURIComponent(filename)}`);
+    const res = await apiFetch(`${BASE_URL}/api/samples/${encodeURIComponent(filename)}`);
     if (!res.ok) {
       throw new APIError(`Failed to fetch image: HTTP ${res.status}`, res.status);
     }
@@ -132,7 +143,7 @@ export const apiClient = {
    * Ingest, sanitize and compute SHA-256 fingerprint of pasted text
    */
   async ingestText(text: string): Promise<IngestTextResponse> {
-    const res = await fetch(`${BASE_URL}/api/ingest/text`, {
+    const res = await apiFetch(`${BASE_URL}/api/ingest/text`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
@@ -146,7 +157,7 @@ export const apiClient = {
   async uploadFile(file: File): Promise<any> {
     const formData = new FormData();
     formData.append('file', file);
-    const res = await fetch(`${BASE_URL}/api/ingest/upload`, {
+    const res = await apiFetch(`${BASE_URL}/api/ingest/upload`, {
       method: 'POST',
       body: formData,
     });
@@ -171,7 +182,7 @@ export const apiClient = {
       formData.append('engine', engine);
     }
 
-    const res = await fetch(`${BASE_URL}/api/ocr`, {
+    const res = await apiFetch(`${BASE_URL}/api/ocr`, {
       method: 'POST',
       body: formData,
     });
@@ -188,25 +199,40 @@ export const apiClient = {
     sessionId?: string | null,
     provider?: string | null
   ): Promise<AnalyzeResponse> {
-    const res = await fetch(`${BASE_URL}/api/analyze`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        notice_text: noticeText,
-        target_language: targetLanguage,
-        reading_level: readingLevel,
-        session_id: sessionId || undefined,
-        provider: provider || undefined,
-      }),
-    });
-    return handleResponse<AnalyzeResponse>(res);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000);
+    try {
+      const res = await apiFetch(`${BASE_URL}/api/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          notice_text: noticeText,
+          target_language: targetLanguage,
+          reading_level: readingLevel,
+          session_id: sessionId || undefined,
+          provider: provider || undefined,
+        }),
+      });
+      return await handleResponse<AnalyzeResponse>(res);
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        throw new APIError(
+          'Analysis timed out after 3 minutes. The local Gemma 4 model took longer than expected to process this document. Please verify system resources or retry with a shorter notice.',
+          504
+        );
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   },
 
   /**
    * Search grounded citations within the active notice text
    */
   async searchEvidence(query: string, noticeText: string, maxResults: number = 5): Promise<EvidenceCitation[]> {
-    const res = await fetch(`${BASE_URL}/api/evidence/search`, {
+    const res = await apiFetch(`${BASE_URL}/api/evidence/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -228,7 +254,7 @@ export const apiClient = {
     readingLevel: string = 'standard',
     sessionId?: string | null
   ): Promise<ConfirmFactResponse> {
-    const res = await fetch(`${BASE_URL}/api/confirm`, {
+    const res = await apiFetch(`${BASE_URL}/api/confirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -247,14 +273,18 @@ export const apiClient = {
    */
   async getReadingLevelSummary(
     structuredNotice: StructuredNotice,
-    readingLevel: string = 'standard'
+    readingLevel: string = 'standard',
+    targetLanguage: string = 'en',
+    sessionId?: string
   ): Promise<ReadingLevelResponse> {
-    const res = await fetch(`${BASE_URL}/api/summary/reading-level`, {
+    const res = await apiFetch(`${BASE_URL}/api/summary/reading-level`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         structured_notice: structuredNotice,
         reading_level: readingLevel,
+        target_language: targetLanguage,
+        session_id: sessionId || undefined,
       }),
     });
     return handleResponse<ReadingLevelResponse>(res);
@@ -269,7 +299,7 @@ export const apiClient = {
     sessionId?: string | null,
     targetLanguage: string = 'en'
   ): Promise<FollowUpAnswer> {
-    const res = await fetch(`${BASE_URL}/api/followup`, {
+    const res = await apiFetch(`${BASE_URL}/api/followup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -290,7 +320,7 @@ export const apiClient = {
     summary?: PlainLanguageSummary,
     checklist?: ActionChecklist
   ): Promise<Blob> {
-    const res = await fetch(`${BASE_URL}/api/export/markdown`, {
+    const res = await apiFetch(`${BASE_URL}/api/export/markdown`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -309,7 +339,7 @@ export const apiClient = {
    * Export action checklist as RFC 5545 iCalendar (.ics) file
    */
   async exportIcs(checklist: ActionChecklist, title: string = 'Notice Action Plan'): Promise<Blob> {
-    const res = await fetch(`${BASE_URL}/api/export/ics`, {
+    const res = await apiFetch(`${BASE_URL}/api/export/ics`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -328,7 +358,7 @@ export const apiClient = {
    */
   async getTTSAudio(text: string, lang: string = 'en', allowCloud: boolean = false): Promise<Blob | null> {
     try {
-      const res = await fetch(`${BASE_URL}/api/tts`, {
+      const res = await apiFetch(`${BASE_URL}/api/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, lang, allow_cloud: allowCloud }),
@@ -351,7 +381,7 @@ export const apiClient = {
     sourceText?: string,
     targetText?: string
   ): Promise<NoticeRelationship> {
-    const res = await fetch(`${BASE_URL}/api/relationships/detect`, {
+    const res = await apiFetch(`${BASE_URL}/api/relationships/detect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -373,7 +403,7 @@ export const apiClient = {
     sourceText?: string,
     targetText?: string
   ): Promise<RevisionLedger> {
-    const res = await fetch(`${BASE_URL}/api/revision-ledger/compare`, {
+    const res = await apiFetch(`${BASE_URL}/api/revision-ledger/compare`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -393,7 +423,7 @@ export const apiClient = {
     sessionId?: string,
     noticeText?: string
   ): Promise<EligibilityCriterion[]> {
-    const res = await fetch(`${BASE_URL}/api/eligibility/extract-criteria`, {
+    const res = await apiFetch(`${BASE_URL}/api/eligibility/extract-criteria`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -412,7 +442,7 @@ export const apiClient = {
     sessionId?: string,
     noticeText?: string
   ): Promise<EligibilityAssessment> {
-    const res = await fetch(`${BASE_URL}/api/eligibility/evaluate`, {
+    const res = await apiFetch(`${BASE_URL}/api/eligibility/evaluate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -433,7 +463,7 @@ export const apiClient = {
     claimText?: string,
     docTitle?: string
   ): Promise<VerifyEvidenceResponse> {
-    const res = await fetch(`${BASE_URL}/api/trust/verify-evidence`, {
+    const res = await apiFetch(`${BASE_URL}/api/trust/verify-evidence`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -455,7 +485,7 @@ export const apiClient = {
     targetText?: string;
     profile?: ApplicantProfile;
   }): Promise<PersonalImpactReport> {
-    const res = await fetch(`${BASE_URL}/api/impact/evaluate`, {
+    const res = await apiFetch(`${BASE_URL}/api/impact/evaluate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -478,7 +508,7 @@ export const apiClient = {
     eligibility?: EligibilityAssessment;
     revisionLedger?: RevisionLedger;
   }): Promise<PersonalizedActionPlan> {
-    const res = await fetch(`${BASE_URL}/api/actions/generate`, {
+    const res = await apiFetch(`${BASE_URL}/api/actions/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -501,7 +531,7 @@ export const apiClient = {
     status: ActionItemStatus,
     userNotes?: string
   ): Promise<PersonalizedActionPlan> {
-    const res = await fetch(`${BASE_URL}/api/actions/update-status`, {
+    const res = await apiFetch(`${BASE_URL}/api/actions/update-status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -518,12 +548,12 @@ export const apiClient = {
    * Multi-document workspace API
    */
   async getWorkspaceNotices(): Promise<NoticeMetadata[]> {
-    const res = await fetch(`${BASE_URL}/api/workspace/notices`);
+    const res = await apiFetch(`${BASE_URL}/api/workspace/notices`);
     return handleResponse<NoticeMetadata[]>(res);
   },
 
   async addWorkspaceNotice(text: string, title?: string, docId?: string): Promise<NoticeMetadata> {
-    const res = await fetch(`${BASE_URL}/api/workspace/notices`, {
+    const res = await apiFetch(`${BASE_URL}/api/workspace/notices`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, title, doc_id: docId }),
@@ -535,12 +565,12 @@ export const apiClient = {
     const url = activeId
       ? `${BASE_URL}/api/workspace/timeline?active_id=${encodeURIComponent(activeId)}`
       : `${BASE_URL}/api/workspace/timeline`;
-    const res = await fetch(url);
+    const res = await apiFetch(url);
     return handleResponse<WorkspaceTimelineReport>(res);
   },
 
   async clearWorkspace(): Promise<void> {
-    await fetch(`${BASE_URL}/api/workspace/clear`, { method: 'POST' });
+    await apiFetch(`${BASE_URL}/api/workspace/clear`, { method: 'POST' });
   },
 
   /**
@@ -552,24 +582,58 @@ export const apiClient = {
     if (format) params.append('format', format);
     if (category) params.append('category', category);
     const query = params.toString() ? `?${params.toString()}` : '';
-    const res = await fetch(`${BASE_URL}/api/demo-library${query}`);
+    const res = await apiFetch(`${BASE_URL}/api/demo-library${query}`);
     return handleResponse<DemoLibraryResponse>(res);
   },
 
   async loadDemoLibraryItem(id: string): Promise<{
     id: string;
+    demo_id: string;
     title: string;
     language: string;
+    source_language: string;
     format: string;
+    category?: string;
     text: string;
-    file_path: string;
+    raw_text: string;
+    file_path?: string;
+    document_id?: string;
+    fingerprint?: string;
     char_count: number;
     word_count: number;
+    line_count?: number;
+    ground_truth?: any;
+    expected_key_actions?: any;
   }> {
-    const res = await fetch(`${BASE_URL}/api/demo-library/${encodeURIComponent(id)}/load`, {
+    const res = await apiFetch(`${BASE_URL}/api/demo-library/${encodeURIComponent(id)}/load`, {
       method: 'POST',
     });
-    return handleResponse<any>(res);
+    const data = await handleResponse<any>(res);
+    const resolvedText = data.raw_text || data.text || '';
+    const resolvedLang = data.source_language || data.language || data.detected_language || 'en';
+    const resolvedId = data.demo_id || data.id || id;
+    const computedCharCount = typeof data.char_count === 'number' ? data.char_count : resolvedText.length;
+    const computedWordCount =
+      typeof data.word_count === 'number'
+        ? data.word_count
+        : (resolvedText.trim() ? resolvedText.trim().split(/\s+/).length : 0);
+
+    return {
+      ...data,
+      id: resolvedId,
+      demo_id: resolvedId,
+      title: data.title || '',
+      language: resolvedLang,
+      source_language: resolvedLang,
+      format: data.format || '',
+      text: resolvedText,
+      raw_text: resolvedText,
+      char_count: computedCharCount,
+      word_count: computedWordCount,
+      document_id: data.document_id,
+      fingerprint: data.fingerprint,
+      line_count: data.line_count,
+    };
   },
 
   /**
@@ -583,7 +647,7 @@ export const apiClient = {
     script: string;
     details: Record<string, any>;
   }> {
-    const res = await fetch(`${BASE_URL}/api/language/detect`, {
+    const res = await apiFetch(`${BASE_URL}/api/language/detect`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
@@ -595,10 +659,10 @@ export const apiClient = {
    * Persistently toggle a checklist item in SQLite database
    */
   async toggleChecklistItemPersistent(itemId: string, isCompleted: boolean): Promise<{ success: boolean; item_id: string; is_completed: boolean }> {
-    const res = await fetch(`${BASE_URL}/api/checklist/${encodeURIComponent(itemId)}/toggle`, {
+    const res = await apiFetch(`${BASE_URL}/api/checklist/${encodeURIComponent(itemId)}/toggle`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_completed: isCompleted }),
+      body: JSON.stringify({ completed: isCompleted, is_completed: isCompleted }),
     });
     return handleResponse<any>(res);
   },
@@ -607,7 +671,102 @@ export const apiClient = {
    * Fetch all persistently stored documents
    */
   async getPersistedDocuments(): Promise<{ documents: any[]; total: number }> {
-    const res = await fetch(`${BASE_URL}/api/documents`);
+    const res = await apiFetch(`${BASE_URL}/api/documents`);
     return handleResponse<any>(res);
+  },
+
+  /**
+   * List saved notices for current user
+   */
+  async getSavedNotices(q?: string): Promise<any[]> {
+    const url = q ? `${BASE_URL}/api/user/saved-notices?q=${encodeURIComponent(q)}` : `${BASE_URL}/api/user/saved-notices`;
+    const res = await apiFetch(url, { credentials: 'include' });
+    return handleResponse<any[]>(res);
+  },
+
+  /**
+   * Save notice for current user
+   */
+  async saveUserNotice(documentId: string, metadata: { title: string; authority?: string; deadline?: string; raw_text?: string; assignment_title?: string }): Promise<any> {
+    const res = await apiFetch(`${BASE_URL}/api/user/saved-notices/${encodeURIComponent(documentId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(metadata),
+    });
+    return handleResponse<any>(res);
+  },
+
+  /**
+   * Unsave notice for current user
+   */
+  async unsaveUserNotice(documentId: string): Promise<any> {
+    const res = await apiFetch(`${BASE_URL}/api/user/saved-notices/${encodeURIComponent(documentId)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    return handleResponse<any>(res);
+  },
+
+  /**
+   * Get 7-day weekly task action plan
+   */
+  async getWeeklyTasks(refDate?: string): Promise<any> {
+    const url = refDate ? `${BASE_URL}/api/user/weekly-tasks?ref_date=${encodeURIComponent(refDate)}` : `${BASE_URL}/api/user/weekly-tasks`;
+    const res = await apiFetch(url, { credentials: 'include' });
+    return handleResponse<any>(res);
+  },
+
+  /**
+   * Query weekly tasks with natural language query
+   */
+  async queryWeeklyTasks(query: string): Promise<any> {
+    const res = await apiFetch(`${BASE_URL}/api/user/weekly-tasks/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ query }),
+    });
+    return handleResponse<any>(res);
+  },
+
+  /**
+   * User Notifications API
+   */
+  async getUserNotifications(): Promise<NotificationsResponse> {
+    const res = await apiFetch(`${BASE_URL}/api/user/notifications`, { credentials: 'include' });
+    return handleResponse<NotificationsResponse>(res);
+  },
+
+  async markNotificationRead(notificationId: string): Promise<{ status: string; updated: boolean }> {
+    const res = await apiFetch(`${BASE_URL}/api/user/notifications/${encodeURIComponent(notificationId)}/read`, {
+      method: 'PUT',
+      credentials: 'include',
+    });
+    return handleResponse<any>(res);
+  },
+
+  async markAllNotificationsRead(): Promise<{ status: string; marked_read: number }> {
+    const res = await apiFetch(`${BASE_URL}/api/user/notifications/mark-all-read`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    return handleResponse<any>(res);
+  },
+
+  async dismissNotification(notificationId: string): Promise<{ status: string; dismissed: boolean }> {
+    const res = await apiFetch(`${BASE_URL}/api/user/notifications/${encodeURIComponent(notificationId)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    return handleResponse<any>(res);
+  },
+
+  /**
+   * User Activity Audit Trail API
+   */
+  async getUserActivities(limit: number = 20): Promise<UserActivity[]> {
+    const res = await apiFetch(`${BASE_URL}/api/user/activities?limit=${limit}`, { credentials: 'include' });
+    return handleResponse<UserActivity[]>(res);
   },
 };

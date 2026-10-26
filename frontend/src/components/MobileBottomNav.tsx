@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import {
   LayoutDashboard,
   FileText,
@@ -9,20 +10,21 @@ import {
 } from 'lucide-react';
 
 export const MobileBottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, toggleMobileMenu, isMobileMenuOpen, selectedLang } = useNotice();
+  const { activeTab, setActiveTab, toggleMobileMenu, isMobileMenuOpen } = useNotice();
+  const { t } = useTranslation();
 
   const getNavLabel = (id: number) => {
     switch (id) {
       case 0:
-        return selectedLang === 'hi' ? 'होम' : 'Home';
+        return t('mobileNavHome') || 'Home';
       case 1:
-        return selectedLang === 'hi' ? 'इनपुट' : 'Ingest';
+        return t('mobileNavIngest') || 'Ingest';
       case 2:
-        return selectedLang === 'hi' ? 'तथ्य' : 'Facts';
+        return t('mobileNavFacts') || 'Facts';
       case 3:
-        return selectedLang === 'hi' ? 'कार्रवाई' : 'Actions';
+        return t('mobileNavActions') || 'Actions';
       default:
-        return 'Nav';
+        return t('mobileNavMore') || 'More';
     }
   };
 
@@ -87,7 +89,7 @@ export const MobileBottomNav: React.FC = () => {
           <Menu className="w-4 h-4" />
         </div>
         <span className="text-[10px] tracking-tight mt-0.5 truncate max-w-[55px]">
-          {isMoreActive ? (selectedLang === 'hi' ? 'अन्य (सक्रिय)' : 'More (Active)') : (selectedLang === 'hi' ? 'मेन्यू' : 'Menu')}
+          {isMoreActive ? (t('mobileNavMoreActive') || 'More (Active)') : (t('mobileNavMenu') || 'Menu')}
         </span>
       </button>
     </nav>

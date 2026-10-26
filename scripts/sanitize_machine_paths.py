@@ -4,22 +4,22 @@ Replaces personal Windows paths with clean relative paths or generic placeholder
 """
 
 import os
-import re
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 REPLACEMENTS = [
     # Absolute file:/// URIs
-    (r"./", "./"),
-    (r"./", "./"),
+    (".", "."),
+    (".", "."),
     # Absolute local paths with backslashes
-    (r"C:\\Users\\Avinash\\OneDrive\\Desktop\\AI-Projects\\Hacktober fest\\ps2", "."),
-    (r".", "."),
+    ("C:\\Users\\<developer>\\OneDrive\\Desktop\\AI-Projects\\Hacktober fest\\ps2", "."),
+    (".", "."),
+    ("C:\\Users\\<developer>\\OneDrive\\Desktop\\OM\\Hacktober", "<reference-dir>"),
+    ("<reference-dir>", "<reference-dir>"),
     # Local Ollama binary path
-    (r"C:\\Users\\Avinash\\AppData\\Local\\Programs\\Ollama\\ollama.exe", "ollama.exe"),
-    (r"ollama.exe", "ollama.exe"),
-    (r'"C:\\Users\\Avinash\\AppData\\Local\\Programs\\Ollama\\ollama.exe"', "ollama"),
+    ("ollama.exe", "ollama"),
+    ("ollama", "ollama"),
 ]
 
 TARGET_DIRS = [
@@ -38,8 +38,8 @@ def sanitize_file(p: Path) -> int:
         return 0
         
     original = content
-    for pattern, repl in REPLACEMENTS:
-        content = re.sub(pattern, repl, content)
+    for target, repl in REPLACEMENTS:
+        content = content.replace(target, repl)
         
     if content != original:
         p.write_text(content, encoding="utf-8")
@@ -50,8 +50,8 @@ def main():
     modified_count = 0
     # Walk through tracked files
     for root, dirs, files in os.walk(PROJECT_ROOT):
-        # Skip .git, node_modules, .venv
-        dirs[:] = [d for d in dirs if d not in [".git", "node_modules", ".venv", ".pytest_cache", ".sessions"]]
+        # Skip .git, node_modules, .venv, .backup
+        dirs[:] = [d for d in dirs if d not in [".git", "node_modules", ".venv", ".pytest_cache", ".sessions", ".backup"]]
         for f in files:
             file_path = Path(root) / f
             if file_path.suffix.lower() in EXTENSIONS:

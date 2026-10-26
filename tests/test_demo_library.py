@@ -10,8 +10,9 @@ import pytest
 
 from notice2action.ingestion import ingest_uploaded_file, extract_text_from_docx, extract_text_from_pdf
 from notice2action.language_detection import detect_document_language
+from notice2action.config import PROJECT_ROOT
 
-DEMO_DIR = Path("tests/fixtures/demo_library")
+DEMO_DIR = PROJECT_ROOT / "tests" / "fixtures" / "demo_library"
 MANIFEST_PATH = DEMO_DIR / "manifest.json"
 
 REQUIRED_LANGUAGES = ["en", "hi", "bn", "ta", "te", "mr", "gu", "pa", "kn", "ur"]

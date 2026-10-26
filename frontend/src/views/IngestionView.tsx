@@ -41,7 +41,10 @@ import {
   HelpCircle,
   X,
   Globe,
+  RotateCw,
   RefreshCw,
+  Loader2,
+  Cpu,
 } from 'lucide-react';
 import { SUPPORTED_LANGUAGES, LANGUAGE_CODES, useTranslation } from '../i18n';
 
@@ -51,6 +54,8 @@ export const IngestionView: React.FC = () => {
     runAnalysis,
     isAnalyzing,
     analysisError,
+    clearAnalysisError,
+    openAuthModal,
     structuredNotice,
     analysisDuration,
     setActiveTab,
@@ -70,8 +75,11 @@ export const IngestionView: React.FC = () => {
     readingLevel,
     changeReadingLevel,
     speakText,
+    activeProvider,
+    analysisPhase,
     openEvidenceInspector,
     openConfirmationModal,
+    analyzedFingerprint,
   } = useNotice();
   const { t } = useTranslation();
 
@@ -80,6 +88,12 @@ export const IngestionView: React.FC = () => {
     'overview' | 'facts' | 'eligibility' | 'evidence' | 'actions' | 'qa' | 'changes'
   >('overview');
   const [mobileTab, setMobileTab] = useState<'source' | 'analysis'>('analysis');
+
+  const handleStartAnalysis = () => {
+    setMobileTab('analysis');
+    setIsIngestionDrawerOpen(false);
+    runAnalysis();
+  };
   const [isIngestionDrawerOpen, setIsIngestionDrawerOpen] = useState<boolean>(true);
   const [isSourceExpanded, setIsSourceExpanded] = useState<boolean>(false);
 
@@ -88,6 +102,7 @@ export const IngestionView: React.FC = () => {
   const [fontSizeLevel, setFontSizeLevel] = useState<1 | 2 | 3>(2); // 1: text-xs, 2: text-sm, 3: text-base
   const [hasCopied, setHasCopied] = useState<boolean>(false);
   const [highlightedSnippet, setHighlightedSnippet] = useState<string | null>(null);
+  const [dismissedDeadlineNotice, setDismissedDeadlineNotice] = useState<string | null>(null);
 
   const sourceContainerRef = useRef<HTMLDivElement>(null);
 
@@ -97,27 +112,37 @@ export const IngestionView: React.FC = () => {
     }
   }, [uploadedImage, rawNoticeText]);
 
-  // Compute text lines
-  const lines = useMemo(() => {
-    if (!rawNoticeText) return [];
-    return rawNoticeText.split('\n');
-  }, [rawNoticeText]);
+  // Defensive text normalization
+  const safeNoticeText = typeof rawNoticeText === 'string' ? rawNoticeText : '';
 
-  const charCount = rawNoticeText.length;
-  const wordCount = rawNoticeText.trim() ? rawNoticeText.trim().split(/\s+/).length : 0;
+  // Auto-collapse ingestion drawer when analysis results exist
+  useEffect(() => {
+    if (structuredNotice) {
+      setIsIngestionDrawerOpen(false);
+    }
+  }, [structuredNotice]);
+
+  // Compute text lines safely
+  const lines = useMemo(() => {
+    if (!safeNoticeText) return [];
+    return safeNoticeText.split('\n');
+  }, [safeNoticeText]);
+
+  const charCount = safeNoticeText.length;
+  const wordCount = safeNoticeText.trim() ? safeNoticeText.trim().split(/\s+/).length : 0;
   const lineCount = lines.length;
 
-  // Search match counts
+  // Search match counts safely
   const searchMatchesCount = useMemo(() => {
-    if (!searchQuery.trim() || !rawNoticeText) return 0;
+    if (!searchQuery.trim() || !safeNoticeText) return 0;
     const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const matches = rawNoticeText.match(new RegExp(escaped, 'gi'));
+    const matches = safeNoticeText.match(new RegExp(escaped, 'gi'));
     return matches ? matches.length : 0;
-  }, [searchQuery, rawNoticeText]);
+  }, [searchQuery, safeNoticeText]);
 
   const handleCopySource = () => {
-    if (!rawNoticeText) return;
-    navigator.clipboard.writeText(rawNoticeText);
+    if (!safeNoticeText) return;
+    navigator.clipboard.writeText(safeNoticeText);
     setHasCopied(true);
     setTimeout(() => setHasCopied(false), 2000);
   };
@@ -173,17 +198,17 @@ export const IngestionView: React.FC = () => {
           <div>
             {isStated && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
-                <Check className="w-3 h-3" /> Grounded
+                <Check className="w-3 h-3" /> {t('groundedBadge')}
               </span>
             )}
             {isUncertain && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-[#FFF4D6] text-[#92500A] border border-[#FDE68A]">
-                <AlertTriangle className="w-3 h-3" /> Uncertain
+                <AlertTriangle className="w-3 h-3" /> {t('uncertainBadge')}
               </span>
             )}
             {isNotStated && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-[#526176] border border-slate-200">
-                Not Stated
+                {t('notStatedBadge')}
               </span>
             )}
           </div>
@@ -192,7 +217,7 @@ export const IngestionView: React.FC = () => {
         {/* Fact Value */}
         <p className="text-xs font-semibold text-[#12233D] leading-relaxed">
           {fact.value || (
-            <span className="italic text-[#68778B]">Not explicitly mentioned in circular.</span>
+            <span className="italic text-[#68778B]">{t('notExplicitlyMentioned')}</span>
           )}
         </p>
 
@@ -209,7 +234,7 @@ export const IngestionView: React.FC = () => {
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-[#08785D] bg-[#E8F7F0] hover:bg-[#D1F0E2] transition cursor-pointer"
               >
                 <Search className="w-3 h-3" />
-                <span>Locate in Source</span>
+                <span>{t('locateInSource')}</span>
               </button>
               <button
                 type="button"
@@ -226,7 +251,7 @@ export const IngestionView: React.FC = () => {
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-[#245DC1] bg-[#EAF2FF] hover:bg-[#D9E8FF] transition cursor-pointer"
               >
                 <ShieldCheck className="w-3 h-3" />
-                <span>Evidence Inspector</span>
+                <span>{t('evidenceInspector')}</span>
               </button>
               {isUncertain && fact.requires_confirmation && (
                 <button
@@ -234,7 +259,7 @@ export const IngestionView: React.FC = () => {
                   onClick={() => openConfirmationModal(fact.field_name, label, fact)}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-[#92500A] bg-[#FFF4D6] hover:bg-[#FDE68A] transition cursor-pointer"
                 >
-                  <span>Confirm Value</span>
+                  <span>{t('confirmValue')}</span>
                 </button>
               )}
             </div>
@@ -281,7 +306,7 @@ export const IngestionView: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-[#12233D] bg-white border border-[#CBD5E1] hover:bg-[#F8FAFC] transition shadow-xs cursor-pointer"
           >
             <FolderOpen className="w-3.5 h-3.5 text-[#08785D]" />
-            <span>{isIngestionDrawerOpen ? 'Hide Ingestion Tools' : 'Upload / OCR Source'}</span>
+            <span>{isIngestionDrawerOpen ? t('hideIngestionTools') : t('uploadOcrSource')}</span>
             {isIngestionDrawerOpen ? (
               <ChevronUp className="w-3.5 h-3.5 text-[#68778B]" />
             ) : (
@@ -291,7 +316,7 @@ export const IngestionView: React.FC = () => {
 
           <button
             type="button"
-            onClick={runAnalysis}
+            onClick={handleStartAnalysis}
             disabled={!rawNoticeText.trim() || isAnalyzing}
             className="flex items-center gap-2 py-2 px-4 rounded-xl font-bold text-xs text-white bg-[#08785D] hover:bg-[#06664E] active:scale-[0.98] transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
@@ -314,7 +339,7 @@ export const IngestionView: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs font-bold text-[#12233D]">
               <Globe className="w-3.5 h-3.5 text-[#08785D]" />
-              <span>Document Source Language</span>
+              <span>{t('docSourceLanguage')}</span>
             </div>
             {detectedLangMeta ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
@@ -329,7 +354,7 @@ export const IngestionView: React.FC = () => {
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold text-[#08785D] hover:bg-[#E8F7F0] disabled:opacity-40 transition cursor-pointer"
               >
                 <RefreshCw className="w-2.5 h-2.5" />
-                <span>Auto-Detect</span>
+                <span>{t('autoDetect')}</span>
               </button>
             )}
           </div>
@@ -337,10 +362,10 @@ export const IngestionView: React.FC = () => {
             <select
               value={sourceLang}
               onChange={(e) => setSourceLang(e.target.value)}
-              aria-label="Document Source Language Override"
+              aria-label={t("docSourceLanguage")}
               className="flex-1 bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#12233D] outline-hidden focus:border-[#08785D] cursor-pointer"
             >
-              <option value="auto">Auto-Detect Language (Default)</option>
+              <option value="auto">{t("autoDetectDefault")}</option>
               {LANGUAGE_CODES.map((code) => (
                 <option key={code} value={code}>
                   {SUPPORTED_LANGUAGES[code].nativeName} ({SUPPORTED_LANGUAGES[code].name})
@@ -349,7 +374,7 @@ export const IngestionView: React.FC = () => {
             </select>
           </div>
           <span className="text-[10px] text-[#68778B]">
-            Original script used in the uploaded notice. Auto-detected or manually specified.
+            {t('docSourceLanguageDesc')}
           </span>
         </div>
 
@@ -358,7 +383,7 @@ export const IngestionView: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs font-bold text-[#12233D]">
               <Sparkles className="w-3.5 h-3.5 text-[#245DC1]" />
-              <span>AI Output Explanation Language</span>
+              <span>{t('aiOutputLanguage')}</span>
             </div>
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EAF2FF] text-[#245DC1] border border-[#BFDBFE]">
               Target: {(SUPPORTED_LANGUAGES as any)[outputLang]?.nativeName || outputLang.toUpperCase()}
@@ -368,7 +393,7 @@ export const IngestionView: React.FC = () => {
             <select
               value={outputLang}
               onChange={(e) => setOutputLang(e.target.value)}
-              aria-label="AI Output Explanation Language"
+              aria-label={t("aiOutputLanguage")}
               className="flex-1 bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1.5 text-xs font-bold text-[#12233D] outline-hidden focus:border-[#245DC1] cursor-pointer"
             >
               {LANGUAGE_CODES.map((code) => (
@@ -379,26 +404,199 @@ export const IngestionView: React.FC = () => {
             </select>
           </div>
           <span className="text-[10px] text-[#68778B]">
-            AI explanations, summaries, and action checklists are synthesized into this language.
+            {t('aiOutputLanguageDesc')}
           </span>
         </div>
       </div>
 
       <StaleWarningBanner />
 
-      {/* Analysis Error Alert */}
-      {analysisError && (
-        <div className="p-4 rounded-xl bg-[#FEE8E7] border border-[#FCA5A5] text-xs text-[#B42318] flex items-start gap-3 shadow-xs">
-          <AlertTriangle className="w-5 h-5 text-[#B42318] shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <div className="font-bold text-[#B42318]">Analysis Pipeline Diagnostic</div>
-            <div>{analysisError}</div>
-            <div className="text-[11px] text-[#526176]">
-              Ensure Ollama is running (`ollama serve`) and the Gemma 4 / local LLM model is pulled.
+      {/* Analysis Error Alert with Accurate Separation of Quota, Model Missing, Timeout, Offline, and System Errors */}
+      {analysisError && (() => {
+        const errLower = analysisError.toLowerCase();
+        const isQuota = errLower.includes('quota') || errLower.includes('rate limit') || errLower.includes('429');
+        const isModelMissing = errLower.includes('not found in ollama') || errLower.includes('ollama run') || errLower.includes('model_missing') || errLower.includes('llmmodelerror');
+        const isTimeout = errLower.includes('timed out') || errLower.includes('timeout') || errLower.includes('504');
+        const isOffline = !isModelMissing && (errLower.includes('connection') || errLower.includes('offline') || errLower.includes('cannot connect') || errLower.includes('failed to connect') || errLower.includes('ensure ollama is running'));
+        const isValidation = errLower.includes('empty') || errLower.includes('validation') || errLower.includes('422');
+        const isOcr = errLower.includes('ocr') || errLower.includes('image');
+
+        if (isQuota) {
+          return (
+            <div className="p-4 rounded-xl bg-[#FEF6EE] border border-[#FDBA8C] text-xs text-[#B54708] flex items-start justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-[#B54708] shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-bold text-[#B54708]">{t("quotaExceededTitle")}</div>
+                  <div>{analysisError}</div>
+                  <div className="text-[11px] text-[#526176]">
+                    Guest citizens receive 10 notice analyses per 10-minute window. Please sign in or register for unlimited citizen access.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal()}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B54708] text-white text-xs font-semibold rounded-lg hover:bg-[#93370D] transition-colors"
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    {t("signInUnlimitedAccess")}
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => clearAnalysisError()}
+                className="text-[#B54708] opacity-70 hover:opacity-100 p-1 rounded-md shrink-0 transition-opacity"
+                aria-label="Dismiss error"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
+          );
+        }
+
+        if (isModelMissing) {
+          return (
+            <div className="p-4 rounded-xl bg-[#EFF8FF] border border-[#B2DDFF] text-xs text-[#175CD3] flex items-start justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-[#175CD3] shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-bold text-[#175CD3]">{t("modelNotInstalledTitle")}</div>
+                  <div>{analysisError}</div>
+                  <div className="text-[11px] text-[#526176]">
+                    The required local model weights are not pulled. In PowerShell, run: <code className="bg-[#D1E9FF] px-1.5 py-0.5 rounded text-[#0948B3] font-mono">ollama run gemma4:latest</code> to download without unconsented background downloads.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => clearAnalysisError()}
+                className="text-[#175CD3] opacity-70 hover:opacity-100 p-1 rounded-md shrink-0 transition-opacity"
+                aria-label="Dismiss error"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          );
+        }
+
+        if (isTimeout) {
+          return (
+            <div className="p-4 rounded-xl bg-[#FEF6EE] border border-[#FDBA8C] text-xs text-[#B54708] flex items-start justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3 flex-1">
+                <AlertTriangle className="w-5 h-5 text-[#B54708] shrink-0 mt-0.5" />
+                <div className="space-y-1 flex-1">
+                  <div className="font-bold text-[#B54708]">{t("inferenceTimeoutTitle")}</div>
+                  <div>{analysisError}</div>
+                  <div className="text-[11px] text-[#526176]">
+                    Local Gemma 4 took longer than expected to process this document. You can retry or verify background CPU/GPU resources.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => runAnalysis()}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#08785D] text-white text-xs font-semibold rounded-lg hover:bg-[#065F46] transition-colors"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />{t("retryAnalysis")}</button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => clearAnalysisError()}
+                className="text-[#B54708] opacity-70 hover:opacity-100 p-1 rounded-md shrink-0 transition-opacity"
+                aria-label="Dismiss error"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          );
+        }
+
+        if (isOffline) {
+          return (
+            <div className="p-4 rounded-xl bg-[#FEE8E7] border border-[#FCA5A5] text-xs text-[#B42318] flex items-start justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3 flex-1">
+                <AlertTriangle className="w-5 h-5 text-[#B42318] shrink-0 mt-0.5" />
+                <div className="space-y-1 flex-1">
+                  <div className="font-bold text-[#B42318]">{t("serverOfflineTitle")}</div>
+                  <div>{analysisError}</div>
+                  <div className="text-[11px] text-[#526176]">
+                    Ensure Ollama is running (<code className="bg-[#FEE2E2] px-1 py-0.5 rounded text-[#991B1B] font-mono">ollama serve</code>) and responsive at http://127.0.0.1:11434, or use <code className="bg-[#FEE2E2] px-1 py-0.5 rounded text-[#991B1B] font-mono">run_sochnasetu.ps1</code>.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => runAnalysis()}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#08785D] text-white text-xs font-semibold rounded-lg hover:bg-[#065F46] transition-colors cursor-pointer"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />{t("retryAnalysis")}</button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => clearAnalysisError()}
+                className="text-[#B42318] opacity-70 hover:opacity-100 p-1 rounded-md shrink-0 transition-opacity"
+                aria-label="Dismiss error"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          );
+        }
+
+        if (isValidation) {
+          return (
+            <div className="p-4 rounded-xl bg-[#FEF6EE] border border-[#FDBA8C] text-xs text-[#B54708] flex items-start justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-[#B54708] shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-bold text-[#B54708]">{t("inputValidationTitle")}</div>
+                  <div>{analysisError}</div>
+                  <div className="text-[11px] text-[#526176]">
+                    Please provide valid notice text or a readable document before starting analysis.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => clearAnalysisError()}
+                className="text-[#B54708] opacity-70 hover:opacity-100 p-1 rounded-md shrink-0 transition-opacity"
+                aria-label="Dismiss error"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          );
+        }
+
+        return (
+          <div className="p-4 rounded-xl bg-[#FEE8E7] border border-[#FCA5A5] text-xs text-[#B42318] flex items-start justify-between gap-3 shadow-xs">
+            <div className="flex items-start gap-3 flex-1">
+              <AlertTriangle className="w-5 h-5 text-[#B42318] shrink-0 mt-0.5" />
+              <div className="space-y-1 flex-1">
+                <div className="font-bold text-[#B42318]">{isOcr ? t('docOcrErrorTitle') : t('analysisDiagnosticTitle')}</div>
+                <div>{analysisError}</div>
+                <div className="text-[11px] text-[#526176]">
+                  {isOcr ? 'Please ensure the uploaded notice document is legible and uncorrupted.' : 'Check server logs for diagnostic trace.'}
+                </div>
+                {!isOcr && (
+                  <button
+                    type="button"
+                    onClick={() => runAnalysis()}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#08785D] text-white text-xs font-semibold rounded-lg hover:bg-[#065F46] transition-colors cursor-pointer"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />{t("retryAnalysis")}</button>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => clearAnalysisError()}
+              className="text-[#B42318] opacity-70 hover:opacity-100 p-1 rounded-md shrink-0 transition-opacity"
+              aria-label="Dismiss error"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Collapsible Ingestion & OCR Drawer */}
       {isIngestionDrawerOpen && (
@@ -406,10 +604,10 @@ export const IngestionView: React.FC = () => {
           <div className="flex items-center justify-between pb-2 border-b border-[#E1E7EE]">
             <span className="text-xs font-bold uppercase tracking-wider text-[#12233D] flex items-center gap-2">
               <FolderOpen className="w-4 h-4 text-[#08785D]" />
-              Document Ingestion & OCR Ground Truth
+              {t('docIngestionOcrTitle')}
             </span>
             <span className="text-[11px] text-[#526176]">
-              PDF documents, scanned circular images, or plain text
+              {t('docIngestionOcrDesc')}
             </span>
           </div>
 
@@ -418,7 +616,7 @@ export const IngestionView: React.FC = () => {
             <div className="space-y-4">
               <div className="border border-[#E1E7EE] rounded-xl p-4 bg-[#F8FAFC] space-y-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#12233D] block">
-                  📁 Upload Document or Scanned Circular
+                  📁 {t('uploadDocOrCircular')}
                 </span>
                 <FileDropzone />
               </div>
@@ -445,7 +643,7 @@ export const IngestionView: React.FC = () => {
           }`}
         >
           <FileText className="w-3.5 h-3.5" />
-          <span>Original Source ({lineCount} lines)</span>
+          <span>{t('originalSource')} ({lineCount} {t('linesCount')})</span>
         </button>
         <button
           type="button"
@@ -457,7 +655,7 @@ export const IngestionView: React.FC = () => {
           }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Notice Analysis {structuredNotice ? '• Ready' : ''}</span>
+          <span>{structuredNotice ? t('noticeAnalysisReady') : t('noticeAnalysisReady').split(' • ')[0]}</span>
         </button>
       </div>
 
@@ -486,14 +684,14 @@ export const IngestionView: React.FC = () => {
                 <span className="text-xs font-bold text-[#12233D] truncate">
                   {structuredNotice?.notice_reference_number?.value ||
                     structuredNotice?.issuing_authority?.value ||
-                    'Official Notice Ground Truth'}
+                    t('officialNoticeGroundTruth')}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setIsSourceExpanded(!isSourceExpanded)}
-                  title={isSourceExpanded ? 'Split View' : 'Expand Source Panel'}
+                  title={isSourceExpanded ? t('splitView') : t('expandSourcePanel')}
                   className="p-1.5 rounded-lg text-[#526176] hover:text-[#12233D] hover:bg-slate-200 transition cursor-pointer"
                 >
                   {isSourceExpanded ? (
@@ -532,7 +730,7 @@ export const IngestionView: React.FC = () => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search in source..."
+                  placeholder={t("searchInSource")}
                   className="w-full pl-8 pr-16 py-1.5 rounded-lg text-xs bg-white border border-[#CBD5E1] text-[#12233D] placeholder-[#68778B] focus:border-[#08785D] focus:outline-hidden"
                 />
                 {searchQuery && (
@@ -556,7 +754,7 @@ export const IngestionView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setFontSizeLevel((prev) => (prev > 1 ? ((prev - 1) as any) : 1))}
-                  title="Decrease font size"
+                  title={t("decreaseFontSize")}
                   className="p-1 text-[#526176] hover:text-[#12233D] hover:bg-slate-100 rounded cursor-pointer"
                 >
                   <ZoomOut className="w-3.5 h-3.5" />
@@ -567,7 +765,7 @@ export const IngestionView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setFontSizeLevel((prev) => (prev < 3 ? ((prev + 1) as any) : 3))}
-                  title="Increase font size"
+                  title={t("increaseFontSize")}
                   className="p-1 text-[#526176] hover:text-[#12233D] hover:bg-slate-100 rounded cursor-pointer"
                 >
                   <ZoomIn className="w-3.5 h-3.5" />
@@ -578,18 +776,18 @@ export const IngestionView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCopySource}
-                title="Copy full source text"
+                title={t("copyFullSource")}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#12233D] bg-white border border-[#CBD5E1] hover:bg-slate-100 transition shrink-0 cursor-pointer"
               >
                 {hasCopied ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-[#08785D]" />
-                    <span className="text-[#08785D]">Copied</span>
+                    <span className="text-[#08785D]">{t("copiedSuccess")}</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5 text-[#68778B]" />
-                    <span>Copy</span>
+                    <span>{t("copyFullSource")}</span>
                   </>
                 )}
               </button>
@@ -610,13 +808,13 @@ export const IngestionView: React.FC = () => {
           <div className="p-4 max-h-[720px] overflow-y-auto font-mono text-[#12233D] leading-relaxed bg-[#FFFFFF]">
             {lines.length === 0 ? (
               <div className="py-12 text-center text-[#68778B] text-xs font-sans space-y-2">
-                <p>No document loaded in ground-truth buffer.</p>
+                <p>{t('noDocLoadedBuffer')}</p>
                 <button
                   type="button"
                   onClick={() => setIsIngestionDrawerOpen(true)}
                   className="text-[#08785D] font-bold hover:underline"
                 >
-                  Click here to upload or paste a notice
+                  {t('clickToUploadOrPaste')}
                 </button>
               </div>
             ) : (
@@ -707,7 +905,7 @@ export const IngestionView: React.FC = () => {
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
-                <span>Overview</span>
+                <span>{t('tabOverview')}</span>
               </button>
 
               <button
@@ -720,7 +918,7 @@ export const IngestionView: React.FC = () => {
                 }`}
               >
                 <CheckSquare className="w-3.5 h-3.5" />
-                <span>Key Facts</span>
+                <span>{t('tabKeyFacts')}</span>
                 {structuredNotice && (
                   <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/20 text-inherit">
                     8
@@ -738,7 +936,7 @@ export const IngestionView: React.FC = () => {
                 }`}
               >
                 <UserCheck className="w-3.5 h-3.5" />
-                <span>Eligibility</span>
+                <span>{t('tabEligibility')}</span>
               </button>
 
               <button
@@ -751,7 +949,7 @@ export const IngestionView: React.FC = () => {
                 }`}
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Evidence</span>
+                <span>{t('tabEvidence')}</span>
               </button>
 
               <button
@@ -764,7 +962,7 @@ export const IngestionView: React.FC = () => {
                 }`}
               >
                 <ListTodo className="w-3.5 h-3.5" />
-                <span>Action Plan</span>
+                <span>{t('tabActionPlan')}</span>
               </button>
 
               <button
@@ -777,7 +975,7 @@ export const IngestionView: React.FC = () => {
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span>Ask Q&A</span>
+                <span>{t('tabAskQA')}</span>
               </button>
 
               <button
@@ -790,33 +988,104 @@ export const IngestionView: React.FC = () => {
                 }`}
               >
                 <GitCompare className="w-3.5 h-3.5" />
-                <span>Related Changes</span>
+                <span>{t('tabRelatedChanges')}</span>
               </button>
             </div>
 
             {/* TAB CONTENTS CONTAINER */}
             <div className="p-5">
-              {!structuredNotice ? (
+              {isAnalyzing ? (
+                /* Active In-Panel Analysis State */
+                <div className="py-12 px-4 text-center space-y-5 animate-in fade-in duration-200">
+                  <div className="w-14 h-14 rounded-2xl bg-[#E8F7F0] border border-[#B7E7D2] text-[#08785D] flex items-center justify-center mx-auto shadow-sm">
+                    <Loader2 className="w-7 h-7 animate-spin text-[#08785D]" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h3 className="text-base font-bold text-[#12233D] flex items-center justify-center gap-2">
+                      <span>{t('groundingAndStructuring')}</span>
+                      <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
+                        {activeProvider.toUpperCase()}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-[#526176] max-w-md mx-auto leading-relaxed">
+                      Synthesizing 8 procedural dimensions, verbatim quotes, and action checklist from {lineCount} document lines.
+                    </p>
+                  </div>
+                  <div className="max-w-xs mx-auto bg-[#F8FAFC] border border-[#E1E7EE] rounded-xl p-3 text-left space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-[#12233D]">
+                      <span className="flex items-center gap-1.5">
+                        <Cpu className="w-3.5 h-3.5 text-[#08785D] animate-pulse" />
+                        {t('phaseActive')}: {analysisPhase}/5
+                      </span>
+                      <span className="font-mono text-[#08785D]">{t("inProgress")}</span>
+                    </div>
+                    <div className="w-full bg-[#E1E7EE] rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-[#08785D] h-1.5 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${Math.max(15, (analysisPhase / 5) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-[#68778B] italic text-center">
+                      {t('onDeviceInferenceOllama')}
+                    </div>
+                  </div>
+                </div>
+              ) : !structuredNotice && analysisError ? (
+                /* In-Panel Error State with Direct Action */
+                <div className="py-10 px-4 text-center space-y-4 animate-in fade-in duration-200">
+                  <div className="w-14 h-14 rounded-2xl bg-[#FEE8E7] border border-[#FCA5A5] text-[#B42318] flex items-center justify-center mx-auto shadow-sm">
+                    <AlertTriangle className="w-7 h-7 text-[#B42318]" />
+                  </div>
+                  <div className="space-y-1 max-w-md mx-auto">
+                    <h3 className="text-base font-bold text-[#B42318]">
+                      {t('analysisDidNotComplete')}
+                    </h3>
+                    <p className="text-xs text-[#526176] leading-relaxed">
+                      {analysisError}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleStartAnalysis}
+                      disabled={!rawNoticeText.trim() || isAnalyzing}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs cursor-pointer"
+                    >
+                      <RotateCw className="w-3.5 h-3.5" />
+                      <span>{t("retryAnalysis")}</span>
+                    </button>
+                    {analysisError.toLowerCase().includes('quota') && (
+                      <button
+                        type="button"
+                        onClick={() => openAuthModal()}
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs text-[#B54708] bg-[#FEF6EE] border border-[#FDBA8C] hover:bg-[#FEE4D2] transition cursor-pointer"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>{t('signInUnlimitedAccess')}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : !structuredNotice ? (
                 /* Unanalyzed Ready State */
                 <div className="py-12 px-4 text-center space-y-4">
                   <div className="w-12 h-12 rounded-xl bg-[#E8F7F0] border border-[#B7E7D2] text-[#08785D] flex items-center justify-center mx-auto">
                     <Sparkles className="w-6 h-6" />
                   </div>
                   <h3 className="text-base font-bold text-[#12233D]">
-                    Notice Ready for Gemma 4 Grounding
+                    {t('noticeReadyGrounding')}
                   </h3>
                   <p className="text-xs text-[#526176] max-w-md mx-auto leading-relaxed">
-                    Click <strong>"Analyze with Local Gemma 4"</strong> in the top header to extract
-                    the 8 procedural dimensions, verify exact verbatim quotes, and evaluate citizen action steps.
+                    {t('noticeReadyDesc')}
                   </p>
                   <button
                     type="button"
-                    onClick={runAnalysis}
+                    onClick={handleStartAnalysis}
                     disabled={!rawNoticeText.trim() || isAnalyzing}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs disabled:opacity-50 cursor-pointer"
                   >
                     <Play className="w-3.5 h-3.5 fill-white" />
-                    <span>Run Local AI Analysis</span>
+                    <span>{t('runLocalAiAnalysis')}</span>
                   </button>
                 </div>
               ) : (
@@ -825,26 +1094,126 @@ export const IngestionView: React.FC = () => {
                   {/* TAB 1: OVERVIEW */}
                   {activeAnalysisTab === 'overview' && (
                     <div className="space-y-5 animate-in fade-in duration-150">
+                      {/* FEATURE 1: VIEW-TRIGGERED DEADLINE INTELLIGENCE NOTIFICATION BANNER */}
+                      {(() => {
+                        const dl = structuredNotice?.deadline?.value;
+                        if (!dl || dl.toLowerCase().includes('not stated')) return null;
+
+                        const isDismissed = dismissedDeadlineNotice === analyzedFingerprint;
+                        if (isDismissed) return null;
+
+                        const dlLower = dl.toLowerCase();
+                        const isTentative = ['tentative', 'tbd', 'approx', 'unclear', 'to be announced', 'subject to change'].some(t => dlLower.includes(t));
+
+                        const match = dl.match(/(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{4}|[A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+[A-Za-z]+\s+\d{4})/);
+                        let diffDays: number | null = null;
+                        if (match) {
+                          const parsed = new Date(match[1]);
+                          if (!isNaN(parsed.getTime())) {
+                            const now = new Date();
+                            now.setHours(0, 0, 0, 0);
+                            diffDays = Math.round((parsed.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                          }
+                        }
+
+                        const isExpired = diffDays !== null && diffDays < 0;
+                        const isDueToday = diffDays === 0;
+                        const isUrgent = diffDays !== null && diffDays > 0 && diffDays <= 3;
+
+                        return (
+                          <div
+                            className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fadeIn ${
+                              isExpired
+                                ? 'bg-[#FEE8E7] border-[#FCA5A5] text-[#B42318]'
+                                : isDueToday
+                                ? 'bg-[#FEE8E7] border-[#FCA5A5] text-[#B42318] ring-2 ring-[#B42318]/20 animate-pulse'
+                                : isUrgent
+                                ? 'bg-[#FFF4D6] border-[#FDE68A] text-[#92500A]'
+                                : isTentative
+                                ? 'bg-[#FFFBEB] border-[#FDE68A] text-[#B45309]'
+                                : 'bg-[#E8F7F0] border-[#B7E7D2] text-[#08785D]'
+                            }`}
+                            role="alert"
+                            aria-live="polite"
+                          >
+                            <div className="flex items-start sm:items-center gap-3">
+                              <div className={`p-2 rounded-lg shrink-0 ${
+                                isExpired || isDueToday ? 'bg-red-100 text-red-700' : isUrgent || isTentative ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                              }`}>
+                                <Clock className="w-5 h-5" />
+                              </div>
+                              <div className="space-y-0.5">
+                                <div className="text-xs font-bold flex items-center gap-2">
+                                  <span>
+                                    {isExpired
+                                      ? t('deadlinePassed')
+                                      : isDueToday
+                                      ? t('deadlineDueToday')
+                                      : isUrgent
+                                      ? `Urgent: Closing in ${diffDays} Day${diffDays === 1 ? '' : 's'}`
+                                      : isTentative
+                                      ? t('tentativeDeadline')
+                                      : `Upcoming Notice Deadline: ${dl}`}
+                                  </span>
+                                  {diffDays !== null && (
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/80 font-bold border border-current">
+                                      {diffDays < 0 ? `Expired ${Math.abs(diffDays)}d ago` : diffDays === 0 ? 'Due today' : `${diffDays} days left`}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] opacity-90 leading-tight">
+                                  {isExpired
+                                    ? `Official closing date was ${dl}. Please verify if corrigendum extensions have been issued.`
+                                    : isTentative
+                                    ? `Notice mentions: "${dl}". Official dates subject to change; verify with issuing department.`
+                                    : `Stated closing deadline is ${dl}. Complete required steps before cut-off.`}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                              {isTentative && (
+                                <button
+                                  type="button"
+                                  onClick={() => openConfirmationModal('deadline', 'Closing Deadline', structuredNotice.deadline)}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-[#B45309] hover:bg-amber-50 border border-[#FDE68A] transition cursor-pointer"
+                                >
+                                  {t('verifyDate')}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setDismissedDeadlineNotice(analyzedFingerprint)}
+                                className="px-2 py-1 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-black/5 transition cursor-pointer"
+                                title="Dismiss notification for this notice"
+                              >
+                                {t('dismissAlert')}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {/* Metric Cards Row */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <MetricCard
                           fact={structuredNotice.purpose}
-                          label="Purpose & Benefit"
+                          label={t("purposeAndBenefit")}
                           iconType="purpose"
                         />
                         <MetricCard
                           fact={structuredNotice.deadline}
-                          label="Closing Deadline"
+                          label={t("closingDeadline")}
                           iconType="deadline"
                         />
                         <MetricCard
                           fact={structuredNotice.eligibility}
-                          label="Eligibility Rules"
+                          label={t("eligibilityRules")}
                           iconType="eligibility"
                         />
                         <MetricCard
                           fact={structuredNotice.required_actions}
-                          label="Required Actions"
+                          label={t("requiredActions")}
                           iconType="actions"
                         />
                       </div>
@@ -852,7 +1221,7 @@ export const IngestionView: React.FC = () => {
                       {/* Document Identity Card */}
                       <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E1E7EE] space-y-3">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-[#526176] block">
-                          Official Notice Metadata
+                          {t('officialNoticeMetadata')}
                         </span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                           <div className="flex items-start gap-2">
@@ -871,7 +1240,7 @@ export const IngestionView: React.FC = () => {
                             <Hash className="w-4 h-4 text-[#08785D] shrink-0 mt-0.5" />
                             <div>
                               <span className="text-[10px] uppercase font-bold text-[#68778B] block">
-                                Reference Number
+                                {t('referenceNumber')}
                               </span>
                               <span className="font-semibold font-mono text-[#12233D]">
                                 {structuredNotice.notice_reference_number?.value || 'Not Stated'}
@@ -895,7 +1264,7 @@ export const IngestionView: React.FC = () => {
                             <Clock className="w-4 h-4 text-[#08785D] shrink-0 mt-0.5" />
                             <div>
                               <span className="text-[10px] uppercase font-bold text-[#68778B] block">
-                                Application Deadline
+                                {t('applicationDeadline')}
                               </span>
                               <span className="font-semibold text-[#B42318]">
                                 {structuredNotice.deadline?.value || 'Not Stated'}
@@ -912,7 +1281,7 @@ export const IngestionView: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <Sparkles className="w-4 h-4 text-[#08785D]" />
                               <h3 className="text-xs font-bold text-[#12233D] uppercase tracking-wider">
-                                Plain Language Summary
+                                {t('plainLanguageSummary')}
                               </h3>
                             </div>
 
@@ -978,17 +1347,17 @@ export const IngestionView: React.FC = () => {
 
                           <div className="space-y-2 text-xs text-[#12233D] leading-relaxed">
                             <p>
-                              <strong>What this is about:</strong> {currentSummary.about}
+                              <strong>{t('whatThisIsAbout')}</strong> {currentSummary.about}
                             </p>
                             <p>
-                              <strong>Who is eligible:</strong> {currentSummary.eligible}
+                              <strong>{t('whoIsEligible')}</strong> {currentSummary.eligible}
                             </p>
                             <p>
-                              <strong>What you must do:</strong> {currentSummary.actions}
+                              <strong>{t('whatYouMustDo')}</strong> {currentSummary.actions}
                             </p>
                             {currentSummary.documents && (
                               <p>
-                                <strong>Documents needed:</strong> {currentSummary.documents}
+                                <strong>{t('documentsNeeded')}</strong> {currentSummary.documents}
                               </p>
                             )}
                           </div>
@@ -1001,7 +1370,7 @@ export const IngestionView: React.FC = () => {
                           <div className="p-3.5 rounded-xl bg-[#FFF4D6] border border-[#FDE68A] text-xs text-[#92500A] space-y-2">
                             <div className="flex items-center gap-1.5 font-bold">
                               <HelpCircle className="w-4 h-4 text-[#92500A]" />
-                              <span>Missing Information / Limitations in Circular</span>
+                              <span>{t('missingInformationTitle')}</span>
                             </div>
                             <ul className="list-disc list-inside space-y-1 text-[11px] opacity-90 pl-1">
                               {structuredNotice.missing_information.map((item, idx) => (
@@ -1019,42 +1388,42 @@ export const IngestionView: React.FC = () => {
                       <div className="flex items-center justify-between pb-2 border-b border-[#E1E7EE]">
                         <div>
                           <h3 className="text-sm font-bold text-[#12233D]">
-                            Mandatory Structured Dimensions & Grounded Facts
+                            {t('mandatoryDimensionsTitle')}
                           </h3>
                           <p className="text-xs text-[#526176]">
-                            Gemma 4 extracted values with exact citation references.
+                            {t('gemmaExtractedValuesDesc')}
                           </p>
                         </div>
                         <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md bg-[#E8F7F0] text-[#08785D]">
-                          100% Grounded
+                          {t('hundredPercentGrounded')}
                         </span>
                       </div>
 
                       <div className="space-y-3">
-                        {renderFactItem('Purpose of Notice', structuredNotice.purpose, 'Intent')}
-                        {renderFactItem('Closing Deadline', structuredNotice.deadline, 'Timeline')}
+                        {renderFactItem(t('purposeOfNotice'), structuredNotice.purpose, 'Intent')}
+                        {renderFactItem(t('closingDeadline'), structuredNotice.deadline, 'Timeline')}
                         {renderFactItem(
-                          'Eligibility Criteria',
+                          t('eligibilityCriteria'),
                           structuredNotice.eligibility,
                           'Qualifications'
                         )}
                         {renderFactItem(
-                          'Required Actions',
+                          t('requiredActions'),
                           structuredNotice.required_actions,
                           'Checklist'
                         )}
                         {renderFactItem(
-                          'Required Documents',
+                          t('requiredDocuments'),
                           structuredNotice.required_documents,
                           'Verification'
                         )}
                         {renderFactItem(
-                          'Fees or Payments',
+                          t('feesOrPayments'),
                           structuredNotice.fee_or_cost,
                           'Financial'
                         )}
                         {renderFactItem(
-                          'Contact & Helpdesk',
+                          t('contactDetails'),
                           structuredNotice.contact_details,
                           'Support'
                         )}
@@ -1074,10 +1443,10 @@ export const IngestionView: React.FC = () => {
                         <div>
                           <h3 className="text-sm font-bold text-[#12233D] flex items-center gap-2">
                             <UserCheck className="w-4 h-4 text-[#08785D]" />
-                            Eligibility Rules & Applicant Matching
+                            {t('eligibilityMatchingTitle')}
                           </h3>
                           <p className="text-xs text-[#526176]">
-                            Check whether your profile satisfies the stated criteria in this circular.
+                            {t('eligibilityMatchingDesc')}
                           </p>
                         </div>
                         <button
@@ -1085,14 +1454,14 @@ export const IngestionView: React.FC = () => {
                           onClick={() => setActiveTab(5)}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#08785D] bg-[#E8F7F0] hover:bg-[#D1F0E2] transition cursor-pointer"
                         >
-                          <span>Full Engine</span>
+                          <span>{t('fullEngine')}</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
 
                       <div className="p-4 rounded-xl bg-white border border-[#E1E7EE] space-y-3 shadow-xs">
                         <span className="text-xs font-bold text-[#12233D] block">
-                          Stated Eligibility Criteria
+                          {t('statedEligibilityCriteria')}
                         </span>
                         <p className="text-xs text-[#12233D] leading-relaxed">
                           {structuredNotice.eligibility?.value ||
@@ -1108,10 +1477,10 @@ export const IngestionView: React.FC = () => {
                       <div className="p-4 rounded-xl bg-[#EAF2FF] border border-[#BFDBFE] flex items-start gap-3">
                         <Info className="w-4 h-4 text-[#245DC1] shrink-0 mt-0.5" />
                         <div className="text-xs text-[#245DC1] space-y-1">
-                          <span className="font-bold">Applicant Profile Evaluation</span>
+                          <span className="font-bold">{t('applicantProfileEvaluation')}</span>
                           <p className="text-[11px] opacity-90">
                             Configure your degree, category (General/OBC/SC/ST/EWS), and percentage in
-                            the <strong>Eligibility Check</strong> module for an automated pass/fail assessment.
+                            the <strong>{t('navEligibility')}</strong> module for an automated pass/fail assessment.
                           </p>
                         </div>
                       </div>
@@ -1125,10 +1494,10 @@ export const IngestionView: React.FC = () => {
                         <div>
                           <h3 className="text-sm font-bold text-[#12233D] flex items-center gap-2">
                             <ShieldCheck className="w-4 h-4 text-[#08785D]" />
-                            Evidence Grounding Ledger
+                            {t('evidenceGroundingLedger')}
                           </h3>
                           <p className="text-xs text-[#526176]">
-                            Verifiable verbatim quotations supporting all extracted claims.
+                            {t('verifiableQuotesDesc')}
                           </p>
                         </div>
                       </div>
@@ -1150,7 +1519,7 @@ export const IngestionView: React.FC = () => {
                             >
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-bold text-[#12233D]">
-                                  {item.label} Claim
+                                  {item.label} {t('claimLabel')}
                                 </span>
                                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
                                   VERIFIED
@@ -1166,7 +1535,7 @@ export const IngestionView: React.FC = () => {
                                   className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold text-[#08785D] hover:bg-[#E8F7F0] transition cursor-pointer"
                                 >
                                   <Search className="w-3 h-3" />
-                                  <span>View in Source</span>
+                                  <span>{t('viewInSource')}</span>
                                 </button>
                                 <button
                                   type="button"
@@ -1183,7 +1552,7 @@ export const IngestionView: React.FC = () => {
                                   className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold text-[#245DC1] hover:bg-[#EAF2FF] transition cursor-pointer"
                                 >
                                   <ExternalLink className="w-3 h-3" />
-                                  <span>Inspect</span>
+                                  <span>{t('inspectBtn')}</span>
                                 </button>
                               </div>
                             </div>
@@ -1199,7 +1568,7 @@ export const IngestionView: React.FC = () => {
                         <div>
                           <h3 className="text-sm font-bold text-[#12233D] flex items-center gap-2">
                             <ListTodo className="w-4 h-4 text-[#08785D]" />
-                            Step-by-Step Action Plan & Deadlines
+                            {t('stepByStepActionPlan')}
                           </h3>
                           <p className="text-xs text-[#526176]">
                             Interactive preparation checklist with calendar (.ics) and Markdown export.
@@ -1246,7 +1615,7 @@ export const IngestionView: React.FC = () => {
                           onClick={() => setActiveTab(4)}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#08785D] bg-[#E8F7F0] hover:bg-[#D1F0E2] transition cursor-pointer"
                         >
-                          <span>Open Revision Ledger</span>
+                          <span>{t('openRevisionLedger')}</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -1267,7 +1636,7 @@ export const IngestionView: React.FC = () => {
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs cursor-pointer"
                           >
                             <GitCompare className="w-3.5 h-3.5" />
-                            <span>Launch Corrigendum Comparison</span>
+                            <span>{t('launchCorrigendumComparison')}</span>
                           </button>
                         </div>
                       </div>

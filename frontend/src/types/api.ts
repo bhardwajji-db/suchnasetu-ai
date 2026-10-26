@@ -149,6 +149,11 @@ export interface OCRResponse {
   warning?: string | null;
   error?: string | null;
   fingerprint: string;
+  raw_ocr_text?: string | null;
+  document_quality_score?: number | null;
+  deskew_angle?: number | null;
+  orientation_applied?: number | null;
+  uncertain_spans?: Array<{ text: string; confidence: number; box: number[] }> | null;
 }
 
 export interface AnalyzeResponse {
@@ -200,6 +205,8 @@ export interface ReadingLevelResponse {
   summary_en: PlainLanguageSummary;
   summary_hi: PlainLanguageSummary;
   reading_level: string;
+  target_language?: string;
+  localized_summary?: PlainLanguageSummary | null;
 }
 
 
@@ -520,4 +527,49 @@ export interface AccessibilityPreferences {
   warmBackground: boolean;
   highlightKeyInfo: boolean;
   reducedMotion: boolean;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  is_verified: boolean;
+  created_at: string;
+}
+
+export interface GuestStatus {
+  is_guest: boolean;
+  ip: string;
+  remaining_analyses: number;
+  limit_window_minutes: number;
+}
+
+export type AuthPageView = 'login' | 'signup' | 'verify-email' | 'forgot-password' | 'reset-password' | 'verify_email' | 'forgot_password' | 'reset_password';
+
+export interface UserNotification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: 'deadline' | 'action' | 'system' | 'warning' | 'info';
+  document_id?: string | null;
+  is_read: boolean;
+  is_dismissed: boolean;
+  created_at: number;
+}
+
+export interface NotificationsResponse {
+  notifications: UserNotification[];
+  unread_count: number;
+  total: number;
+}
+
+export interface UserActivity {
+  id: string;
+  user_id: string;
+  activity_type: string;
+  title: string;
+  description: string;
+  document_id?: string | null;
+  created_at: number;
 }

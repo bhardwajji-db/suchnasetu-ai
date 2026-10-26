@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { VoiceInputButton } from './VoiceInputButton';
 import {
   MessageSquare,
@@ -22,6 +23,8 @@ export const GroundedQAChat: React.FC = () => {
     openEvidenceInspector,
     selectedLang,
   } = useNotice();
+  const { t } = useTranslation();
+
   const [inputQuestion, setInputQuestion] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,9 +53,9 @@ export const GroundedQAChat: React.FC = () => {
         <div className="w-12 h-12 rounded-xl bg-[#E8F7F0] border border-[#B7E7D2] text-[#08785D] flex items-center justify-center mx-auto">
           <MessageSquare className="w-6 h-6" />
         </div>
-        <h3 className="text-base font-bold text-[#12233D]">No Notice Loaded in Buffer</h3>
+        <h3 className="text-base font-bold text-[#12233D]">{t('noNoticeLoadedTitle')}</h3>
         <p className="text-xs text-[#526176] max-w-md mx-auto">
-          Please load or upload a notice first in the Ingestion tab to start grounded interactive Q&A.
+          {t('noNoticeLoadedDesc')}
         </p>
       </div>
     );
@@ -63,17 +66,17 @@ export const GroundedQAChat: React.FC = () => {
       <div>
         <h2 className="text-base font-bold text-[#12233D] flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-[#08785D]" />
-          Notice-Grounded Q&A Assistant
+          {t('qaChatTitle')}
         </h2>
         <p className="text-xs text-[#526176] mt-0.5">
-          Ask questions about the notice. Answers are verified against notice text; unstated items are explicitly refused.
+          {t('qaChatSubtitle')}
         </p>
       </div>
 
       {/* Suggested Inquiries */}
       <div>
         <span className="text-[11px] font-bold uppercase tracking-wider text-[#68778B] block mb-2">
-          💡 Suggested Inquiries
+          💡 {t('suggestedInquiries')}
         </span>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
           {suggestedQuestions.map((s, idx) => (
@@ -104,7 +107,7 @@ export const GroundedQAChat: React.FC = () => {
           value={inputQuestion}
           onChange={(e) => setInputQuestion(e.target.value)}
           aria-label="Ask a question about the notice"
-          placeholder="e.g. Is there any application fee required?"
+          placeholder={t('qaPlaceholder')}
           className="flex-1 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-4 py-2.5 text-xs text-[#12233D] placeholder-[#68778B] focus:outline-hidden focus:border-[#08785D] focus:ring-1 focus:ring-[#08785D]"
         />
 
@@ -119,7 +122,7 @@ export const GroundedQAChat: React.FC = () => {
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs disabled:opacity-50 cursor-pointer"
         >
           <Send className="w-3.5 h-3.5" />
-          {isSubmitting ? 'Asking...' : 'Ask Assistant'}
+          {isSubmitting ? t('askingAssistant') : t('askAssistantBtn')}
         </button>
       </form>
 
@@ -128,14 +131,14 @@ export const GroundedQAChat: React.FC = () => {
         <div className="pt-3 border-t border-[#E1E7EE] space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#12233D]">
-              💬 Conversation History ({followUpHistory.length})
+              💬 {t('conversationHistory')} ({followUpHistory.length})
             </h3>
             <button
               type="button"
               onClick={clearFollowUpHistory}
               className="flex items-center gap-1 text-[11px] font-semibold text-[#68778B] hover:text-[#B42318] transition cursor-pointer"
             >
-              <Trash2 className="w-3 h-3" /> Clear History
+              <Trash2 className="w-3 h-3" /> {t('qaClearHistory')}
             </button>
           </div>
 
@@ -153,13 +156,12 @@ export const GroundedQAChat: React.FC = () => {
                     </span>
                     <span>{item.question}</span>
                   </div>
-
                   {speakText && (
                     <button
                       type="button"
                       onClick={() => speakText(item.answer, selectedLang)}
                       className="p-1 rounded-md text-[#68778B] hover:text-[#08785D] hover:bg-white transition cursor-pointer shrink-0"
-                      title="Read answer aloud"
+                      title={t('voicePlay')}
                     >
                       <Volume2 className="w-3.5 h-3.5" />
                     </button>
@@ -176,7 +178,7 @@ export const GroundedQAChat: React.FC = () => {
                   <div className="ml-7 p-3 rounded-lg bg-white border-l-3 border-[#08785D] text-xs text-[#526176] font-mono italic flex items-center justify-between gap-2 shadow-xs">
                     <div>
                       <div className="flex items-center gap-1 text-[10px] font-sans font-bold text-[#08785D] mb-0.5">
-                        <Quote className="w-3 h-3" /> Supporting Quote from Notice
+                        <Quote className="w-3 h-3" /> {t('groundedEvidenceQuote')}
                       </div>
                       "{item.evidence_quote}"
                     </div>
@@ -193,7 +195,7 @@ export const GroundedQAChat: React.FC = () => {
                         className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#08785D] hover:underline transition cursor-pointer shrink-0"
                       >
                         <Search className="w-3 h-3" />
-                        <span>Verify</span>
+                        <span>{t('viewEvidence')}</span>
                       </button>
                     )}
                   </div>

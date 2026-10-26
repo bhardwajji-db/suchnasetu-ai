@@ -14,10 +14,13 @@ import {
   Globe,
   Eye,
   X,
+  Loader2,
+  Play,
 } from 'lucide-react';
 
 export const DemoLibraryView: React.FC = () => {
-  const { loadDemoItem } = useNotice();
+  const { loadDemoItem, isAnalyzing } = useNotice();
+  const [loadingItemId, setLoadingItemId] = useState<string | null>(null);
   const { t } = useTranslation();
 
   const [demos, setDemos] = useState<DemoLibraryItem[]>([]);
@@ -38,9 +41,31 @@ export const DemoLibraryView: React.FC = () => {
     async function fetchDemos() {
       try {
         setLoading(true);
-        const res = await apiClient.getDemoLibrary();
+        const res: any = await apiClient.getDemoLibrary();
         if (isMounted) {
-          setDemos(res.demos);
+          let items: DemoLibraryItem[] = [];
+          if (Array.isArray(res)) {
+            items = res;
+          } else if (res && Array.isArray(res.demos)) {
+            items = res.demos;
+          } else {
+            console.warn('Unexpected demo library response shape:', res);
+            items = [];
+          }
+          // Validate and normalize items before storing in state
+          const validItems: DemoLibraryItem[] = items
+            .filter((d) => d && typeof d === 'object' && typeof d.id === 'string')
+            .map((d: any) => ({
+              id: d.id,
+              title: d.title || 'Untitled Demo Notice',
+              language: d.language || d.source_lang || d.source_language || 'en',
+              format: d.format || d.format_type || 'txt',
+              category: d.category || 'general',
+              description: d.description || d.manifest_data?.description || '',
+              file_path: d.file_path || d.source_file || d.manifest_data?.file_path || '',
+              word_count: d.word_count || d.manifest_data?.word_count || 0,
+            }));
+          setDemos(validItems);
           setError(null);
         }
       } catch (err: any) {
@@ -61,12 +86,19 @@ export const DemoLibraryView: React.FC = () => {
 
   const categories = useMemo(() => {
     const set = new Set<string>();
-    demos.forEach((d) => set.add(d.category));
+    const list = Array.isArray(demos) ? demos : [];
+    list.forEach((d) => {
+      if (d && typeof d.category === 'string') {
+        set.add(d.category);
+      }
+    });
     return Array.from(set).sort();
   }, [demos]);
 
   const filteredDemos = useMemo(() => {
-    return demos.filter((demo) => {
+    const list = Array.isArray(demos) ? demos : [];
+    return list.filter((demo) => {
+      if (!demo) return false;
       if (selectedLanguage !== 'all' && demo.language !== selectedLanguage) {
         return false;
       }
@@ -78,10 +110,10 @@ export const DemoLibraryView: React.FC = () => {
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchTitle = demo.title.toLowerCase().includes(q);
-        const matchDesc = demo.description.toLowerCase().includes(q);
-        const matchCat = demo.category.toLowerCase().includes(q);
-        const matchId = demo.id.toLowerCase().includes(q);
+        const matchTitle = (demo.title || '').toLowerCase().includes(q);
+        const matchDesc = (demo.description || '').toLowerCase().includes(q);
+        const matchCat = (demo.category || '').toLowerCase().includes(q);
+        const matchId = (demo.id || '').toLowerCase().includes(q);
         if (!matchTitle && !matchDesc && !matchCat && !matchId) {
           return false;
         }
@@ -95,11 +127,22 @@ export const DemoLibraryView: React.FC = () => {
     setLoadingPreview(true);
     try {
       const data = await apiClient.loadDemoLibraryItem(item.id);
-      setPreviewContent(data.text);
+      setPreviewContent(data.raw_text || data.text || 'No text content available.');
     } catch {
       setPreviewContent('Failed to load notice preview.');
     } finally {
       setLoadingPreview(false);
+    }
+  };
+
+  const handleLoadAndAnalyze = async (id: string) => {
+    setLoadingItemId(id);
+    try {
+      await loadDemoItem(id, true);
+    } catch (err: any) {
+      setError(`Failed to load and analyze demo notice: ${err?.message || err}`);
+    } finally {
+      setLoadingItemId(null);
     }
   };
 
@@ -251,9 +294,10 @@ export const DemoLibraryView: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDemos.map((demo) => {
-            const langMeta = (SUPPORTED_LANGUAGES as any)[demo.language] || {
-              nativeName: demo.language.toUpperCase(),
-              name: demo.language,
+            const demoLang = demo.language || 'en';
+            const langMeta = (SUPPORTED_LANGUAGES as any)[demoLang] || {
+              nativeName: String(demoLang).toUpperCase(),
+              name: String(demoLang),
             };
 
             return (
@@ -265,6 +309,9 @@ export const DemoLibraryView: React.FC = () => {
                   {/* Badges row */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-[#EAF2FF] text-[#245DC1] border border-[#BFDBFE]">
+                        {demo.id}
+                      </span>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
                         {langMeta.nativeName}
                       </span>
@@ -307,11 +354,21 @@ export const DemoLibraryView: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => loadDemoItem(demo.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] shadow-xs cursor-pointer transition-all"
+                    disabled={loadingItemId !== null || isAnalyzing}
+                    onClick={() => handleLoadAndAnalyze(demo.id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] disabled:opacity-50 shadow-xs cursor-pointer transition-all"
                   >
-                    <span>Load & Analyze</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    {loadingItemId === demo.id || (loadingItemId === demo.id && isAnalyzing) ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Loading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Load & Analyze</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -342,7 +399,7 @@ export const DemoLibraryView: React.FC = () => {
             <div className="p-4 overflow-y-auto flex-1 font-mono text-xs bg-[#F8FAFC] whitespace-pre-wrap leading-relaxed text-[#12233D]">
               {loadingPreview ? 'Loading notice text...' : previewContent}
             </div>
-            <div className="p-3 border-t border-[#E1E7EE] flex justify-end gap-2 bg-white">
+            <div className="p-3 border-t border-[#E1E7EE] flex items-center justify-between gap-2 bg-white">
               <button
                 type="button"
                 onClick={() => setPreviewItem(null)}
@@ -350,16 +407,31 @@ export const DemoLibraryView: React.FC = () => {
               >
                 Close
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  loadDemoItem(previewItem.id);
-                  setPreviewItem(null);
-                }}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] cursor-pointer"
-              >
-                Load into Assistant
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const id = previewItem.id;
+                    setPreviewItem(null);
+                    await loadDemoItem(id, false);
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#12233D] bg-slate-100 hover:bg-slate-200 cursor-pointer transition-colors"
+                >
+                  Load into Assistant
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const id = previewItem.id;
+                    setPreviewItem(null);
+                    await handleLoadAndAnalyze(id);
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] cursor-pointer flex items-center gap-1.5 shadow-xs transition-all"
+                >
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>Load & Analyze</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

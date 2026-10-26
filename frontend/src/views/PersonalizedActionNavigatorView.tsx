@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { apiClient } from '../services/apiClient';
 import type { ActionItem, ActionItemStatus } from '../types/api';
 import {
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 export const PersonalizedActionNavigatorView: React.FC = () => {
+  const { t } = useTranslation();
   const {
     rawNoticeText,
     sessionId,
@@ -116,9 +118,9 @@ export const PersonalizedActionNavigatorView: React.FC = () => {
         <div className="w-12 h-12 rounded-xl bg-[#E8F7F0] border border-[#B7E7D2] text-[#08785D] flex items-center justify-center mx-auto">
           <Compass className="w-6 h-6" />
         </div>
-        <h2 className="text-base font-bold text-[#12233D]">No Notice Loaded for Action Planning</h2>
+        <h2 className="text-base font-bold text-[#12233D]">{t('noNoticeActionTitle') || 'No Notice Loaded for Action Planning'}</h2>
         <p className="text-xs text-[#526176] max-w-md mx-auto">
-          Please upload or paste an official notice first to synthesize your customized step-by-step preparation plan.
+          {t('noNoticeActionDesc') || 'Please upload or paste an official notice first to synthesize your customized step-by-step preparation plan.'}
         </p>
         <div>
           <button
@@ -126,7 +128,7 @@ export const PersonalizedActionNavigatorView: React.FC = () => {
             onClick={() => setActiveTab(1)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs cursor-pointer"
           >
-            <span>Go to Notice Ingestion</span>
+            <span>{t('goToIngestion') || 'Go to Notice Ingestion'}</span>
           </button>
         </div>
       </div>
@@ -145,10 +147,10 @@ export const PersonalizedActionNavigatorView: React.FC = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#12233D] tracking-tight flex items-center gap-2.5">
             <Compass className="w-6 h-6 text-[#08785D]" />
-            <span>Personalized Notice Action Navigator</span>
+            <span>{t('actionPlanTitle') || 'Personalized Notice Action Navigator'}</span>
           </h1>
           <p className="text-xs sm:text-sm text-[#526176] mt-1">
-            Personal sequential roadmap tailored to your eligibility profile with live deadline tracking.
+            {t('actionPlanSubtitle') || 'Personal sequential roadmap tailored to your eligibility profile with live deadline tracking.'}
           </p>
         </div>
 
@@ -160,7 +162,7 @@ export const PersonalizedActionNavigatorView: React.FC = () => {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#12233D] bg-white border border-[#CBD5E1] hover:bg-[#F8FAFC] transition cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-[#08785D] ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Regenerate Plan</span>
+            <span>{t('refreshPlan') || 'Regenerate Plan'}</span>
           </button>
 
           {actionPlan && (
@@ -170,7 +172,7 @@ export const PersonalizedActionNavigatorView: React.FC = () => {
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Export Checklist (.md)</span>
+              <span>{t('exportPlan') || 'Export Checklist (.md)'}</span>
             </button>
           )}
         </div>

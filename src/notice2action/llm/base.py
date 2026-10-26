@@ -140,7 +140,7 @@ class BaseLLMClient(abc.ABC):
     ) -> Dict[str, Any]:
         """
         Requests structured JSON from the model and parses it into a Python dictionary.
-        Applies cleaning, thinking-token stripping, and error diagnostics.
+        Applies cleaning, thinking-token stripping, and strict=False for multiline quote tolerance.
         """
         messages = [
             {"role": "system", "content": system_prompt},
@@ -150,7 +150,8 @@ class BaseLLMClient(abc.ABC):
         clean_json_str = clean_llm_json_response(raw_output)
 
         try:
-            return json.loads(clean_json_str)
+            # strict=False allows literal unescaped newlines/tabs inside string values (RFC 8259 tolerance)
+            return json.loads(clean_json_str, strict=False)
         except json.JSONDecodeError as e:
             raise LLMClientError(
                 f"Failed to parse JSON response from provider '{self.provider_name}' "

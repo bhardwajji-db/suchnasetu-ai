@@ -219,7 +219,7 @@ export const ActionChecklistTable: React.FC = () => {
       {/* Export Action Bar */}
       <div className="pt-3 border-t border-[#E1E7EE] flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs text-[#526176]">
-          Save action steps or sync closing deadlines to your digital calendar.
+          {t('saveActionStepsHint')}
         </span>
 
         <div className="flex items-center gap-2.5">

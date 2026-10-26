@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { apiClient } from '../services/apiClient';
 import type {
   WorkspaceTimelineReport,
@@ -19,6 +20,7 @@ import {
 
 export const CrossNoticeTimelineView: React.FC = () => {
   const { openEvidenceInspector } = useNotice();
+  const { t } = useTranslation();
   const [report, setReport] = useState<WorkspaceTimelineReport | null>(null);
   const [newNoticeTitle, setNewNoticeTitle] = useState<string>('');
   const [newNoticeText, setNewNoticeText] = useState<string>('');
@@ -36,6 +38,17 @@ export const CrossNoticeTimelineView: React.FC = () => {
   useEffect(() => {
     fetchWorkspaceReport();
   }, [fetchWorkspaceReport]);
+
+  // Keyboard Escape dismissal for Add Notice Modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isAddModalOpen) {
+        setIsAddModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAddModalOpen]);
 
   const handleAddNotice = async () => {
     if (!newNoticeText.trim()) return;
@@ -87,7 +100,7 @@ export const CrossNoticeTimelineView: React.FC = () => {
             <span>Cross-Notice Intelligence & Document Timeline</span>
           </h1>
           <p className="text-xs sm:text-sm text-[#526176] mt-1">
-            Map relationships between original notices, corrigenda, and amendments with timeline tracking.
+            {t('workspaceTimelineSubtitle') || 'Map relationships between original notices, corrigenda, and amendments with timeline tracking.'}
           </p>
         </div>
 
@@ -107,7 +120,7 @@ export const CrossNoticeTimelineView: React.FC = () => {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#08785D] hover:bg-[#06664E] transition cursor-pointer shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add Notice</span>
+            <span>{t('addNoticeToTimeline') || 'Add Notice'}</span>
           </button>
 
           {notices.length > 0 && (
@@ -125,9 +138,17 @@ export const CrossNoticeTimelineView: React.FC = () => {
 
       {/* Add Document Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-notice-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsAddModalOpen(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4"
+        >
           <div className="bg-white border border-[#E1E7EE] rounded-2xl p-6 w-full max-w-xl space-y-4 shadow-2xl">
-            <h2 className="text-sm font-bold text-[#12233D] flex items-center gap-2">
+            <h2 id="add-notice-modal-title" className="text-sm font-bold text-[#12233D] flex items-center gap-2">
               <FileText className="w-4 h-4 text-[#08785D]" />
               <span>Add Notice to Workspace</span>
             </h2>

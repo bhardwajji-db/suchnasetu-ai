@@ -17,6 +17,18 @@ BASE_URL = "http://127.0.0.1:8000"
 FIXTURES_DIR = Path("tests/fixtures/demo_notices")
 
 
+@pytest.fixture(scope="function", autouse=True)
+def reset_rate_limits_for_tests():
+    try:
+        from notice2action.storage.db import get_db
+        db = get_db()
+        conn = db.get_connection()
+        with conn:
+            conn.execute("DELETE FROM rate_limits")
+    except Exception:
+        pass
+
+
 @pytest.fixture(scope="module")
 def api_available():
     try:

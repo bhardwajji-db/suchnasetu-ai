@@ -90,7 +90,7 @@ This report catalogs all runtime, environment, and user data files, classifying 
 
 ## 2. Personal Machine Path Remediation
 
-During the audit, 45 occurrences of developer-specific absolute paths (e.g. `C:\Users\Avinash\...` and `file:///C:/Users/Avinash/...`) were detected in documentation and report files.
+During the audit, 45 occurrences of developer-specific absolute paths (e.g. `<developer-root>\...` and `file:///<developer-root>/...`) were detected in documentation and report files.
 
 - **Status:** **REMEDIATED.**
 - **Action:** Executed `scripts/sanitize_machine_paths.py` replacing all machine-specific paths with clean relative links (`./`) or generic placeholders (`<project-root>`, `%LOCALAPPDATA%`).
@@ -171,7 +171,7 @@ This record catalogs all remediation actions executed to bring the repository to
 ## 1. Security & Hygiene Actions
 
 1. **Machine-Specific Path Sanitization:**
-   - Scanned and replaced 45 personal path references (`C:\Users\Avinash\...` and `file:///C:/Users/Avinash/...`) across 14 documentation files with generic relative paths (`./`) and placeholders.
+   - Scanned and replaced 45 personal path references (`<developer-root>\...` and `file:///<developer-root>/...`) across 14 documentation files with generic relative paths (`./`) and placeholders.
 2. **Mock Test Key Renaming:**
    - Hardened `tests/test_multi_provider_llm.py` line 104 and 109 to use `mock_test_key` rather than a token-like string, eliminating false-positive scanner alerts.
 3. **Repository Cleanup:**

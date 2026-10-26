@@ -16,20 +16,22 @@ export const FileDropzone: React.FC = () => {
     const file = files[0];
     setUploadError(null);
 
-    // Max 25MB limit supported by backend
-    if (file.size > 25 * 1024 * 1024) {
-      setUploadError('File size exceeds the 25MB limit.');
+    // Max 10MB limit enforced by backend configuration
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError('File size exceeds the 10MB limit.');
       return;
     }
 
     try {
       const res = await apiClient.uploadFile(file);
-      if (res.source_type === 'text' || res.source_type === 'pdf') {
-        setRawNoticeText(res.raw_text);
+      if (res.source_type === 'text' || res.source_type === 'pdf' || res.source_type === 'docx') {
+        setRawNoticeText(res.raw_text || '');
         setUploadedImage(null, null);
       } else if (res.source_type === 'image') {
         const url = URL.createObjectURL(file);
         setUploadedImage(url, file);
+      } else {
+        setUploadError(`Unsupported document type: ${res.source_type}`);
       }
     } catch (err: any) {
       setUploadError(err.message || 'Failed to upload document.');
@@ -67,7 +69,7 @@ export const FileDropzone: React.FC = () => {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".png,.jpg,.jpeg,.webp,.txt,.pdf,application/pdf"
+          accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.docx,.tif,.tiff,application/pdf,image/png,image/jpeg,image/webp,image/tiff,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           className="hidden"
           aria-label="Upload notice image or document"
           onChange={(e) => handleFiles(e.target.files)}
@@ -81,7 +83,7 @@ export const FileDropzone: React.FC = () => {
               {t('dropzoneTitle') || 'Drag & Drop notice document, image, or PDF'}
             </div>
             <div className="text-xs text-[#526176] mt-1">
-              {t('dropzoneSubtitle') || 'Supports PDF, PNG, JPG, WEBP, TXT up to 25MB'}
+              {t('dropzoneSubtitle') || 'Supports PDF, PNG, JPG, WEBP, TXT, DOCX up to 10MB'}
             </div>
           </div>
         </div>

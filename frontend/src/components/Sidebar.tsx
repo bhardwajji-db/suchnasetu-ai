@@ -185,7 +185,7 @@ export const Sidebar: React.FC = () => {
             className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#B42318] hover:bg-[#FEE8E7] border border-transparent hover:border-[#FCA5A5] transition cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Workspace</span>
+            <span>{t('resetWorkspace')}</span>
           </button>
         </div>
       </div>
@@ -207,19 +207,19 @@ export const Sidebar: React.FC = () => {
         {showDiagnostics && (
           <div className="text-[11px] space-y-1 bg-[#F8FAFC] p-2.5 rounded-lg border border-[#E1E7EE] font-mono">
             <div className="flex justify-between items-center">
-              <span className="text-[#68778B]">Ollama Daemon:</span>
+              <span className="text-[#68778B]">{t('ollamaDaemon')}:</span>
               <span className={systemHealth?.ollama_connected ? 'text-[#08785D] font-bold' : 'text-[#92500A]'}>
-                {systemHealth?.ollama_connected ? 'Connected' : 'Offline (Mock)'}
+                {systemHealth?.ollama_connected ? t('connected') : t('offlineMock')}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-[#68778B]">Tesseract OCR:</span>
+              <span className="text-[#68778B]">{t('tesseractOcr')}:</span>
               <span className={systemHealth?.tesseract_available ? 'text-[#08785D] font-bold' : 'text-[#92500A]'}>
-                {systemHealth?.tesseract_available ? 'Installed' : 'Unavailable'}
+                {systemHealth?.tesseract_available ? t('installed') : t('unavailable')}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-[#68778B]">Model:</span>
+              <span className="text-[#68778B]">{t('modelLabel')}:</span>
               <span className="text-[#12233D] truncate max-w-[110px]" title={systemHealth?.model_name}>
                 {systemHealth?.model_name || 'gemma2:2b'}
               </span>

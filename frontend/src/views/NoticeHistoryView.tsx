@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNotice, type HistoryRecord } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
+import { apiClient } from '../services/apiClient';
 import {
   Bookmark,
   Search,
@@ -10,9 +12,51 @@ import {
   ArrowRight,
   Download,
   Compass,
+  Calendar,
+  Sparkles,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 
+interface WeeklyPlanData {
+  summary: string;
+  due_this_week_count: number;
+  tasks: Array<{
+    task_title: string;
+    parsed_date?: string;
+    raw_deadline: string;
+    urgency?: string;
+    notice_title?: string;
+    is_ambiguous_date?: boolean;
+    ambiguity_reason?: string;
+    days_remaining?: number;
+  }>;
+  ambiguous_tasks?: Array<{
+    task_title: string;
+    raw_deadline: string;
+    ambiguity_reason?: string;
+  }>;
+  week_window?: {
+    start_date: string;
+    end_date: string;
+  };
+}
+
+const getDaysUntilDeadline = (deadlineStr?: string): number | null => {
+  if (!deadlineStr || !deadlineStr.trim()) return null;
+  const match = deadlineStr.match(
+    /(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{4}|[A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+[A-Za-z]+\s+\d{4})/
+  );
+  if (!match) return null;
+  const d = new Date(match[1]);
+  if (isNaN(d.getTime())) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+};
+
 export const NoticeHistoryView: React.FC = () => {
+  const { t } = useTranslation();
   const {
     history,
     loadFromHistory,
@@ -25,6 +69,9 @@ export const NoticeHistoryView: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'BOOKMARKED' | 'DUE_THIS_WEEK' | 'APPROACHING' | 'PENDING'>('ALL');
+  const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlanData | null>(null);
+  const [isLoadingWeeklyPlan, setIsLoadingWeeklyPlan] = useState<boolean>(false);
+  const [weeklyQueryText] = useState<string>('What do I need to complete this week?');
 
   const handleDownloadNoticeText = (item: HistoryRecord) => {
     const blob = new Blob([item.rawText], { type: 'text/plain;charset=utf-8' });
@@ -34,6 +81,20 @@ export const NoticeHistoryView: React.FC = () => {
     link.download = `notice_${item.id}.txt`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleRunWeeklyQuery = async (queryToRun?: string) => {
+    setIsLoadingWeeklyPlan(true);
+    try {
+      const q = queryToRun || weeklyQueryText || 'What do I need to complete this week?';
+      const res = await apiClient.queryWeeklyTasks(q);
+      setWeeklyPlan(res);
+      setActiveFilter('DUE_THIS_WEEK');
+    } catch (e) {
+      console.error('Failed to query weekly tasks', e);
+    } finally {
+      setIsLoadingWeeklyPlan(false);
+    }
   };
 
   // Filter history based on search query and time-based filters
@@ -57,19 +118,17 @@ export const NoticeHistoryView: React.FC = () => {
     }
 
     if (activeFilter === 'DUE_THIS_WEEK') {
-      // Check if deadline mentions upcoming month or contains a 2026 date
-      const dl = item.deadline.toLowerCase();
-      return dl.includes('2026') && !dl.includes('not stated');
+      const diff = getDaysUntilDeadline(item.deadline);
+      return diff !== null && diff >= 0 && diff <= 7;
     }
 
     if (activeFilter === 'APPROACHING') {
-      const dl = item.deadline.toLowerCase();
-      return !dl.includes('not stated') && !dl.includes('expired');
+      const diff = getDaysUntilDeadline(item.deadline);
+      return diff !== null && diff >= 0 && diff <= 14;
     }
 
     if (activeFilter === 'PENDING') {
-      // Has deadline and not cleared
-      return item.deadline && item.deadline !== 'Not Stated';
+      return item.deadline && !item.deadline.toLowerCase().includes('not stated');
     }
 
     return true;
@@ -82,24 +141,120 @@ export const NoticeHistoryView: React.FC = () => {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#12233D] tracking-tight flex items-center gap-2.5">
             <Bookmark className="w-5 h-5 text-[#08785D]" />
-            <span>Saved Notices & Personal Task Search</span>
+            <span>{t('savedNoticesTitle') || 'Saved Notices & Weekly Action Planner'}</span>
           </h1>
           <p className="text-xs sm:text-sm text-[#526176] mt-1">
-            Search saved circulars, bookmark important notices, and query tasks by timeframe.
+            {t('savedNoticesSubtitle') || 'Search circulars, manage user-isolated bookmarks, and query tasks scheduled for this week.'}
           </p>
         </div>
 
-        {history.length > 0 && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={clearHistory}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#B42318] hover:bg-[#FEE8E7] border border-transparent hover:border-[#FCA5A5] transition self-start sm:self-auto cursor-pointer"
+            onClick={() => handleRunWeeklyQuery('What do I need to complete this week?')}
+            disabled={isLoadingWeeklyPlan}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#08785D] bg-[#E8F7F0] hover:bg-[#D4EFE3] border border-[#B7E7D2] transition shadow-xs cursor-pointer disabled:opacity-60"
+            title="Ask: What do I need to complete this week?"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Clear History</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{isLoadingWeeklyPlan ? (t('loading') || 'Checking...') : (t('whatDoINeedThisWeek') || 'What do I need to complete this week?')}</span>
           </button>
-        )}
+
+          {history.length > 0 && (
+            <button
+              type="button"
+              onClick={clearHistory}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#B42318] hover:bg-[#FEE8E7] border border-transparent hover:border-[#FCA5A5] transition self-start sm:self-auto cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{t('clear') || 'Clear'}</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* WEEKLY ACTION PLANNER PANEL */}
+      {weeklyPlan && (
+        <div className="bg-gradient-to-r from-[#F0FDF4] to-[#F8FAFC] border-2 border-[#B7E7D2] rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between gap-2 border-b border-[#B7E7D2]/60 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#08785D] text-white flex items-center justify-center shadow-xs">
+                <Calendar className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#12233D] flex items-center gap-2">
+                  <span>Weekly Action Schedule</span>
+                  <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#08785D] text-white">
+                    {weeklyPlan.due_this_week_count} Task{weeklyPlan.due_this_week_count === 1 ? '' : 's'} Due
+                  </span>
+                </h3>
+                {weeklyPlan.week_window && (
+                  <p className="text-[11px] text-[#526176]">
+                    Window: {weeklyPlan.week_window.start_date} to {weeklyPlan.week_window.end_date} (Local Timezone)
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setWeeklyPlan(null)}
+              className="text-[#68778B] hover:text-[#12233D] p-1.5 rounded-lg hover:bg-white/80 transition cursor-pointer"
+              aria-label="Close weekly plan"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-white border border-[#E1E7EE] text-xs text-[#12233D] leading-relaxed whitespace-pre-line shadow-xs">
+            {weeklyPlan.summary}
+          </div>
+
+          {weeklyPlan.tasks && weeklyPlan.tasks.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#526176] block">
+                Tasks Ordered Chronologically (Earliest First):
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {weeklyPlan.tasks.map((task, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 bg-white rounded-xl border border-[#CBD5E1] shadow-xs space-y-1.5 hover:border-[#08785D] transition"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-xs font-bold text-[#12233D] line-clamp-2">
+                        {task.task_title}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 border ${
+                          task.urgency === 'DUE_TODAY'
+                            ? 'bg-[#FEE8E7] text-[#B42318] border-[#FCA5A5] animate-pulse'
+                            : task.urgency === 'CRITICAL'
+                            ? 'bg-[#FFF4D6] text-[#92500A] border-[#FDE68A]'
+                            : 'bg-[#E8F7F0] text-[#08785D] border-[#B7E7D2]'
+                        }`}
+                      >
+                        {task.urgency === 'DUE_TODAY' ? 'Due Today' : `Due: ${task.parsed_date || task.raw_deadline}`}
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-[#526176] truncate">
+                      Source: {task.notice_title}
+                    </div>
+
+                    {task.is_ambiguous_date && (
+                      <div className="flex items-center gap-1 text-[10px] text-[#92500A] bg-[#FFFBEB] px-2 py-0.5 rounded border border-[#FDE68A]">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{task.ambiguity_reason || 'Tentative date — requires confirmation'}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Search and Time-Based Filter Bar */}
       {history.length > 0 && (
@@ -111,7 +266,7 @@ export const NoticeHistoryView: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by subject, notice title, course, deadline, or keywords..."
+              placeholder="Search by subject, notice title, course, deadline, or assignment..."
               className="w-full pl-10 pr-4 py-2 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-xs text-[#12233D] focus:border-[#08785D] focus:outline-hidden transition"
             />
           </div>
@@ -124,8 +279,8 @@ export const NoticeHistoryView: React.FC = () => {
             {[
               { key: 'ALL', label: `All Notices (${history.length})` },
               { key: 'BOOKMARKED', label: `Saved / Bookmarked (${savedNoticeIds.length})` },
-              { key: 'DUE_THIS_WEEK', label: 'Due This Week' },
-              { key: 'APPROACHING', label: 'Approaching Deadlines' },
+              { key: 'DUE_THIS_WEEK', label: 'Due This Week (7 Days)' },
+              { key: 'APPROACHING', label: 'Approaching (14 Days)' },
               { key: 'PENDING', label: 'Pending Tasks' },
             ].map((f) => (
               <button
@@ -150,6 +305,8 @@ export const NoticeHistoryView: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredHistory.map((item) => {
             const isSaved = isNoticeSaved(item.id);
+            const daysRemaining = getDaysUntilDeadline(item.deadline);
+
             return (
               <div
                 key={item.id}
@@ -166,7 +323,14 @@ export const NoticeHistoryView: React.FC = () => {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
-                        onClick={() => toggleSaveNotice(item.id)}
+                        onClick={() =>
+                          toggleSaveNotice(item.id, {
+                            title: item.title,
+                            authority: item.authority,
+                            deadline: item.deadline,
+                            rawText: item.rawText,
+                          })
+                        }
                         className={`p-1.5 rounded-lg border transition cursor-pointer ${
                           isSaved
                             ? 'bg-[#E8F7F0] border-[#B7E7D2] text-[#08785D]'
@@ -192,6 +356,25 @@ export const NoticeHistoryView: React.FC = () => {
                     <div className="flex items-center gap-2 truncate">
                       <Clock className="w-3.5 h-3.5 text-[#92500A] shrink-0" />
                       <span className="truncate">Deadline: {item.deadline}</span>
+                      {daysRemaining !== null && (
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                            daysRemaining < 0
+                              ? 'bg-rose-100 text-rose-700'
+                              : daysRemaining === 0
+                              ? 'bg-amber-100 text-amber-800'
+                              : daysRemaining <= 7
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          {daysRemaining < 0
+                            ? 'Expired'
+                            : daysRemaining === 0
+                            ? 'Due Today'
+                            : `${daysRemaining}d left`}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] text-[#68778B] pt-1">
                       Recorded: {item.timestamp} · Ref: {item.referenceNumber}
@@ -207,7 +390,7 @@ export const NoticeHistoryView: React.FC = () => {
                     title="Download raw notice text"
                   >
                     <Download className="w-3 h-3 text-[#68778B]" />
-                    <span>Download Text</span>
+                    <span>Download</span>
                   </button>
 
                   <div className="flex items-center gap-2">

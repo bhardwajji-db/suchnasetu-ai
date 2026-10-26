@@ -14,8 +14,10 @@ import type {
   PersonalizedActionPlan,
   TrustEvidence,
   AccessibilityPreferences,
+  UserProfile,
 } from '../types/api';
 import { apiClient } from '../services/apiClient';
+import { fetchAuthMe, logoutAccount } from '../services/api';
 import { useTranslation } from '../i18n';
 
 export interface HistoryRecord {
@@ -70,7 +72,7 @@ interface NoticeContextType {
   setDetectedLangMeta: (meta: { detected_language: string; confidence: number; is_mixed: boolean } | null) => void;
   documentId: string | null;
   setDocumentId: (id: string | null) => void;
-  loadDemoItem: (demoId: string) => Promise<void>;
+  loadDemoItem: (demoId: string, autoAnalyze?: boolean) => Promise<void>;
   detectDocumentLanguage: () => Promise<void>;
   readingLevel: 'simple' | 'standard' | 'detailed';
   setReadingLevel: (level: 'simple' | 'standard' | 'detailed') => void;
@@ -88,6 +90,16 @@ interface NoticeContextType {
   analysisPhase: number;
   analysisDuration: number | null;
   analysisError: string | null;
+  clearAnalysisError: () => void;
+  currentUser: UserProfile | null;
+  setCurrentUser: (user: UserProfile | null) => void;
+  isAuthLoading: boolean;
+  logout: () => Promise<void>;
+  refreshAuth: () => Promise<UserProfile | null>;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (open: boolean) => void;
+  openAuthModal: () => void;
+  closeAuthModal: () => void;
   followUpHistory: FollowUpAnswer[];
   systemHealth: PreflightReport | null;
   providers: LLMProviderStatus[];
@@ -106,7 +118,7 @@ interface NoticeContextType {
 
   // Feature C: Saved Notices & Task Search
   savedNoticeIds: string[];
-  toggleSaveNotice: (id: string) => void;
+  toggleSaveNotice: (id: string, metadata?: { title?: string; authority?: string; deadline?: string; rawText?: string }) => void;
   isNoticeSaved: (id: string) => boolean;
 
   // Feature D: Accessibility Mode Preferences
@@ -142,7 +154,7 @@ interface NoticeContextType {
   loadSampleFixture: (filename: string) => Promise<void>;
   clearBuffer: () => void;
   resetSession: () => void;
-  runAnalysis: () => Promise<void>;
+  runAnalysis: (overrideText?: string | unknown, overrideLang?: string) => Promise<void>;
   confirmUncertainFact: (fieldName: string) => void;
   toggleChecklistItem: (stepNumber: number) => void;
   askQuestion: (question: string) => Promise<void>;
@@ -153,7 +165,7 @@ interface NoticeContextType {
 const NoticeContext = createContext<NoticeContextType | undefined>(undefined);
 
 const restoreCompletedSteps = (checklist: ActionChecklist | null, fp: string | null): ActionChecklist | null => {
-  if (!checklist || !fp) return checklist;
+  if (!checklist || !fp || !Array.isArray(checklist.items)) return checklist;
   try {
     const saved = localStorage.getItem('suchnasetu_checklist_completed_' + fp);
     if (!saved) return checklist;
@@ -227,6 +239,38 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [analysisPhase, setAnalysisPhase] = useState<number>(0);
   const [analysisDuration, setAnalysisDuration] = useState<number | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const openAuthModal = useCallback(() => setIsAuthModalOpen(true), []);
+  const closeAuthModal = useCallback(() => setIsAuthModalOpen(false), []);
+  const clearAnalysisError = useCallback(() => setAnalysisError(null), []);
+
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+
+  const refreshAuth = useCallback(async (): Promise<UserProfile | null> => {
+    try {
+      const user = await fetchAuthMe();
+      setCurrentUser(user);
+      return user;
+    } catch {
+      setCurrentUser(null);
+      return null;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshAuth();
+  }, [refreshAuth]);
+
+  const logout = useCallback(async () => {
+    try {
+      await logoutAccount();
+    } finally {
+      setCurrentUser(null);
+    }
+  }, []);
 
   const [followUpHistory, setFollowUpHistory] = useState<FollowUpAnswer[]>([]);
   const [systemHealth, setSystemHealth] = useState<PreflightReport | null>(null);
@@ -249,7 +293,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
-  // Feature C: Saved Notices
+  // Feature C: Saved Notices (with SQLite & Cross-User Backend Sync)
   const [savedNoticeIds, setSavedNoticeIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('suchnasetu_saved_notice_ids');
@@ -259,14 +303,74 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
-  const toggleSaveNotice = useCallback((id: string) => {
+  // Sync saved notices with backend on mount
+  useEffect(() => {
+    let isMounted = true;
+    apiClient.getSavedNotices()
+      .then((records) => {
+        if (isMounted && Array.isArray(records)) {
+          const docIds = records.map((r: any) => r.document_id).filter(Boolean);
+          if (docIds.length > 0) {
+            setSavedNoticeIds((prev) => {
+              const combined = Array.from(new Set([...prev, ...docIds]));
+              try {
+                localStorage.setItem('suchnasetu_saved_notice_ids', JSON.stringify(combined));
+              } catch {}
+              return combined;
+            });
+
+            // Hydrate backend saved notices into local history
+            setHistory((prev) => {
+              const existingIds = new Set(prev.map((h) => h.id));
+              const newRecords: HistoryRecord[] = records
+                .filter((r: any) => r.document_id && !existingIds.has(r.document_id))
+                .map((r: any) => ({
+                  id: r.document_id,
+                  title: r.title || 'Saved Notice',
+                  referenceNumber: r.reference_number || r.document_id,
+                  authority: r.authority || 'Official Authority',
+                  deadline: r.deadline || 'Not stated',
+                  timestamp: r.created_at || new Date().toISOString(),
+                  charCount: r.raw_text ? r.raw_text.length : 0,
+                  rawText: r.raw_text || '',
+                }));
+              if (newRecords.length === 0) return prev;
+              const merged = [...prev, ...newRecords];
+              try {
+                localStorage.setItem('notice2action_history', JSON.stringify(merged));
+              } catch {}
+              return merged;
+            });
+          }
+        }
+      })
+      .catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
+
+  const toggleSaveNotice = useCallback((id: string, metadata?: { title?: string; authority?: string; deadline?: string; rawText?: string }) => {
     setSavedNoticeIds((prev) => {
-      const updated = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      const isCurrentlySaved = prev.includes(id);
+      const updated = isCurrentlySaved ? prev.filter((x) => x !== id) : [...prev, id];
       try {
         localStorage.setItem('suchnasetu_saved_notice_ids', JSON.stringify(updated));
       } catch (e) {
         console.error('Failed to save to localStorage', e);
       }
+
+      // Sync with backend SQLite
+      if (isCurrentlySaved) {
+        apiClient.unsaveUserNotice(id).catch(() => {});
+      } else {
+        apiClient.saveUserNotice(id, {
+          title: metadata?.title || 'Notice',
+          authority: metadata?.authority || '',
+          deadline: metadata?.deadline || '',
+          raw_text: metadata?.rawText || '',
+          assignment_title: metadata?.title || 'Notice Action',
+        }).catch(() => {});
+      }
+
       return updated;
     });
   }, []);
@@ -487,10 +591,10 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     currentFingerprint !== analyzedFingerprint
   );
 
-  const setUploadedImage = (url: string | null, file?: File | null) => {
+  const setUploadedImage = useCallback((url: string | null, file?: File | null) => {
     setUploadedImageState(url);
     setUploadedFile(file || null);
-  };
+  }, []);
 
   const refreshHealth = useCallback(async () => {
     try {
@@ -568,7 +672,6 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const resetSession = () => {
     clearBuffer();
-    setSelectedLang('en');
     setActiveTab(0);
   };
 
@@ -578,7 +681,6 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       localStorage.removeItem('notice2action_history');
     } catch {}
-    setSelectedLang('en');
     setActiveTab(0);
   }, []);
 
@@ -616,96 +718,121 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const runAnalysis = async () => {
-    if (!rawNoticeText.trim()) {
-      setAnalysisError('Please enter notice text or upload a notice document first.');
-      return;
-    }
+  const runAnalysis = useCallback(
+    async (overrideText?: string | unknown, overrideLang?: string) => {
+      const textToAnalyze = (typeof overrideText === "string" ? overrideText : rawNoticeText).trim();
+      if (isAnalyzing) return; // Prevent duplicate concurrent inference requests
+      if (!textToAnalyze) {
+        setAnalysisError('Please enter notice text or upload a notice document first.');
+        return;
+      }
 
-    setIsAnalyzing(true);
-    setAnalysisError(null);
-    setAnalysisPhase(1);
+      setIsAnalyzing(true);
+      setAnalysisError(null);
+      setAnalysisPhase(1);
 
-    const timer = setInterval(() => {
-      setAnalysisPhase((p) => (p < 5 ? p + 1 : 5));
-    }, 1200);
+      const p1Timer = setTimeout(() => setAnalysisPhase(2), 1000);
+      const p2Timer = setTimeout(() => setAnalysisPhase(3), 2500);
 
-    try {
-      const targetLang = outputLang || selectedLang || 'en';
-      const res = await apiClient.analyzeNotice(
-        rawNoticeText,
-        targetLang,
-        readingLevel,
-        sessionId,
-        activeProvider
-      );
-      if (res.session_id) {
-        setSessionId(res.session_id);
-      }
-      setStructuredNotice(res.structured_notice);
-      if (res.six_core_fields) {
-        setSixCoreFields(res.six_core_fields);
-      }
-      const fp = res.fingerprint || currentFingerprint;
-      setSummaryEn(res.summary_en);
-      setSummaryHi(res.summary_hi);
-      setChecklistEn(restoreCompletedSteps(res.checklist_en, fp));
-      setChecklistHi(restoreCompletedSteps(res.checklist_hi, fp));
-      if (res.localized_summary) {
-        setLocalizedSummary(res.localized_summary);
-      }
-      if (res.localized_checklist) {
-        setLocalizedChecklist(restoreCompletedSteps(res.localized_checklist, fp));
-      }
-      if (res.document_id) {
-        setDocumentId(res.document_id);
-      }
-      if (res.detected_language) {
-        setDetectedLangMeta({
-          detected_language: res.detected_language,
-          confidence: res.language_confidence ?? 1.0,
-          is_mixed: res.is_mixed_language ?? false,
-        });
-        if (sourceLang === 'auto') {
-          setSourceLang(res.detected_language);
+      try {
+        const targetLang = overrideLang || outputLang || selectedLang || 'en';
+        const res = await apiClient.analyzeNotice(
+          textToAnalyze,
+          targetLang,
+          readingLevel,
+          sessionId,
+          activeProvider
+        );
+        if (res.session_id) {
+          setSessionId(res.session_id);
         }
-      }
-      setAnalyzedFingerprint(res.fingerprint);
-      setAnalysisDuration(res.duration_seconds);
-      setAnalysisPhase(5);
+        setStructuredNotice(res.structured_notice);
+        if (res.six_core_fields) {
+          setSixCoreFields(res.six_core_fields);
+        }
+        const fp = res.fingerprint || currentFingerprint;
+        setSummaryEn(res.summary_en);
+        setSummaryHi(res.summary_hi);
+        if (res.checklist_en) {
+          setChecklistEn(restoreCompletedSteps(res.checklist_en, fp));
+        } else {
+          setChecklistEn(null);
+        }
+        if (res.checklist_hi) {
+          setChecklistHi(restoreCompletedSteps(res.checklist_hi, fp));
+        } else {
+          setChecklistHi(null);
+        }
+        if (res.localized_summary) {
+          setLocalizedSummary(res.localized_summary);
+        }
+        if (res.localized_checklist) {
+          setLocalizedChecklist(restoreCompletedSteps(res.localized_checklist, fp));
+        }
+        if (res.document_id) {
+          setDocumentId(res.document_id);
+        }
+        if (res.detected_language) {
+          setDetectedLangMeta({
+            detected_language: res.detected_language,
+            confidence: res.language_confidence ?? 1.0,
+            is_mixed: res.is_mixed_language ?? false,
+          });
+          if (sourceLang === 'auto') {
+            setSourceLang(res.detected_language);
+          }
+        }
+        setAnalyzedFingerprint(res.fingerprint);
+        setAnalysisDuration(res.duration_seconds);
+        setAnalysisPhase(5);
 
-      // Record to recent notice history
-      const historyItem: HistoryRecord = {
-        id: res.session_id || res.fingerprint || `hist_${Date.now()}`,
-        title:
-          res.structured_notice?.main_subject?.value ||
-          res.structured_notice?.purpose?.value ||
-          'Official Notice',
-        referenceNumber: res.structured_notice?.notice_reference_number?.value || 'Not specified',
-        authority: res.structured_notice?.issuing_authority?.value || 'Authority Unspecified',
-        deadline: res.structured_notice?.deadline?.value || 'No deadline specified',
-        timestamp:
-          new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
-          ' · ' +
-          new Date().toLocaleDateString(),
-        charCount: rawNoticeText.length,
-        rawText: rawNoticeText,
-      };
-      setHistory((prev) => {
-        const filtered = prev.filter((h) => h.id !== historyItem.id);
-        const updated = [historyItem, ...filtered].slice(0, 15);
-        try {
-          localStorage.setItem('notice2action_history', JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
-    } catch (err: any) {
-      setAnalysisError(err.message || 'Analysis failed. Please verify provider configuration or local Ollama.');
-    } finally {
-      clearInterval(timer);
-      setIsAnalyzing(false);
-    }
-  };
+        // Record to recent notice history
+        const historyItem: HistoryRecord = {
+          id: res.session_id || res.fingerprint || `hist_${Date.now()}`,
+          title:
+            res.structured_notice?.main_subject?.value ||
+            res.structured_notice?.purpose?.value ||
+            'Official Notice',
+          referenceNumber: res.structured_notice?.notice_reference_number?.value || 'Not specified',
+          authority: res.structured_notice?.issuing_authority?.value || 'Authority Unspecified',
+          deadline: res.structured_notice?.deadline?.value || 'No deadline specified',
+          timestamp:
+            new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
+            ' · ' +
+            new Date().toLocaleDateString(),
+          charCount: textToAnalyze.length,
+          rawText: textToAnalyze,
+        };
+        setHistory((prev) => {
+          const filtered = prev.filter((h) => h.id !== historyItem.id);
+          const updated = [historyItem, ...filtered].slice(0, 15);
+          try {
+            localStorage.setItem('notice2action_history', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+      } catch (err: any) {
+        clearTimeout(p1Timer);
+        clearTimeout(p2Timer);
+        setAnalysisError(err.message || 'Analysis failed. Please verify provider configuration or local Ollama.');
+      } finally {
+        clearTimeout(p1Timer);
+        clearTimeout(p2Timer);
+        setIsAnalyzing(false);
+      }
+    },
+    [
+      isAnalyzing,
+      rawNoticeText,
+      outputLang,
+      selectedLang,
+      readingLevel,
+      sessionId,
+      activeProvider,
+      currentFingerprint,
+      sourceLang,
+    ]
+  );
 
   const openOriginalNoticeModal = useCallback(() => setIsOriginalNoticeOpen(true), []);
   const closeOriginalNoticeModal = useCallback(() => setIsOriginalNoticeOpen(false), []);
@@ -751,13 +878,22 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setReadingLevel(level);
     if (!structuredNotice) return;
     try {
-      const res = await apiClient.getReadingLevelSummary(structuredNotice, level);
+      const targetLang = outputLang || selectedLang || 'en';
+      const res = await apiClient.getReadingLevelSummary(
+        structuredNotice,
+        level,
+        targetLang,
+        sessionId || undefined
+      );
       setSummaryEn(res.summary_en);
       setSummaryHi(res.summary_hi);
+      if (res.localized_summary) {
+        setLocalizedSummary(res.localized_summary);
+      }
     } catch (e) {
       console.error('Failed to change reading level', e);
     }
-  }, [structuredNotice]);
+  }, [structuredNotice, outputLang, selectedLang, sessionId]);
 
   const confirmUncertainFact = (fieldName: string) => {
     if (!structuredNotice) return;
@@ -812,35 +948,48 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [rawNoticeText, sourceLang]);
 
-  const loadDemoItem = useCallback(async (demoId: string) => {
-    try {
-      const demo = await apiClient.loadDemoLibraryItem(demoId);
-      setRawNoticeText(demo.text);
-      setSourceLang(demo.language);
-      setDetectedLangMeta({
-        detected_language: demo.language,
-        confidence: 0.99,
-        is_mixed: false,
-      });
-      setUploadedImageState(null);
-      setUploadedFile(null);
-      setStructuredNotice(null);
-      setSixCoreFields(null);
-      setSummaryEn(null);
-      setSummaryHi(null);
-      setChecklistEn(null);
-      setChecklistHi(null);
-      setLocalizedSummary(null);
-      setLocalizedChecklist(null);
-      setAnalyzedFingerprint(null);
-      setAnalysisDuration(null);
-      setAnalysisError(null);
-      setFollowUpHistory([]);
-      setActiveTab(1); // Jump to Notice Ingestion tab
-    } catch (err: any) {
-      setAnalysisError(`Failed to load demo notice: ${err.message}`);
-    }
-  }, []);
+  const loadDemoItem = useCallback(
+    async (demoId: string, autoAnalyze: boolean = true) => {
+      try {
+        setAnalysisError(null);
+        const demo = await apiClient.loadDemoLibraryItem(demoId);
+        const rawText = demo.raw_text || demo.text || '';
+        const lang = demo.source_language || demo.language || 'en';
+
+        setRawNoticeText(rawText);
+        setSourceLang(lang);
+        setDetectedLangMeta({
+          detected_language: lang,
+          confidence: 0.99,
+          is_mixed: false,
+        });
+        setUploadedImageState(null);
+        setUploadedFile(null);
+        setStructuredNotice(null);
+        setSixCoreFields(null);
+        setSummaryEn(null);
+        setSummaryHi(null);
+        setChecklistEn(null);
+        setChecklistHi(null);
+        setLocalizedSummary(null);
+        setLocalizedChecklist(null);
+        setAnalyzedFingerprint(null);
+        setAnalysisDuration(null);
+        setFollowUpHistory([]);
+
+        // Jump to Notice Ingestion tab (Dual-Region Intelligence Workspace)
+        setActiveTab(1);
+
+        if (autoAnalyze && rawText.trim()) {
+          await runAnalysis(rawText, lang);
+        }
+      } catch (err: any) {
+        setAnalysisError(`Failed to load demo notice: ${err.message}`);
+        setActiveTab(1);
+      }
+    },
+    [runAnalysis, setActiveTab]
+  );
 
   const askQuestion = async (question: string) => {
     if (!question.trim() || !rawNoticeText.trim()) return;
@@ -911,6 +1060,16 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         analysisPhase,
         analysisDuration,
         analysisError,
+        clearAnalysisError,
+        currentUser,
+        setCurrentUser,
+        isAuthLoading,
+        logout,
+        refreshAuth,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
+        openAuthModal,
+        closeAuthModal,
         followUpHistory,
         systemHealth,
         providers,

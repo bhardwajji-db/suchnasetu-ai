@@ -7,7 +7,7 @@ This record catalogs all remediation actions executed to bring the repository to
 ## 1. Security & Hygiene Actions
 
 1. **Machine-Specific Path Sanitization:**
-   - Scanned and replaced 45 personal path references (`C:\Users\Avinash\...` and `file:///C:/Users/Avinash/...`) across 14 documentation files with generic relative paths (`./`) and placeholders.
+   - Scanned and replaced 45 personal path references (`<developer-root>\...` and `file:///<developer-root>/...`) across 14 documentation files with generic relative paths (`./`) and placeholders.
 2. **Mock Test Key Renaming:**
    - Hardened `tests/test_multi_provider_llm.py` line 104 and 109 to use `mock_test_key` rather than a token-like string, eliminating false-positive scanner alerts.
 3. **Repository Cleanup:**

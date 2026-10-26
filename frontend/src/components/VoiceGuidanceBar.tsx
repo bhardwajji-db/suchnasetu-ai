@@ -1,9 +1,11 @@
 import React from 'react';
 import { useNotice } from '../context/NoticeContext';
+import { useTranslation } from '../i18n';
 import { Volume2, Play, Pause, Square, Sparkles } from 'lucide-react';
 
 export const VoiceGuidanceBar: React.FC = () => {
   const { speechState, pauseSpeech, resumeSpeech, stopSpeech } = useNotice();
+  const { t } = useTranslation();
   const { isSpeaking, isPaused, currentText } = speechState;
 
   if (!isSpeaking && !isPaused) return null;
@@ -22,11 +24,11 @@ export const VoiceGuidanceBar: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#08785D] flex items-center gap-1">
               <Sparkles className="w-3 h-3" />
-              <span>Voice Guidance Active</span>
+              <span>{t('voiceGuidanceActive')}</span>
             </span>
             {isPaused && (
               <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-[#FFF4D6] text-[#92500A] border border-[#FDE68A]">
-                PAUSED
+                {t('voicePause')}
               </span>
             )}
           </div>
@@ -35,7 +37,7 @@ export const VoiceGuidanceBar: React.FC = () => {
             aria-live="polite"
             role="status"
           >
-            {currentText || 'Reading notice content aloud...'}
+            {currentText || t('readingNoticeContentAloud')}
           </p>
         </div>
       </div>
@@ -45,7 +47,7 @@ export const VoiceGuidanceBar: React.FC = () => {
           <button
             onClick={resumeSpeech}
             className="p-2 rounded-lg bg-[#08785D] hover:bg-[#06664E] text-white transition shadow-xs cursor-pointer"
-            aria-label="Resume speech playback"
+            aria-label={t('resumeSpeech')}
           >
             <Play className="w-4 h-4 fill-white" />
           </button>
@@ -53,7 +55,7 @@ export const VoiceGuidanceBar: React.FC = () => {
           <button
             onClick={pauseSpeech}
             className="p-2 rounded-lg bg-[#F8FAFC] hover:bg-slate-100 border border-[#CBD5E1] text-[#12233D] transition cursor-pointer"
-            aria-label="Pause speech playback"
+            aria-label={t('pauseSpeech')}
           >
             <Pause className="w-4 h-4" />
           </button>
@@ -61,8 +63,8 @@ export const VoiceGuidanceBar: React.FC = () => {
 
         <button
           onClick={stopSpeech}
-          className="p-2 rounded-lg bg-[#FEE8E7] hover:bg-[#FCA5A5] border border-[#FCA5A5] text-[#B42318] transition cursor-pointer"
-          aria-label="Stop speech and dismiss voice guidance"
+          className="p-2 rounded-lg bg-[#FEE8E7] hover:bg-[#FCD4D2] border border-[#FCA5A5] text-[#B42318] transition cursor-pointer"
+          aria-label={t('stopSpeech')}
         >
           <Square className="w-4 h-4 fill-[#B42318]" />
         </button>

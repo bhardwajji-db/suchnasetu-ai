@@ -58,6 +58,7 @@ tmp/
 temp/
 scratch/
 .sessions/
+.quarantine/
 
 # Personal experiments & media (not part of SuchnaSetu AI)
 friend.jpg

@@ -8,7 +8,7 @@
 ## 1. Daemon & Model Health Status
 
 - **Connection Test:** `GET http://127.0.0.1:11434/api/version` -> Version `0.40.3` (Status 200).
-- **Model Check:** `& "C:\\Users\\Avinash\\AppData\\Local\\Programs\\Ollama\\ollama.exe" list`
+- **Model Check:** `& "ollama.exe" list`
   - Confirmed `gemma4:latest` is installed locally on disk (9.6 GB). Zero download required.
 - **Application Health:** `GET http://127.0.0.1:8000/api/health`
   - Returned: `{"ollama": {"connected": true, "has_target_model": true, "target_model": "gemma4:latest"}}`.

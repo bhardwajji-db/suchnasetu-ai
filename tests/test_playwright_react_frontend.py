@@ -45,6 +45,18 @@ def _is_ollama_active() -> bool:
         return False
 
 
+@pytest.fixture(scope="function", autouse=True)
+def reset_rate_limits_for_playwright():
+    try:
+        from notice2action.storage.db import get_db
+        db = get_db()
+        conn = db.get_connection()
+        with conn:
+            conn.execute("DELETE FROM rate_limits")
+    except Exception:
+        pass
+
+
 @pytest.fixture(scope="module", autouse=True)
 def ensure_servers_running():
     """
@@ -183,8 +195,8 @@ def test_react_frontend_full_workflow_and_tabs():
         assert analyze_btn.is_enabled()
         analyze_btn.click()
 
-        # Wait for analysis to complete (up to 90s for local Ollama)
-        page.wait_for_selector("text=Notice Analyzed", timeout=90000)
+        # Wait for analysis to complete (up to 150s for local Ollama on CPU/local hardware)
+        page.wait_for_selector("text=Notice Analyzed", timeout=150000)
 
         # Screenshot analyzed ingestion tab
         page.screenshot(path=str(SCREENSHOT_DIR / "react_workflow_01_ingestion_analyzed.png"))
@@ -216,7 +228,7 @@ def test_react_frontend_full_workflow_and_tabs():
         sug_btn.click()
 
         # Wait for answer
-        page.wait_for_selector("text=Supporting Quote from Notice", timeout=60000)
+        page.wait_for_selector("text=Supporting Quote from Notice", timeout=90000)
         page.screenshot(path=str(SCREENSHOT_DIR / "react_workflow_04_qa_grounded.png"))
 
         # Step 7: Test Stale Warning Detection

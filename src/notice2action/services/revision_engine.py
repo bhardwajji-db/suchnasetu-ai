@@ -85,7 +85,7 @@ class RevisionEngine:
         ref_val = ref_match.group(1).strip() if ref_match else NOT_STATED_LABEL
 
         # 3. Deadline
-        dl_match = re.search(r"(?:deadline|last date|extended to)[^\n]*?\b([A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}[-/]\d{1,2}[-/]\d{4})\b", text, re.IGNORECASE)
+        dl_match = re.search(r"(?:deadline|last date|extended to)[^\n]*?\b([A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+[A-Za-z]+,?\s+\d{4}|\d{1,2}[-/]\d{1,2}[-/]\d{4})\b", text, re.IGNORECASE)
         dl_val = dl_match.group(1).strip() if dl_match else NOT_STATED_LABEL
         dl_quote = dl_match.group(0).strip() if dl_match else None
 

@@ -7,6 +7,7 @@ Inherits from BaseLLMClient to adhere to the multi-provider interface.
 from __future__ import annotations
 
 import json
+import time
 from typing import Dict, Any, Optional, List
 import requests
 
@@ -33,10 +34,12 @@ class OllamaClient(BaseLLMClient):
         base_url: Optional[str] = None,
         model: Optional[str] = None,
         timeout_seconds: Optional[int] = None,
+        keep_alive: Optional[str] = None,
     ):
         self._base_url = (base_url or config.ollama_base_url).rstrip("/")
         self._model = model or config.ollama_model
         self.timeout = timeout_seconds or config.ollama_timeout_seconds
+        self.keep_alive = keep_alive or getattr(config, "ollama_keep_alive", "5m")
 
     @property
     def provider_name(self) -> str:
@@ -80,6 +83,17 @@ class OllamaClient(BaseLLMClient):
                 f"Cannot connect to Ollama at {self.base_url}. Ensure 'ollama serve' is running ({e})."
             ) from e
 
+
+    def get_loaded_models(self) -> List[Dict[str, Any]]:
+        """Queries Ollama /api/ps to retrieve loaded models and resource allocation."""
+        try:
+            resp = requests.get(f"{self.base_url}/api/ps", timeout=5.0)
+            if resp.status_code == 200:
+                return resp.json().get("models", [])
+            return []
+        except Exception:
+            return []
+
     def generate_chat(
         self,
         messages: List[Dict[str, str]],
@@ -95,7 +109,7 @@ class OllamaClient(BaseLLMClient):
             "model": self.model,
             "messages": messages,
             "stream": False,
-            "keep_alive": "30m",
+            "keep_alive": self.keep_alive,
             "options": {
                 "temperature": temperature,
                 "num_predict": 4096,
@@ -109,38 +123,88 @@ class OllamaClient(BaseLLMClient):
         connect_timeout = 10.0
         read_timeout = float(self.timeout)
 
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                resp = requests.post(endpoint, json=payload, timeout=(connect_timeout, read_timeout))
+                if resp.status_code == 404:
+                    raise OllamaModelError(
+                        f"Model '{self.model}' not found in Ollama. Pull it with: 'ollama run {self.model}'"
+                    )
+                if resp.status_code != 200:
+                    raise OllamaClientError(
+                        f"Ollama inference error (HTTP {resp.status_code}): {resp.text}"
+                    )
+
+                data = resp.json()
+                message = data.get("message", {})
+                content = message.get("content", "")
+                return content
+
+            except requests.exceptions.ConnectTimeout as e:
+                if attempt < max_retries - 1:
+                    time.sleep(1.0)
+                    continue
+                raise OllamaConnectionError(
+                    f"Connection to Ollama at {self.base_url} timed out after {connect_timeout}s. Ensure Ollama is running."
+                ) from e
+            except requests.exceptions.ReadTimeout as e:
+                raise OllamaTimeoutError(
+                    f"Gemma 4 inference timed out after {int(read_timeout)} seconds. "
+                    "The model weights may be loading from disk into VRAM/RAM."
+                ) from e
+            except requests.exceptions.ConnectionError as e:
+                if attempt < max_retries - 1:
+                    time.sleep(1.0)
+                    continue
+                raise OllamaConnectionError(
+                    f"Failed to connect to Ollama server at {self.base_url}. Is Ollama running?"
+                ) from e
+            except requests.exceptions.Timeout as e:
+                raise OllamaTimeoutError(
+                    f"Gemma 4 inference timed out after {self.timeout} seconds."
+                ) from e
+            except requests.exceptions.RequestException as e:
+                raise OllamaClientError(f"Ollama request error: {e}") from e
+
+    def unload_model(self, model: Optional[str] = None) -> bool:
+        """
+        Explicitly unloads the model from VRAM/RAM by sending keep_alive: 0 to Ollama.
+        Returns True if successfully acknowledged.
+        """
+        endpoint = f"{self.base_url}/api/chat"
         try:
-            resp = requests.post(endpoint, json=payload, timeout=(connect_timeout, read_timeout))
+            resp = requests.post(
+                endpoint,
+                json={"model": model or self.model, "messages": [], "keep_alive": 0},
+                timeout=5.0,
+            )
+            return resp.status_code in (200, 404)
+        except Exception:
+            return False
+
+    def warmup(self, timeout_seconds: int = 15) -> Dict[str, Any]:
+        """
+        Lightweight readiness probe to ensure the model can be loaded into memory.
+        Uses a 1-token prompt to avoid high inference overhead.
+        """
+        endpoint = f"{self.base_url}/api/chat"
+        try:
+            resp = requests.post(
+                endpoint,
+                json={
+                    "model": self.model,
+                    "messages": [{"role": "user", "content": "ping"}],
+                    "stream": False,
+                    "keep_alive": self.keep_alive,
+                    "options": {"num_predict": 1},
+                },
+                timeout=timeout_seconds,
+            )
             if resp.status_code == 404:
-                raise OllamaModelError(
-                    f"Model '{self.model}' not found in Ollama. Pull it with: 'ollama run {self.model}'"
-                )
-            if resp.status_code != 200:
-                raise OllamaClientError(
-                    f"Ollama inference error (HTTP {resp.status_code}): {resp.text}"
-                )
-
-            data = resp.json()
-            message = data.get("message", {})
-            content = message.get("content", "")
-            return content
-
-        except requests.exceptions.ConnectTimeout as e:
-            raise OllamaConnectionError(
-                f"Connection to Ollama at {self.base_url} timed out after {connect_timeout}s. Ensure Ollama is running."
-            ) from e
-        except requests.exceptions.ReadTimeout as e:
-            raise OllamaTimeoutError(
-                f"Gemma 4 inference timed out after {int(read_timeout)} seconds. "
-                "The model weights may be loading from disk into VRAM/RAM."
-            ) from e
-        except requests.exceptions.ConnectionError as e:
-            raise OllamaConnectionError(
-                f"Failed to connect to Ollama server at {self.base_url}. Is Ollama running?"
-            ) from e
-        except requests.exceptions.Timeout as e:
-            raise OllamaTimeoutError(
-                f"Gemma 4 inference timed out after {self.timeout} seconds."
-            ) from e
+                raise OllamaModelError(f"Model '{self.model}' not found in Ollama repository.")
+            if resp.status_code == 200:
+                return {"status": "ready", "model": self.model, "success": True}
+            raise OllamaClientError(f"Warmup returned HTTP {resp.status_code}: {resp.text}")
         except requests.exceptions.RequestException as e:
-            raise OllamaClientError(f"Ollama request error: {e}") from e
+            raise OllamaConnectionError(f"Failed to reach Ollama during warmup: {e}") from e

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Header } from '../components/Header';
 import { NoticeProvider } from '../context/NoticeContext';
 
@@ -25,5 +25,18 @@ describe('Header Component', () => {
 
     expect(screen.getByText('EN')).toBeInTheDocument();
     expect(screen.getByText('हिन्दी')).toBeInTheDocument();
+  });
+
+  it('renders accessible sign in control and opens auth modal', () => {
+    render(
+      <NoticeProvider>
+        <Header />
+      </NoticeProvider>
+    );
+
+    const signInBtn = screen.getByRole('button', { name: /Sign In/i });
+    expect(signInBtn).toBeInTheDocument();
+    fireEvent.click(signInBtn);
+    expect(screen.getByRole('dialog', { name: /Citizen Authentication/i })).toBeInTheDocument();
   });
 });

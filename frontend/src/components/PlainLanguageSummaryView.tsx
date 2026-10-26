@@ -61,13 +61,13 @@ export const PlainLanguageSummaryView: React.FC = () => {
   };
 
   const questions = [
-    { label: t('mainSubject') || (selectedLang === 'hi' ? 'यह सूचना किस बारे में है?' : 'What is this notice about?'), value: summary.about, icon: '📄' },
-    { label: t('eligibility') || (selectedLang === 'hi' ? 'कौन पात्र है?' : 'Who is eligible to participate / apply?'), value: summary.eligible, icon: '👥' },
-    { label: t('actions') || (selectedLang === 'hi' ? 'आपको क्या करना होगा?' : 'What action must the reader take?'), value: summary.actions, icon: '⚡' },
-    { label: t('requiredDocuments') || (selectedLang === 'hi' ? 'कौन से दस्तावेज़ आवश्यक हैं?' : 'What documents are required?'), value: summary.documents, icon: '📋' },
-    { label: t('deadline') || (selectedLang === 'hi' ? 'अंतिम तिथि क्या है?' : 'What is the final submission deadline?'), value: summary.deadline, icon: '📅' },
-    { label: t('contactDetails') || (selectedLang === 'hi' ? 'सहायता या संपर्क कहाँ करें?' : 'Where can the reader get official help?'), value: summary.help_contact, icon: '📞' },
-    { label: t('missingInfoTitle') || (selectedLang === 'hi' ? 'कौन सी जानकारी उपलब्ध नहीं है?' : 'What critical information is missing?'), value: summary.missing, icon: '❓' },
+    { label: t('mainSubject'), value: summary.about, icon: '📄' },
+    { label: t('eligibility'), value: summary.eligible, icon: '👥' },
+    { label: t('actions'), value: summary.actions, icon: '⚡' },
+    { label: t('requiredDocuments'), value: summary.documents, icon: '📋' },
+    { label: t('deadline'), value: summary.deadline, icon: '📅' },
+    { label: t('contactDetails'), value: summary.help_contact, icon: '📞' },
+    { label: t('missingInfoTitle'), value: summary.missing, icon: '❓' },
   ];
 
   return (
@@ -76,12 +76,10 @@ export const PlainLanguageSummaryView: React.FC = () => {
         <div>
           <h2 className="text-base font-bold text-[#12233D] flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#08785D]" />
-            {t('summaryTitle') || (selectedLang === 'hi' ? 'सरल भाषा में सारांश' : 'Plain-Language Accessible Summary')}
+            {t('summaryTitle')}
           </h2>
           <p className="text-xs text-[#526176] mt-0.5">
-            {t('summarySubtitle') || (selectedLang === 'hi'
-              ? 'जटिल नोटिस को 7 मुख्य प्रश्नों के स्पष्ट उत्तरों में बदला गया है।'
-              : 'Answers to the 7 core questions, calibrated for accessible reading.')}
+            {t('summarySubtitle')}
           </p>
         </div>
 
@@ -141,12 +139,12 @@ export const PlainLanguageSummaryView: React.FC = () => {
             {isPlayingAudio ? (
               <>
                 <VolumeX className="w-3.5 h-3.5" />
-                <span>Stop Audio</span>
+                <span>{t('stopAudio')}</span>
               </>
             ) : (
               <>
                 <Volume2 className="w-3.5 h-3.5" />
-                <span>Listen Aloud</span>
+                <span>{t('listenAloud')}</span>
               </>
             )}
           </button>

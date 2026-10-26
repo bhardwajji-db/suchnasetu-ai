@@ -23,7 +23,7 @@ This report catalogs all runtime, environment, and user data files, classifying 
 
 ## 2. Personal Machine Path Remediation
 
-During the audit, 45 occurrences of developer-specific absolute paths (e.g. `C:\Users\Avinash\...` and `file:///C:/Users/Avinash/...`) were detected in documentation and report files.
+During the audit, 45 occurrences of developer-specific absolute paths (e.g. `<developer-root>\...` and `file:///<developer-root>/...`) were detected in documentation and report files.
 
 - **Status:** **REMEDIATED.**
 - **Action:** Executed `scripts/sanitize_machine_paths.py` replacing all machine-specific paths with clean relative links (`./`) or generic placeholders (`<project-root>`, `%LOCALAPPDATA%`).

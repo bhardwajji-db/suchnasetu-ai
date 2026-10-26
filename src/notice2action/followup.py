@@ -154,6 +154,8 @@ class FollowUpAssistant:
                 localized_absent = LOCALIZED_NOT_FOUND.get(target_lang, NOT_FOUND_MESSAGE)
                 if not answer_text:
                     answer_text = localized_absent
+                elif localized_absent.lower() not in answer_text.lower() and "not stated" not in answer_text.lower() and "not found" not in answer_text.lower():
+                    answer_text = f"{localized_absent} {answer_text}"
 
             return FollowUpAnswer(
                 question=question,

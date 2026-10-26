@@ -61,26 +61,37 @@ def _find_tessdata_dir() -> Optional[str]:
 
 @dataclass
 class AppConfig:
-    # LLM Provider selection: "ollama", "openrouter", "gemini", "huggingface"
-    llm_provider: str = os.getenv("LLM_PROVIDER", "ollama").lower()
-    llm_api_key: Optional[str] = os.getenv("LLM_API_KEY")
+    # LLM Provider selection: "ollama", "huggingface", "openrouter", "gemini"
+    llm_provider: str = field(
+        default_factory=lambda: (os.getenv("AI_PROVIDER") or os.getenv("LLM_PROVIDER") or "ollama").lower().strip()
+    )
+    llm_api_key: Optional[str] = field(default_factory=lambda: os.getenv("LLM_API_KEY"))
 
     # Local Ollama
-    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
-    ollama_model: str = os.getenv("OLLAMA_MODEL", "gemma4:latest")
-    ollama_timeout_seconds: int = int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
+    ollama_base_url: str = field(default_factory=lambda: os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/"))
+    ollama_model: str = field(default_factory=lambda: os.getenv("OLLAMA_MODEL", "gemma4:latest"))
+    ollama_timeout_seconds: int = field(default_factory=lambda: int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "180")))
+    ollama_keep_alive: str = field(default_factory=lambda: os.getenv("OLLAMA_KEEP_ALIVE", "5m"))
 
-    # Cloud Provider 1: OpenRouter
+    # Cloud Provider 1: Hugging Face Inference Providers API (Hosted Gemma 4)
+    hf_token: Optional[str] = field(
+        default_factory=lambda: os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY") or os.getenv("LLM_API_KEY")
+    )
+    huggingface_api_key: Optional[str] = field(
+        default_factory=lambda: os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY") or os.getenv("LLM_API_KEY")
+    )
+    huggingface_model: str = field(
+        default_factory=lambda: os.getenv("HF_MODEL_ID") or os.getenv("HUGGINGFACE_MODEL") or "google/gemma-4-26B-A4B"
+    )
+    hf_provider: str = field(default_factory=lambda: os.getenv("HF_PROVIDER", "auto").strip())
+
+    # Cloud Provider 2: OpenRouter
     openrouter_api_key: Optional[str] = os.getenv("OPENROUTER_API_KEY")
     openrouter_model: str = os.getenv("OPENROUTER_MODEL", "google/gemma-2-9b-it:free")
 
-    # Cloud Provider 2: Google Gemini
+    # Cloud Provider 3: Google Gemini
     gemini_api_key: Optional[str] = os.getenv("GEMINI_API_KEY")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-
-    # Cloud Provider 3: Hugging Face
-    huggingface_api_key: Optional[str] = os.getenv("HUGGINGFACE_API_KEY") or os.getenv("HF_TOKEN")
-    huggingface_model: str = os.getenv("HUGGINGFACE_MODEL", "google/gemma-2-9b-it")
 
     # OCR Engine
     ocr_engine: str = os.getenv("OCR_ENGINE", "tesseract").lower()
@@ -95,11 +106,84 @@ class AppConfig:
     max_upload_size_mb: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
     max_image_dimension: int = int(os.getenv("MAX_IMAGE_DIMENSION", "4096"))
     max_pdf_pages: int = int(os.getenv("MAX_PDF_PAGES", "30"))
+    pdf_raster_dpi: int = int(os.getenv("PDF_RASTER_DPI", "300"))
     allowed_extensions: List[str] = field(
         default_factory=lambda: [e.strip().lower() for e in os.getenv("ALLOWED_EXTENSIONS", "png,jpg,jpeg,webp,tif,tiff,txt,pdf,docx").split(",") if e.strip()]
     )
     synthetic_fixtures_dir: Path = PROJECT_ROOT / "tests" / "fixtures"
     demo_library_dir: Path = PROJECT_ROOT / "tests" / "fixtures" / "demo_library"
+
+    # Environment & Deployment Mode ("development", "production", "test")
+    app_env: str = os.getenv("APP_ENV", "development").lower()
+
+    # Authentication & Security Keys
+    auth_secret_key: str = os.getenv("AUTH_SECRET_KEY", "suchnasetu-dev-insecure-secret-key-change-in-production")
+    auth_cookie_secure: bool = os.getenv("AUTH_COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
+    cors_allowed_origins: List[str] = field(
+        default_factory=lambda: [
+            o.strip()
+            for o in os.getenv(
+                "CORS_ALLOWED_ORIGINS",
+                "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000",
+            ).split(",")
+            if o.strip()
+        ]
+    )
+
+    def get_cors_origins(self) -> List[str]:
+        """Resolves authorized origins for CORS and CSRF protection."""
+        origins = list(self.cors_allowed_origins)
+        app_url = self.auth_public_app_url.rstrip("/")
+        if app_url and app_url not in origins:
+            origins.append(app_url)
+        for base in ["http://localhost:5173", "http://127.0.0.1:5173", "http://testserver", "https://testserver"]:
+            if base not in origins:
+                origins.append(base)
+        # In non-production environments, dynamically register active local LAN interfaces
+        if self.app_env.lower() != "production":
+            try:
+                import socket
+                hostname = socket.gethostname()
+                for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
+                    ip = info[4][0]
+                    if not ip.startswith("127."):
+                        for port in [5173, 8000, 3000]:
+                            u = f"http://{ip}:{port}"
+                            if u not in origins:
+                                origins.append(u)
+            except Exception:
+                pass
+
+        return origins
+
+    # Email & Authentication Delivery Configuration
+    auth_email_backend: str = os.getenv("AUTH_EMAIL_BACKEND", "console").lower()
+    smtp_host: str = os.getenv("SMTP_HOST", "localhost")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    smtp_username: Optional[str] = os.getenv("SMTP_USERNAME") or os.getenv("SMTP_USER")
+    smtp_password: Optional[str] = os.getenv("SMTP_PASSWORD") or os.getenv("SMTP_PASS")
+    smtp_use_tls: bool = os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
+    smtp_from_email: str = os.getenv("SMTP_FROM_EMAIL", "SuchnaSetu AI <notifications@example.com>")
+    auth_public_app_url: str = os.getenv("AUTH_PUBLIC_APP_URL", "http://localhost:5173")
+    auth_verify_expire_hours: int = int(os.getenv("AUTH_VERIFY_EXPIRE_HOURS", "24"))
+    auth_token_expire_minutes: int = int(os.getenv("AUTH_TOKEN_EXPIRE_MINUTES", "15"))
+    guest_rate_limit_per_window: int = int(os.getenv("GUEST_RATE_LIMIT_PER_WINDOW", "10"))
+    ocr_rate_limit_guest_per_min: int = int(os.getenv("OCR_RATE_LIMIT_GUEST_PER_MIN", "30"))
+    ocr_rate_limit_auth_per_min: int = int(os.getenv("OCR_RATE_LIMIT_AUTH_PER_MIN", "60"))
+    dev_unlimited_guest_quota: bool = os.getenv(
+        "DEV_UNLIMITED_GUEST_QUOTA",
+        "true" if os.getenv("APP_ENV", "development").lower() != "production" else "false"
+    ).lower() in ("true", "1", "yes")
+
+    def validate_smtp_config(self) -> tuple[bool, Optional[str]]:
+        """Validates SMTP configuration settings when SMTP email backend is enabled."""
+        if self.auth_email_backend != "smtp":
+            return True, None
+        if not self.smtp_host or not self.smtp_host.strip():
+            return False, "SMTP_HOST is required when AUTH_EMAIL_BACKEND is 'smtp'."
+        if not (1 <= self.smtp_port <= 65535):
+            return False, f"Invalid SMTP_PORT: {self.smtp_port}. Port must be between 1 and 65535."
+        return True, None
 
 
 config = AppConfig()
@@ -249,7 +333,7 @@ def run_preflight_diagnostics(cfg: Optional[AppConfig] = None) -> PreflightRepor
         ollama_ok = False
         models_found: List[str] = []
         try:
-            resp = requests.get(f"{cfg.ollama_base_url}/api/tags", timeout=4)
+            resp = requests.get(f"{cfg.ollama_base_url}/api/tags", timeout=10)
             if resp.status_code == 200:
                 ollama_ok = True
                 data = resp.json()
@@ -355,22 +439,77 @@ def run_preflight_diagnostics(cfg: Optional[AppConfig] = None) -> PreflightRepor
             )
 
     elif provider == "huggingface":
-        api_key = cfg.huggingface_api_key or cfg.llm_api_key
+        api_key = getattr(cfg, "hf_token", None) or cfg.huggingface_api_key or cfg.llm_api_key
         if api_key and api_key.strip():
+            provider_str = getattr(cfg, "hf_provider", "auto")
             report.items.append(
                 DiagnosticItem(
-                    "Hugging Face API Key",
+                    "Hugging Face Access Token",
                     "ok",
-                    f"Configured (model: {cfg.huggingface_model})",
+                    f"Configured (model: {cfg.huggingface_model}, provider: {provider_str})",
                 )
             )
         else:
             report.items.append(
                 DiagnosticItem(
-                    "Hugging Face API Key",
+                    "Hugging Face Access Token",
                     "warning",
-                    "Missing HUGGINGFACE_API_KEY in .env.",
-                    "Add HUGGINGFACE_API_KEY=<your_key> to .env to enable Hugging Face inference.",
+                    "Missing HF_TOKEN in environment or .env.",
+                    "Set HF_TOKEN in your environment or .env file to enable Hugging Face hosted inference.",
+                )
+            )
+
+    # 5. Email Service Diagnostics
+    if cfg.auth_email_backend == "smtp":
+        is_valid, err_msg = cfg.validate_smtp_config()
+        if is_valid:
+            report.items.append(
+                DiagnosticItem(
+                    "Email Service (SMTP)",
+                    "ok",
+                    f"SMTP configured ({cfg.smtp_host}:{cfg.smtp_port}, TLS={'yes' if cfg.smtp_use_tls else 'no'})",
+                )
+            )
+        else:
+            report.items.append(
+                DiagnosticItem(
+                    "Email Service (SMTP)",
+                    "warning",
+                    f"SMTP configuration incomplete: {err_msg}",
+                    "Set valid SMTP_HOST and SMTP_PORT in .env or set AUTH_EMAIL_BACKEND=console",
+                )
+            )
+    else:
+        report.items.append(
+            DiagnosticItem(
+                "Email Service",
+                "ok",
+                f"Active backend: '{cfg.auth_email_backend}' (safe local console logger - zero network transmission)",
+            )
+        )
+
+    # 6. Security Diagnostics
+    if cfg.app_env == "production":
+        if cfg.auth_secret_key.startswith("suchnasetu-dev"):
+            report.items.append(
+                DiagnosticItem(
+                    "Security: AUTH_SECRET_KEY",
+                    "error",
+                    "Production environment is using default insecure AUTH_SECRET_KEY.",
+                    "Set a cryptographically strong AUTH_SECRET_KEY (min 32 chars) in .env before deploying.",
+                )
+            )
+        else:
+            report.items.append(
+                DiagnosticItem("Security: AUTH_SECRET_KEY", "ok", "Configured production secret key.")
+            )
+    else:
+        if cfg.auth_secret_key.startswith("suchnasetu-dev"):
+            report.items.append(
+                DiagnosticItem(
+                    "Security: AUTH_SECRET_KEY",
+                    "ok",
+                    "Using local development secret key.",
                 )
             )
 
