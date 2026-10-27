@@ -146,7 +146,7 @@ class BaseLLMClient(abc.ABC):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        raw_output = self.generate_chat(messages, json_mode=True, temperature=0.0)
+        raw_output = self.generate_chat(messages, json_mode=True, temperature=0.1)
         clean_json_str = clean_llm_json_response(raw_output)
 
         try:

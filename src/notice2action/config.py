@@ -31,6 +31,8 @@ def _find_tesseract_cmd() -> Optional[str]:
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
         str(Path.home() / r"AppData\Local\Programs\Tesseract-OCR\tesseract.exe"),
+        "/usr/bin/tesseract",
+        "/usr/local/bin/tesseract",
     ]
     for c in candidates:
         if Path(c).is_file():
@@ -52,6 +54,10 @@ def _find_tessdata_dir() -> Optional[str]:
         PROJECT_ROOT / "assets" / "tessdata",
         Path(r"C:\Program Files\Tesseract-OCR\tessdata"),
         Path(r"C:\Program Files (x86)\Tesseract-OCR\tessdata"),
+        Path("/usr/share/tesseract-ocr/5/tessdata"),
+        Path("/usr/share/tesseract-ocr/4.00/tessdata"),
+        Path("/usr/share/tesseract-ocr/tessdata"),
+        Path("/usr/share/tessdata"),
     ]
     for c in candidates:
         if (c / "hin.traineddata").is_file() or (c / "eng.traineddata").is_file():
@@ -102,6 +108,16 @@ class AppConfig:
     session_storage_dir: Path = PROJECT_ROOT / os.getenv("SESSION_STORAGE_DIR", ".sessions")
     session_ttl_hours: int = int(os.getenv("SESSION_TTL_HOURS", "24"))
 
+    # Remote Durable Storage Sync (Zero-cost Cloudflare R2 / S3 compatible)
+    r2_bucket_name: Optional[str] = field(default_factory=lambda: os.getenv("R2_BUCKET_NAME") or os.getenv("S3_BUCKET_NAME"))
+    r2_account_id: Optional[str] = field(default_factory=lambda: os.getenv("R2_ACCOUNT_ID"))
+    r2_endpoint_url: Optional[str] = field(
+        default_factory=lambda: os.getenv("R2_ENDPOINT_URL")
+        or (f"https://{os.getenv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com" if os.getenv("R2_ACCOUNT_ID") else os.getenv("S3_ENDPOINT_URL"))
+    )
+    r2_access_key_id: Optional[str] = field(default_factory=lambda: os.getenv("R2_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID"))
+    r2_secret_access_key: Optional[str] = field(default_factory=lambda: os.getenv("R2_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY"))
+
     # Ingestion & Limits
     max_upload_size_mb: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "10"))
     max_image_dimension: int = int(os.getenv("MAX_IMAGE_DIMENSION", "4096"))
@@ -136,6 +152,9 @@ class AppConfig:
         ]
     )
     cors_origin_regex: Optional[str] = field(default_factory=lambda: os.getenv("CORS_ORIGIN_REGEX"))
+    cors_allow_pages_dev: bool = field(
+        default_factory=lambda: os.getenv("CORS_ALLOW_PAGES_DEV", "true").lower() in ("true", "1", "yes")
+    )
     cors_allowed_origins: List[str] = field(
         default_factory=lambda: [
             o.strip()

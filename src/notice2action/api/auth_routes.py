@@ -206,12 +206,19 @@ def _is_request_https(request: Request) -> bool:
     if request.url.scheme == "https":
         return True
 
+    # If auth_cookie_samesite is "none", modern browsers strictly require Secure=True.
+    if getattr(config, "auth_cookie_samesite", "lax").lower() == "none":
+        return True
+
+    headers = getattr(request, "headers", {})
+    proto = (headers.get("X-Forwarded-Proto") or headers.get("x-forwarded-proto")) if hasattr(headers, "get") else None
+    if proto and str(proto).lower() == "https":
+        return True
+
     client_host = request.client.host if request.client else "127.0.0.1"
     trusted_proxies = set(getattr(config, "trusted_proxies", ["127.0.0.1", "::1", "localhost", "testclient"]))
 
     if client_host in trusted_proxies:
-        headers = getattr(request, "headers", {})
-        proto = (headers.get("X-Forwarded-Proto") or headers.get("x-forwarded-proto")) if hasattr(headers, "get") else None
         if proto and str(proto).lower() == "https":
             return True
 

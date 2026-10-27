@@ -228,11 +228,44 @@ class DatabaseManager:
 
 
 
+        # Attempt durable restore from R2/S3 if local database is missing
+        try:
+            from notice2action.storage.storage_sync import storage_sync
+            storage_sync.restore_database_if_missing(self.db_path)
+        except Exception:
+            pass
+
         # Initialize schema
 
         self._initialize_schema()
 
 
+
+    def close(self) -> None:
+        """Closes thread-local database connection if open."""
+        conn = getattr(self._local, "conn", None)
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            self._local.conn = None
+
+    def backup_to_remote_storage(self) -> bool:
+        """Triggers an atomic backup to R2/S3 if remote storage is configured."""
+        try:
+            from notice2action.storage.storage_sync import storage_sync
+            return storage_sync.backup_database(self.db_path)
+        except Exception:
+            return False
+
+    def restore_from_remote_storage(self) -> bool:
+        """Triggers a restore from R2/S3 if remote storage is configured."""
+        try:
+            from notice2action.storage.storage_sync import storage_sync
+            return storage_sync.download_file("suchnasetu.db", self.db_path)
+        except Exception:
+            return False
 
     def get_connection(self) -> sqlite3.Connection:
 

@@ -120,3 +120,4 @@ logs/
 
 # Runtime PID/launcher state files
 .launcher_pids.json
+.tunnel_pids.json

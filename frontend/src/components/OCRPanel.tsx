@@ -249,17 +249,44 @@ export const OCRPanel: React.FC = () => {
       )}
 
       {/* Low-confidence / uncertain span warnings */}
-      {ocrResult && ocrResult.uncertain_spans && ocrResult.uncertain_spans.length > 0 && (
-        <div className="p-3 rounded-lg bg-[#FFFAEB] border border-[#FEDF89] text-xs text-[#B54708] space-y-1">
-          <div className="flex items-center gap-1.5 font-bold">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>{t('humanReviewAdvised')} ({ocrResult.uncertain_spans.length})</span>
-          </div>
-          <p className="text-[11px] text-[#7A271A]">
-            {t('humanReviewAdvisedDesc')}
-          </p>
-        </div>
-      )}
+      {(() => {
+        const unresolved = ocrResult?.uncertain_spans?.filter(s => s.status !== 'repaired') || [];
+        const repaired = ocrResult?.uncertain_spans?.filter(s => s.status === 'repaired') || [];
+
+        return (
+          <>
+            {unresolved.length > 0 && (
+              <div className="p-3 rounded-lg bg-[#FFFAEB] border border-[#FEDF89] text-xs text-[#B54708] space-y-1">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{t('humanReviewAdvised')} ({unresolved.length})</span>
+                </div>
+                <p className="text-[11px] text-[#7A271A]">
+                  {t('humanReviewAdvisedDesc')}
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-1.5 pt-1 border-t border-[#FEDF89]/50">
+                  {unresolved.slice(0, 5).map((span, idx) => (
+                    <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-amber-100 text-amber-900 border border-amber-300">
+                      "{span.text}" ({span.confidence}%)
+                    </span>
+                  ))}
+                  {unresolved.length > 5 && (
+                    <span className="text-[10px] text-amber-700 self-center">+{unresolved.length - 5} more</span>
+                  )}
+                </div>
+              </div>
+            )}
+            {repaired.length > 0 && (
+              <div className="p-2.5 rounded-lg bg-[#F0FDF4] border border-[#BBF7D0] text-xs text-[#166534] flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
+                  <span>{repaired.length} OCR artifacts auto-repaired & verified</span>
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* Error alert */}
       {ocrError && (

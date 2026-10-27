@@ -78,7 +78,14 @@ async function handleResponse<T>(res: Response): Promise<T> {
         errMessage = typeof errData.detail === 'string' ? errData.detail : JSON.stringify(errData.detail);
       }
     } catch {
-      // not JSON
+      // not JSON (e.g. HTML proxy response from Cloudflare or reverse proxy)
+      if (res.status === 502) {
+        errMessage = 'Bad Gateway (502): The model inference gateway or Ollama server did not respond. Verify that Ollama is running and reachable.';
+      } else if (res.status === 504) {
+        errMessage = 'Gateway Timeout (504): The notice analysis took longer than the gateway timeout window. Check system resources or retry with a shorter notice.';
+      } else if (res.status === 503) {
+        errMessage = 'Service Unavailable (503): The local LLM engine is temporarily unavailable or restarting.';
+      }
     }
     throw new APIError(errMessage, res.status, errData);
   }

@@ -1,11 +1,12 @@
 # ==============================================================================
-# SochnaSetu AI — Render Blueprint Deployment Configuration
+# SochnaSetu AI — Render Blueprint Deployment Configuration (100% Free Tier Ready)
 # https://render.com/docs/blueprint-spec
 # ==============================================================================
 
 services:
   - type: web
     name: sochnasetu-api
+    plan: free
     runtime: docker
     dockerfilePath: ./Dockerfile
     healthCheckPath: /healthz
@@ -36,7 +37,11 @@ services:
         value: /app/data/suchnasetu.db
       - key: UPLOADS_DIR
         value: /app/data/uploads
-    disk:
-      name: sochnasetu-data
-      mountPath: /app/data
-      sizeGB: 1
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false

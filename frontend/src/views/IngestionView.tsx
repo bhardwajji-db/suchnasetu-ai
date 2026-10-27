@@ -434,9 +434,9 @@ export const IngestionView: React.FC = () => {
       {analysisError && (() => {
         const errLower = analysisError.toLowerCase();
         const isQuota = errLower.includes('quota') || errLower.includes('rate limit') || errLower.includes('429');
-        const isModelMissing = errLower.includes('not found in ollama') || errLower.includes('ollama run') || errLower.includes('model_missing') || errLower.includes('llmmodelerror');
+        const isOffline = errLower.includes('connection') || errLower.includes('offline') || errLower.includes('cannot connect') || errLower.includes('failed to connect') || errLower.includes('is ollama running') || errLower.includes('ensure ollama is running');
+        const isModelMissing = !isOffline && (errLower.includes('not found in ollama') || errLower.includes('model not found') || errLower.includes('model_missing') || errLower.includes('llmmodelerror'));
         const isTimeout = errLower.includes('timed out') || errLower.includes('timeout') || errLower.includes('504');
-        const isOffline = !isModelMissing && (errLower.includes('connection') || errLower.includes('offline') || errLower.includes('cannot connect') || errLower.includes('failed to connect') || errLower.includes('ensure ollama is running'));
         const isValidation = errLower.includes('empty') || errLower.includes('validation') || errLower.includes('422');
         const isOcr = errLower.includes('ocr') || errLower.includes('image');
 

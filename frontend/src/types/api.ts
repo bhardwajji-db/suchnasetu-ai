@@ -154,7 +154,7 @@ export interface OCRResponse {
   document_quality_score?: number | null;
   deskew_angle?: number | null;
   orientation_applied?: number | null;
-  uncertain_spans?: Array<{ text: string; confidence: number; box: number[] }> | null;
+  uncertain_spans?: Array<{ text: string; confidence: number; box: number[]; status?: string; is_critical?: boolean; field_name?: string }> | null;
   critical_fields?: Record<string, { value: string; confidence: number; status: string; source: string }> | null;
   field_accuracy_score?: number | null;
 }

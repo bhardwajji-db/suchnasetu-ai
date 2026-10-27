@@ -689,7 +689,7 @@ def generate_accessible_summary(
         return base_summary
 
     prompt = f"""Rewrite the following summary points using very simple words, short sentences, and a warm, clear tone suitable for someone who finds formal notices difficult to read.
-Do NOT invent any facts, dates, or documents. If something is missing, keep it clearly labelled as missing.
+Do NOT invent any facts, dates, or documents. Always preserve the exact final submission deadline date. If something is missing, keep it clearly labelled as missing.
 
 Input facts:
 - What it is about: {base_summary.about}

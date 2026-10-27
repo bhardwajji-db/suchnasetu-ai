@@ -112,8 +112,8 @@ class OllamaClient(BaseLLMClient):
             "keep_alive": self.keep_alive,
             "options": {
                 "temperature": temperature,
-                "num_predict": 4096,
-                "num_ctx": 8192,
+                "num_predict": 2048,
+                "num_ctx": 4096,
             },
         }
         if json_mode:
@@ -121,7 +121,7 @@ class OllamaClient(BaseLLMClient):
 
         # Separate quick connection check (10s) from generation read timeout
         connect_timeout = 10.0
-        read_timeout = float(self.timeout)
+        read_timeout = float(min(self.timeout, 90.0))
 
         max_retries = 2
         for attempt in range(max_retries):
@@ -130,6 +130,10 @@ class OllamaClient(BaseLLMClient):
                 if resp.status_code == 404:
                     raise OllamaModelError(
                         f"Model '{self.model}' not found in Ollama. Pull it with: 'ollama run {self.model}'"
+                    )
+                if resp.status_code in (502, 503, 504):
+                    raise OllamaConnectionError(
+                        f"Upstream Ollama gateway error (HTTP {resp.status_code}): {resp.text}"
                     )
                 if resp.status_code != 200:
                     raise OllamaClientError(

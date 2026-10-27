@@ -37,7 +37,7 @@ from notice2action.security import wrap_untrusted_notice
 logger = logging.getLogger(__name__)
 
 
-ANALYSIS_SYSTEM_PROMPT = """You are SuchnaSetu AI. Extract critical facts into strictly formatted JSON.
+ANALYSIS_SYSTEM_PROMPT = """You are SuchnaSetu AI. Extract critical facts into strictly formatted JSON. Return ONLY the final JSON object immediately.
 Do not include any preamble, thinking, reasoning, or markdown explanations. Output only valid JSON.
 
 RULES:
@@ -45,6 +45,7 @@ RULES:
 2. Missing Info: If unmentioned, set "value" to "Not stated in the notice.", "status" to "not_stated", "evidence_quote" to null.
 3. Quotation: For stated facts, provide an exact verbatim quotation ("evidence_quote") from the notice proving the fact.
 4. Uncertainty: If tentative, provisional, or ambiguous, set "status" to "uncertain", "requires_confirmation" to true, and specify "uncertainty_type" ("document_ambiguity", "ocr_quality", "missing_in_text", or "conflict").
+5. Conciseness: Keep each field "value" and "evidence_quote" concise (under 25 words). Do not repeat the entire notice.
 
 Format:
 {
@@ -172,12 +173,18 @@ class NoticeAnalyzer:
         )
         contact = contact_match.group(1).strip() if contact_match else not_stated_val
 
-        # Deadline heuristic (bilingual)
+        # Deadline heuristic (bilingual) - prioritize specific submission deadline lines over generic section headers
         dl_match = re.search(
-            r'(?:Deadline|Last\s+Date|Due\s+Date|Cut-off\s+Date|अंतिम\s+तिथि|अंतिम\s+दिनांक|समाप्ति\s+तिथि)\s*[:\-]?\s*([^\n\r,]+)',
+            r'(?:Final\s+submission\s+deadline|Submission\s+deadline|Last\s+date\s+for\s+submission|Final\s+deadline|आवेदन\s+की\s+अंतिम\s+तिथि)\s*[:\-]?\s*([^\n\r,]+)',
             text,
             re.IGNORECASE,
         )
+        if not dl_match:
+            dl_match = re.search(
+                r'(?:Deadline|Last\s+Date|Due\s+Date|Cut-off\s+Date|अंतिम\s+तिथि|अंतिम\s+दिनांक|समाप्ति\s+तिथि)\s*[:\-]?\s*([^\n\r,]+)',
+                text,
+                re.IGNORECASE,
+            )
         deadline_val = dl_match.group(1).strip() if dl_match else not_stated_val
 
         # Fee heuristic (bilingual)

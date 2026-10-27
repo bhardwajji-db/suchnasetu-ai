@@ -234,11 +234,17 @@ app = FastAPI(
 import re
 
 cors_regex = getattr(config, "cors_origin_regex", None)
+pages_allowed = getattr(config, "cors_allow_pages_dev", True)
+pages_part = r"|([a-zA-Z0-9-]+\.)*pages\.dev" if pages_allowed else ""
+
 if not cors_regex:
     if getattr(config, "app_env", "development").lower() != "production":
-        cors_regex = r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+|169\.254\.\d+\.\d+|[a-zA-Z0-9-]+\.trycloudflare\.com)(:\d+)?$"
+        cors_regex = rf"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+|169\.254\.\d+\.\d+|([a-zA-Z0-9-]+\.)*trycloudflare\.com{pages_part})(:\d+)?$"
     else:
-        cors_regex = r"^https?://([a-zA-Z0-9-]+\.)?trycloudflare\.com$"
+        cors_regex = rf"^https?://(([a-zA-Z0-9-]+\.)*trycloudflare\.com{pages_part})$"
+elif pages_allowed and "pages.dev" not in cors_regex:
+    inner = cors_regex.lstrip("^https?://").rstrip("$")
+    cors_regex = rf"^https?://({inner}{pages_part})$"
 
 app.add_middleware(
     CORSMiddleware,
@@ -384,13 +390,14 @@ async def verify_csrf_and_origin(request: Request, call_next):
         if origin:
             clean_origin = origin.rstrip("/")
             is_tunnel_origin = bool(re.match(r"^https?://[a-zA-Z0-9-]+\.trycloudflare\.com$", clean_origin, re.IGNORECASE))
+            is_pages_origin = bool(re.match(r"^https?://([a-zA-Z0-9-]+\.)*pages\.dev$", clean_origin, re.IGNORECASE)) if getattr(config, "cors_allow_pages_dev", True) else False
             is_matched_regex = False
             if cors_regex:
                 try:
                     is_matched_regex = bool(re.match(cors_regex, clean_origin, re.IGNORECASE))
                 except Exception:
                     pass
-            if clean_origin not in trusted_origins and not (is_dev and _is_private_dev_origin(clean_origin)) and not is_tunnel_origin and not is_matched_regex:
+            if clean_origin not in trusted_origins and not (is_dev and _is_private_dev_origin(clean_origin)) and not is_tunnel_origin and not is_pages_origin and not is_matched_regex:
                 logger.warning(f"Blocked state-changing request from untrusted origin: {clean_origin}")
                 return JSONResponse(
                     status_code=403,
