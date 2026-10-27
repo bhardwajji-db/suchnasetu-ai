@@ -1,3 +1,13 @@
+---
+title: SuchnaSetu AI
+emoji: 📢
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # SuchnaSetu AI 📢
 
 > **PS02 — Notice-to-Action Accessibility Assistant**  

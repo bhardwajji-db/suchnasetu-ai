@@ -32,7 +32,7 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH="/app/src" \
     APP_ENV="production" \
-    PORT=8000 \
+    PORT=7860 \
     HOST="0.0.0.0" \
     OLLAMA_BASE_URL="http://ollama:11434" \
     OLLAMA_MODEL="gemma4:latest"
@@ -64,18 +64,18 @@ COPY tests/fixtures/demo_library/ /app/tests/fixtures/demo_library/
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
 # Create dedicated non-root application user for defense-in-depth security
-RUN useradd -m -u 1001 suchnasetu && \
+RUN useradd -m -u 1000 suchnasetu && \
     mkdir -p /app/data/uploads && \
     chown -R suchnasetu:suchnasetu /app
 
 USER suchnasetu
 
-# Expose HTTP port
-EXPOSE 8000
+# Expose HTTP port (7860 default for Hugging Face Spaces & container platforms)
+EXPOSE 7860
 
 # Docker health check endpoint
 HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+    CMD curl -f http://localhost:${PORT:-7860}/healthz || exit 1
 
 # Launch production ASGI server (honoring dynamic $PORT if assigned by hosting platform)
-CMD ["sh", "-c", "exec python -m uvicorn notice2action.api.server:app --app-dir src --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "exec python -m uvicorn notice2action.api.server:app --app-dir src --host 0.0.0.0 --port ${PORT:-7860}"]

@@ -85,6 +85,26 @@ def test_csrf_allows_cloudflare_pages(client):
     assert response.status_code != 403
 
 
+def test_cors_and_csrf_huggingface_spaces(client):
+    """Verify Hugging Face Spaces (*.hf.space) origins receive CORS approval and pass CSRF."""
+    origin = "https://user-suchnasetu-api.hf.space"
+    headers = {
+        "Origin": origin,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "Content-Type",
+    }
+    opt_res = client.options("/api/ingest/text", headers=headers)
+    assert opt_res.status_code == 200
+    assert opt_res.headers.get("access-control-allow-origin") == origin
+
+    post_res = client.post(
+        "/api/ingest/text",
+        headers={"Origin": origin},
+        data={"text": "Test notice from Hugging Face Space origin."},
+    )
+    assert post_res.status_code != 403
+
+
 def test_csrf_blocks_untrusted_foreign_origin(client):
     """Verify state-changing POST from an untrusted foreign origin is blocked with HTTP 403."""
     evil_origin = "https://malicious-phishing-site.example.com"
