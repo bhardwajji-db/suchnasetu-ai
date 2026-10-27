@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { useTranslation, SUPPORTED_LANGUAGES, type LanguageCode } from '../i18n';
-import { loginAccount, registerAccount, verifyEmailAddress } from '../services/api';
+import { loginAccount, registerAccount } from '../services/api';
 import { BrandLogo } from '../components/BrandLogo';
 import {
   Mail,
@@ -16,7 +16,8 @@ import {
   AlertCircle,
   ShieldCheck,
   Globe,
-  KeyRound,
+  Sun,
+  Moon,
   RotateCw,
 } from 'lucide-react';
 
@@ -29,18 +30,20 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({
   initialMode = 'login',
   onComplete,
 }) => {
-  const { setCurrentUser, setActiveTab, setSelectedLang } = useNotice();
+  const { theme, toggleTheme, setCurrentUser, setActiveTab, setSelectedLang } = useNotice();
   const { t, language, setLanguage } = useTranslation();
 
-  const [mode, setMode] = useState<'login' | 'signup' | 'verify'>(initialMode);
-  const [email, setEmail] = useState('');
+  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
+  const [email, setEmail] = useState(() => {
+    try {
+      return localStorage.getItem('suchnasetu_last_email') || 'diwakarbhardwaj477@gmail.com';
+    } catch {
+      return 'diwakarbhardwaj477@gmail.com';
+    }
+  });
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -88,14 +91,16 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({
 
       if (res.user) {
         setCurrentUser(res.user);
+        try {
+          localStorage.setItem('suchnasetu_last_email', cleanEmail);
+        } catch {
+          // ignore
+        }
       }
       handleReturn();
     } catch (err: any) {
       const msg = err.message || 'Invalid email or password.';
       setError(msg);
-      if (msg.toLowerCase().includes('not verified') || msg.toLowerCase().includes('verification')) {
-        setMode('verify');
-      }
     } finally {
       setIsLoading(false);
     }
@@ -107,42 +112,42 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({
     setError(null);
     setSuccessNotice(null);
 
-    const cleanName = name.trim();
+    const cleanUsername = name.trim();
     const cleanEmail = email.trim().toLowerCase();
 
-    if (!cleanName || cleanName.length < 2) {
-      setError(t('signupFullNameRequiredError') || 'Full Name is required.');
+    if (!cleanUsername || cleanUsername.length < 2) {
+      setError('Username must be at least 2 characters long.');
       return;
     }
-    if (!cleanEmail || !cleanEmail.includes('@')) {
+    if (cleanUsername.length > 100) {
+      setError('Username cannot exceed 100 characters.');
+      return;
+    }
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
       setError(t('validEmailError') || 'Please enter a valid email address.');
       return;
     }
     if (password.length < 8) {
-      setError(t('signupPasswordMinLengthError') || 'Password must be at least 8 characters.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError(t('signupPasswordMismatchError') || 'Passwords do not match.');
+      setError(t('signupPasswordMinLengthError') || 'Password must be at least 8 characters long.');
       return;
     }
 
     setIsLoading(true);
     try {
       const res = await registerAccount({
-        name: cleanName,
+        username: cleanUsername,
+        name: cleanUsername,
         email: cleanEmail,
         password,
-        confirmPassword,
       });
 
-      if (res.already_verified) {
-        setSuccessNotice('Account already exists and is verified. Please sign in.');
-        setMode('login');
-      } else {
-        setSuccessNotice(res.message || 'Account created! Enter the 6-digit verification code below.');
-        setMode('verify');
+      if (res.user) {
+        setCurrentUser(res.user);
       }
+      setSuccessNotice('Account created successfully! Welcome to SochnaSetu AI.');
+      setTimeout(() => {
+        handleReturn();
+      }, 700);
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please check your details.');
     } finally {
@@ -150,52 +155,50 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({
     }
   };
 
-  // Verification code submit
-  const handleVerifySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
 
-    const cleanCode = verificationCode.trim();
-    if (!cleanCode || cleanCode.length < 6) {
-      setError('Please enter the 6-digit verification code.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await verifyEmailAddress({
-        email: email.trim().toLowerCase(),
-        code: cleanCode,
-      });
-
-      setSuccessNotice('Email verified successfully! You may now sign in.');
-      setMode('login');
-    } catch (err: any) {
-      setError(err.message || 'Verification code is invalid or expired.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#F5F8FA] via-white to-[#E8F7F0]/30 text-[#12233D] font-sans selection:bg-[#08785D] selection:text-white pb-12">
+    <div
+      data-view="auth-page"
+      className={`auth-page-root min-h-screen w-full flex flex-col overflow-x-hidden font-sans selection:bg-[#08785D] selection:text-white pb-12 transition-colors duration-200 ${
+        theme === 'dark'
+          ? 'bg-[#0B1220] text-[#E8EEF7]'
+          : 'bg-gradient-to-br from-[#F5F8FA] via-white to-[#E8F7F0]/30 text-[#12233D]'
+      }`}
+    >
       {/* Top Navigation Bar */}
-      <header className="w-full bg-white/90 backdrop-blur-md border-b border-[#E1E7EE] sticky top-0 z-30 px-4 sm:px-8 py-3.5 shadow-xs">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      <header className="w-full bg-white/90 dark:bg-[#0F172A]/90 backdrop-blur-md border-b border-[#E1E7EE] dark:border-[#29384D] sticky top-0 z-30 px-3 sm:px-8 py-2 sm:py-3.5 shadow-xs">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
           <BrandLogo size="md" />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+            {/* Dark / Light Theme Quick Toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex items-center justify-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold text-[#526176] dark:text-[#94A3B8] hover:text-[#12233D] dark:hover:text-white bg-[#F8FAFC] dark:bg-[#17243A] border border-[#CBD5E1] dark:border-[#29384D] hover:border-[#14B8A6] dark:hover:border-[#14B8A6] transition cursor-pointer shadow-2xs"
+              title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#14B8A6]" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#526176]" />
+              )}
+              <span className="hidden md:inline">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+            </button>
+
             {/* Language Selector */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-[#526176] bg-[#F8FAFC] border border-[#CBD5E1]">
-              <Globe className="w-3.5 h-3.5 text-[#08785D]" />
+            <div className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold text-[#526176] dark:text-[#94A3B8] bg-[#F8FAFC] dark:bg-[#17243A] border border-[#CBD5E1] dark:border-[#29384D] shadow-2xs">
+              <Globe className="w-3.5 h-3.5 text-[#08785D] dark:text-[#14B8A6] shrink-0" />
               <select
                 value={language}
                 onChange={(e) => handleLanguageSelect(e.target.value as LanguageCode)}
                 aria-label="Select interface language"
-                className="bg-transparent text-[#12233D] text-xs font-bold outline-hidden cursor-pointer"
+                className="bg-transparent text-[#12233D] dark:text-[#E8EEF7] text-xs font-bold outline-hidden cursor-pointer max-w-[60px] xs:max-w-[100px] sm:max-w-none truncate"
               >
                 {Object.values(SUPPORTED_LANGUAGES).map((meta) => (
-                  <option key={meta.code} value={meta.code} className="bg-white text-[#12233D]">
+                  <option key={meta.code} value={meta.code} className="bg-white dark:bg-[#17243A] text-[#12233D] dark:text-[#E8EEF7]">
                     {meta.nativeName} ({meta.name})
                   </option>
                 ))}
@@ -206,19 +209,20 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({
             <button
               type="button"
               onClick={handleReturn}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-[#12233D] bg-white hover:bg-slate-50 border border-[#CBD5E1] transition shadow-xs cursor-pointer focus:ring-2 focus:ring-[#2563EB]"
-              aria-label="Return to application"
+              className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-[#12233D] dark:text-[#E8EEF7] bg-white dark:bg-[#17243A] hover:bg-slate-50 dark:hover:bg-[#203048] border border-[#CBD5E1] dark:border-[#29384D] hover:border-[#08785D] dark:hover:border-[#14B8A6] transition shadow-xs cursor-pointer focus:ring-2 focus:ring-[#14B8A6]"
+              aria-label="Continue to application as guest"
             >
-              <ArrowLeft className="w-4 h-4 text-[#08785D]" />
-              <span>{t('returnToSignIn') || 'Return to Application'}</span>
+              <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#08785D] dark:text-[#14B8A6] shrink-0" />
+              <span className="hidden sm:inline">{t('loginContinueAsGuest') || 'Continue as Guest'}</span>
+              <span className="sm:hidden text-xs">Guest</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-xl w-full mx-auto p-4 sm:p-6 my-auto flex flex-col justify-center animate-fadeIn">
-        <div className="bg-white rounded-3xl border border-[#E1E7EE] shadow-xl overflow-hidden p-6 sm:p-8 space-y-6">
+      <main className="flex-1 max-w-xl w-full mx-auto p-3 sm:p-6 my-auto flex flex-col justify-center animate-fadeIn bg-transparent">
+        <div className="auth-card bg-white dark:bg-[#111C2F] rounded-2xl sm:rounded-3xl border border-[#E1E7EE] dark:border-[#29384D] shadow-xl sm:shadow-2xl overflow-hidden p-4 sm:p-8 space-y-5 sm:space-y-6">
           {/* Header Strip & Badge */}
           <div className="text-center space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
@@ -226,58 +230,54 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({
               <span>{t('secureCitizenAccess') || 'Zero PII • Offline-First Civic Access'}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#12233D] tracking-tight">
-              {mode === 'login' && (t('loginTitle') || 'Sign In to SuchnaSetu AI')}
-              {mode === 'signup' && (t('signupTitle') || 'Create Citizen Account')}
-              {mode === 'verify' && (t('verifyEmailTitle') || 'Verify Your Account')}
+              {mode === 'login' ? (t('loginTitle') || 'Sign In to SuchnaSetu AI') : (t('signupTitle') || 'Create Citizen Account')}
             </h1>
             <p className="text-xs sm:text-sm text-[#526176] max-w-md mx-auto">
-              {mode === 'login' && (t('loginSubtitle') || 'Access your saved notices, action checklists, and verified deadlines across sessions.')}
-              {mode === 'signup' && (t('signupSubtitle') || 'Create an account to isolate your civic intelligence, weekly actions, and preferences.')}
-              {mode === 'verify' && 'Enter the 6-digit verification code dispatched to your email address.'}
+              {mode === 'login'
+                ? (t('loginSubtitle') || 'Access your saved notices, action checklists, and verified deadlines across sessions.')
+                : (t('signupSubtitle') || 'Create an account to isolate your civic intelligence, weekly actions, and preferences.')}
             </p>
           </div>
 
           {/* Toggle Switch: Sign In vs Create Account */}
-          {mode !== 'verify' && (
-            <div className="flex bg-[#F1F5F9] p-1 rounded-xl border border-[#CBD5E1]" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === 'login'}
-                onClick={() => {
-                  setMode('login');
-                  setError(null);
-                  setSuccessNotice(null);
-                }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  mode === 'login'
-                    ? 'bg-white text-[#12233D] shadow-xs'
-                    : 'text-[#526176] hover:text-[#12233D]'
-                }`}
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>{t('signIn') || 'Sign In'}</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === 'signup'}
-                onClick={() => {
-                  setMode('signup');
-                  setError(null);
-                  setSuccessNotice(null);
-                }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  mode === 'signup'
-                    ? 'bg-white text-[#12233D] shadow-xs'
-                    : 'text-[#526176] hover:text-[#12233D]'
-                }`}
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>{t('register') || 'Create Account'}</span>
-              </button>
-            </div>
-          )}
+          <div className="flex bg-[#E2E8F0]/70 dark:bg-[#17243A] p-1 rounded-xl border border-[#CBD5E1] dark:border-[#29384D]" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'login'}
+              onClick={() => {
+                setMode('login');
+                setError(null);
+                setSuccessNotice(null);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition cursor-pointer focus-visible:ring-2 focus-visible:ring-[#14B8A6] focus-visible:outline-hidden ${
+                mode === 'login'
+                  ? 'bg-white dark:bg-[#203048] text-[#12233D] dark:text-[#2DD4BF] shadow-xs border border-[#CBD5E1]/50 dark:border-[#2DD4BF]/30'
+                  : 'text-[#526176] dark:text-[#94A3B8] hover:text-[#12233D] dark:hover:text-white'
+              }`}
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>{t('signIn') || 'Sign In'}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'signup'}
+              onClick={() => {
+                setMode('signup');
+                setError(null);
+                setSuccessNotice(null);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition cursor-pointer focus-visible:ring-2 focus-visible:ring-[#14B8A6] focus-visible:outline-hidden ${
+                mode === 'signup'
+                  ? 'bg-white dark:bg-[#203048] text-[#12233D] dark:text-[#2DD4BF] shadow-xs border border-[#CBD5E1]/50 dark:border-[#2DD4BF]/30'
+                  : 'text-[#526176] dark:text-[#94A3B8] hover:text-[#12233D] dark:hover:text-white'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>{t('register') || 'Create Account'}</span>
+            </button>
+          </div>
 
           {/* Error Banner */}
           {error && (
@@ -387,7 +387,7 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({
             <form onSubmit={handleSignupSubmit} className="space-y-4" noValidate>
               <div>
                 <label htmlFor="signup-name" className="block text-xs font-bold text-[#12233D] mb-1.5">
-                  {t('signupFullName') || 'Full Name'}
+                  Username
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#68778B]">
@@ -398,10 +398,10 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Priya Sharma"
+                    placeholder="e.g. arjun_sharma"
                     required
                     disabled={isLoading}
-                    autoComplete="name"
+                    autoComplete="username"
                     className="w-full pl-10 pr-3.5 py-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs text-[#12233D] focus:border-[#08785D] focus:ring-1 focus:ring-[#08785D] focus:outline-hidden transition"
                   />
                 </div>
@@ -420,7 +420,7 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="priya.sharma@example.gov.in"
+                    placeholder="citizen@example.gov.in"
                     required
                     disabled={isLoading}
                     autoComplete="email"
@@ -459,36 +459,6 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="signup-confirm-password" className="block text-xs font-bold text-[#12233D] mb-1.5">
-                  {t('signupConfirmPassword') || 'Confirm Password'}
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#68778B]">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <input
-                    id="signup-confirm-password"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    disabled={isLoading}
-                    autoComplete="new-password"
-                    className="w-full pl-10 pr-10 py-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-xs text-[#12233D] focus:border-[#08785D] focus:ring-1 focus:ring-[#08785D] focus:outline-hidden transition"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#68778B] hover:text-[#12233D] cursor-pointer"
-                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
               <button
                 type="submit"
                 disabled={isLoading}
@@ -502,75 +472,14 @@ export const AuthPageView: React.FC<AuthPageViewProps> = ({
                 ) : (
                   <>
                     <UserPlus className="w-4 h-4" />
-                    <span>{t('signupCreateAccountButton') || 'Create Citizen Account'}</span>
+                    <span>Create Account</span>
                   </>
                 )}
               </button>
             </form>
           )}
 
-          {/* FORM: Verify Email Code */}
-          {mode === 'verify' && (
-            <form onSubmit={handleVerifySubmit} className="space-y-4">
-              <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#CBD5E1] text-xs space-y-1">
-                <div className="font-bold text-[#12233D] flex items-center gap-1.5">
-                  <KeyRound className="w-4 h-4 text-[#08785D]" />
-                  <span>Enter 6-Digit Verification Code</span>
-                </div>
-                <p className="text-[#526176]">
-                  A code was sent to <strong className="text-[#12233D]">{email}</strong>.
-                </p>
-                <p className="text-[11px] text-[#08785D] pt-1">
-                  💡 In local development (console backend), check your backend terminal window for the 6-digit code.
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="verify-code" className="block text-xs font-bold text-[#12233D] mb-1.5">
-                  6-Digit Verification Code
-                </label>
-                <input
-                  id="verify-code"
-                  type="text"
-                  maxLength={6}
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="123456"
-                  required
-                  disabled={isLoading}
-                  className="w-full text-center tracking-widest text-lg font-mono py-2.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-[#12233D] focus:border-[#08785D] focus:ring-1 focus:ring-[#08785D] focus:outline-hidden transition font-bold"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading || verificationCode.length < 6}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-xs text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-md disabled:opacity-50 cursor-pointer"
-              >
-                {isLoading ? (
-                  <>
-                    <RotateCw className="w-4 h-4 animate-spin" />
-                    <span>Verifying...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Verify & Continue</span>
-                  </>
-                )}
-              </button>
-
-              <div className="text-center pt-2">
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className="text-xs font-semibold text-[#08785D] hover:underline cursor-pointer"
-                >
-                  ← Back to Sign In
-                </button>
-              </div>
-            </form>
-          )}
+          
 
           {/* Escape Hatch / Guest Access */}
           <div className="pt-4 border-t border-[#E1E7EE] text-center">

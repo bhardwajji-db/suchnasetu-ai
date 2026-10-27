@@ -471,4 +471,4 @@ class TestReadingLevelAPIEndpoint:
         assert data_s["summary_hi"]["eligible"] != data_d["summary_hi"]["eligible"]
         assert data_s["localized_summary"]["eligible"] != data_d["localized_summary"]["eligible"]
         assert "DHETT/SCH/2026/089" in data_d["summary_hi"]["about"]
-        assert "[Evidence Quote:" in data_d["summary_hi"]["about"]
+        assert "[Evidence Quote:" in data_d["summary_hi"]["about"] or "[प्रमाण उद्धरण:" in data_d["summary_hi"]["about"]

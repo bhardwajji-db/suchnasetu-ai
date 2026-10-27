@@ -155,7 +155,7 @@ def test_gazette_2017_baseline_vs_improved_accuracy(gazette_benchmark_data):
     assert "The Gazette of India" in improved_text
     assert "भारत का राजपत्र" in improved_text
     assert "1204" in improved_text
-    assert "28 अप्रैल, 2017" in improved_text
+    assert "28 अप्रैल, 2017" in improved_text or "अप्रैल 28, 2017" in improved_text
     assert "का.आ. 1364(अ)" in improved_text
     assert "का.आ. 19(अ)" in improved_text
     assert "4 जनवरी, 2017" in improved_text

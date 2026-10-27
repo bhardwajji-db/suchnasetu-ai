@@ -92,11 +92,16 @@ export const FactCard: React.FC<FactCardProps> = ({ fact, fieldName, displayName
           </div>
         )}
 
-        {/* Verbatim Evidence Quote */}
+        {/* Verbatim Evidence Quote (Preserved in Original Source Language) */}
         {fact.evidence_quote && (
           <div className="mt-2.5 p-3 rounded-lg bg-[#F8FAFC] border-l-3 border-[#08785D] text-xs text-[#526176] font-mono italic leading-relaxed">
-            <div className="flex items-center gap-1 text-[#08785D] font-sans font-bold text-[10px] uppercase mb-1">
-              <Quote className="w-3 h-3" /> {t('groundedEvidenceQuote')}
+            <div className="flex items-center justify-between text-[#08785D] font-sans font-bold text-[10px] uppercase mb-1">
+              <span className="flex items-center gap-1">
+                <Quote className="w-3 h-3" /> {t('groundedEvidenceQuote')}
+              </span>
+              <span className="text-[9px] font-medium text-[#68778B] lowercase px-1.5 py-0.5 bg-slate-200/70 rounded">
+                original source quotation
+              </span>
             </div>
             "{fact.evidence_quote}"
           </div>

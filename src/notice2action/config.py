@@ -86,8 +86,8 @@ class AppConfig:
     hf_provider: str = field(default_factory=lambda: os.getenv("HF_PROVIDER", "auto").strip())
 
     # Cloud Provider 2: OpenRouter
-    openrouter_api_key: Optional[str] = os.getenv("OPENROUTER_API_KEY")
-    openrouter_model: str = os.getenv("OPENROUTER_MODEL", "google/gemma-2-9b-it:free")
+    openrouter_api_key: Optional[str] = field(default_factory=lambda: os.getenv("OPENROUTER_API_KEY"))
+    openrouter_model: str = field(default_factory=lambda: os.getenv("OPENROUTER_MODEL", "google/gemma-4-26b-a4b-it:free"))
 
     # Cloud Provider 3: Google Gemini
     gemini_api_key: Optional[str] = os.getenv("GEMINI_API_KEY")
@@ -115,10 +115,27 @@ class AppConfig:
 
     # Environment & Deployment Mode ("development", "production", "test")
     app_env: str = os.getenv("APP_ENV", "development").lower()
+    port: int = field(default_factory=lambda: int(os.getenv("PORT", os.getenv("BACKEND_PORT", "8000"))))
+    backend_host: str = os.getenv("BACKEND_HOST", os.getenv("HOST", "127.0.0.1"))
 
     # Authentication & Security Keys
     auth_secret_key: str = os.getenv("AUTH_SECRET_KEY", "suchnasetu-dev-insecure-secret-key-change-in-production")
-    auth_cookie_secure: bool = os.getenv("AUTH_COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
+    auth_cookie_secure: bool = field(default_factory=lambda: os.getenv("AUTH_COOKIE_SECURE", "false").lower() in ("true", "1", "yes"))
+    auth_cookie_samesite: str = field(default_factory=lambda: os.getenv("AUTH_COOKIE_SAMESITE", "lax").lower().strip())
+    enable_api_docs: bool = field(
+        default_factory=lambda: os.getenv(
+            "ENABLE_API_DOCS",
+            "true" if os.getenv("APP_ENV", "development").lower() != "production" else "false"
+        ).lower() in ("true", "1", "yes")
+    )
+    trusted_proxies: List[str] = field(
+        default_factory=lambda: [
+            p.strip()
+            for p in os.getenv("TRUSTED_PROXIES", "127.0.0.1,::1,localhost,testclient").split(",")
+            if p.strip()
+        ]
+    )
+    cors_origin_regex: Optional[str] = field(default_factory=lambda: os.getenv("CORS_ORIGIN_REGEX"))
     cors_allowed_origins: List[str] = field(
         default_factory=lambda: [
             o.strip()
@@ -136,7 +153,16 @@ class AppConfig:
         app_url = self.auth_public_app_url.rstrip("/")
         if app_url and app_url not in origins:
             origins.append(app_url)
-        for base in ["http://localhost:5173", "http://127.0.0.1:5173", "http://testserver", "https://testserver"]:
+        for base in [
+            f"http://127.0.0.1:{self.port}",
+            "http://127.0.0.1:8000",
+            f"http://localhost:{self.port}",
+            "http://localhost:8000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://testserver",
+            "https://testserver",
+        ]:
             if base not in origins:
                 origins.append(base)
         # In non-production environments, dynamically register active local LAN interfaces
@@ -320,6 +346,27 @@ def run_preflight_diagnostics(cfg: Optional[AppConfig] = None) -> PreflightRepor
                 f"pypdf library not available: {e}",
                 "Run pip install pypdf",
             )
+        )
+
+    # 3b. SQLite Database Diagnostics
+    try:
+        from notice2action.storage.db import get_db
+        db_inst = get_db()
+        conn = db_inst.get_connection()
+        with conn:
+            cur = conn.execute("SELECT 1 AS ping;")
+            res = cur.fetchone()
+            if res and res["ping"] == 1:
+                report.items.append(
+                    DiagnosticItem("SQLite Database", "ok", f"Database connected & responsive at {db_inst.db_path}")
+                )
+            else:
+                report.items.append(
+                    DiagnosticItem("SQLite Database", "error", f"Database ping query failed at {db_inst.db_path}", "Check SQLite file permissions.")
+                )
+    except Exception as e:
+        report.items.append(
+            DiagnosticItem("SQLite Database", "error", f"SQLite connection failed: {e}", "Verify database path and write permissions.")
         )
 
     # 4. LLM Provider Diagnostics

@@ -19,6 +19,15 @@ SCREENSHOT_DIR = Path("assets/screenshots")
 SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _open_app(page):
+    page.goto(FRONTEND_URL, wait_until="networkidle")
+    guest_btn = page.locator("button:has-text('Continue as Guest')")
+    if guest_btn.is_visible():
+        guest_btn.click()
+        page.wait_for_timeout(400)
+    page.wait_for_selector("text=PS02", timeout=8000)
+
+
 def test_theme_system_full_lifecycle():
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -29,12 +38,15 @@ def test_theme_system_full_lifecycle():
         page = context.new_page()
 
         # Step 1: Open Application in default Slate + Deep Green (Light)
-        page.goto(FRONTEND_URL, wait_until="networkidle")
-        page.wait_for_selector("text=PS02", timeout=8000)
+        _open_app(page)
 
         # Force light theme initially for clean starting state
         page.evaluate("() => { localStorage.setItem('suchnasetu_theme', 'light'); document.documentElement.setAttribute('data-theme', 'light'); document.documentElement.classList.remove('dark'); }")
         page.reload(wait_until="networkidle")
+        guest_btn = page.locator("button:has-text('Continue as Guest')")
+        if guest_btn.is_visible():
+            guest_btn.click()
+            page.wait_for_timeout(400)
         page.wait_for_selector("text=PS02", timeout=8000)
 
         # Verify initial light theme state
@@ -87,13 +99,20 @@ def test_theme_system_full_lifecycle():
 
         # Step 4: Test Page Reload & Persistence
         page.reload(wait_until="networkidle")
+        guest_btn = page.locator("button[aria-label='Continue to application as guest'], button:has-text('Continue as Guest')").first
+        if guest_btn.is_visible():
+            guest_btn.click()
+            page.wait_for_timeout(400)
         page.wait_for_selector("text=PS02", timeout=8000)
         reloaded_theme = page.evaluate("() => document.documentElement.getAttribute('data-theme')")
         assert reloaded_theme == "dark", f"Expected dark theme to persist across reload, got: {reloaded_theme}"
 
-        # Step 5: Test Switching back using Sidebar Theme Selector
-        sidebar_slate_btn_after = page.locator("button[aria-label='Slate + Deep Green light theme']").first
-        sidebar_slate_btn_after.click()
+        # Step 5: Test Switching back using Theme Selector
+        theme_toggle = page.locator("button[aria-label='Switch to light theme']").first
+        if theme_toggle.is_visible():
+            theme_toggle.click()
+        else:
+            page.locator("button:has-text('Slate Green')").first.click()
         page.wait_for_timeout(400)
 
         restored_theme = page.evaluate("() => document.documentElement.getAttribute('data-theme')")
@@ -115,8 +134,7 @@ def test_theme_mobile_viewport():
         context = browser.new_context(viewport={"width": 390, "height": 844})
         page = context.new_page()
 
-        page.goto(FRONTEND_URL, wait_until="networkidle")
-        page.wait_for_selector("text=PS02", timeout=8000)
+        _open_app(page)
 
         # 1. Header toggle is accessible on mobile
         mobile_toggle = page.locator("button[aria-label='Switch to dark theme']").first

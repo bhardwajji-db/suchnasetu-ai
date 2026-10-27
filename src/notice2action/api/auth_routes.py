@@ -50,11 +50,19 @@ def _extract_session_token(request: Request) -> Optional[str]:
 
 
 def get_client_ip(request: Request) -> str:
-    """Safely resolve client IP address."""
-    forwarded_for = request.headers.get("X-Forwarded-For")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
-    return request.client.host if request.client else "127.0.0.1"
+    """Safely resolve client IP address, only trusting reverse proxy headers from verified local proxies."""
+    client_host = request.client.host if request.client else "127.0.0.1"
+    trusted_proxies = set(getattr(config, "trusted_proxies", ["127.0.0.1", "::1", "localhost", "testclient"]))
+
+    if client_host in trusted_proxies:
+        cf_ip = request.headers.get("CF-Connecting-IP") or request.headers.get("cf-connecting-ip")
+        if cf_ip and cf_ip.strip():
+            return cf_ip.strip()
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for and forwarded_for.strip():
+            return forwarded_for.split(",")[0].strip()
+
+    return client_host
 
 
 async def get_current_user(request: Request) -> Dict[str, Any]:
@@ -123,8 +131,8 @@ async def get_current_user_or_guest(request: Request) -> Dict[str, Any]:
 # -----------------------------------------------------------------------------
 
 @router.post("/register", response_model=AuthResponse)
-async def register(payload: RegisterRequest, request: Request):
-    """Register a new citizen account and dispatch an email verification message."""
+async def register(payload: RegisterRequest, request: Request, response: Response):
+    """Register a new citizen account without OTP and create an authenticated session."""
     client_ip = get_client_ip(request)
     if payload.confirm_password and payload.password != payload.confirm_password:
         raise HTTPException(
@@ -132,17 +140,40 @@ async def register(payload: RegisterRequest, request: Request):
             detail="Passwords do not match. Please re-enter your password."
         )
 
+    user_name = payload.username or payload.name or ""
     res = await auth_service.register_user(
-        name=payload.name,
+        name=user_name,
         email=str(payload.email),
         password=payload.password,
         client_ip=client_ip
     )
+
+    session_token = res.get("session_token")
+    if session_token:
+        expire_hours = int(getattr(config, "auth_session_expire_hours", 168))
+        max_age_seconds = expire_hours * 3600
+        cookie_name = getattr(config, "auth_cookie_name", "suchnasetu_session")
+        cookie_secure = _is_request_https(request)
+        cookie_samesite = getattr(config, "auth_cookie_samesite", "lax")
+
+        response.set_cookie(
+            key=cookie_name,
+            value=session_token,
+            max_age=max_age_seconds,
+            httponly=True,
+            secure=cookie_secure,
+            samesite=cookie_samesite,
+            path="/"
+        )
+
+    user_obj = UserPublic(**res["user"]) if res.get("user") else None
+
     return AuthResponse(
         status=res["status"],
         message=res["message"],
-        email_delivered=res.get("email_delivered"),
-        already_verified=res.get("already_verified")
+        user=user_obj,
+        email_delivered=False,
+        already_verified=False
     )
 
 
@@ -171,17 +202,31 @@ async def resend_verification(payload: ResendVerificationRequest, request: Reque
 
 
 def _is_request_https(request: Request) -> bool:
-    """Determines if the request is served over HTTPS directly or via reverse proxy."""
-    if getattr(config, "auth_cookie_secure", False):
-        return True
+    """Determines if the request is served over HTTPS directly or via trusted reverse proxy."""
     if request.url.scheme == "https":
         return True
-    headers = getattr(request, "headers", {})
-    proto = (headers.get("X-Forwarded-Proto") or headers.get("x-forwarded-proto")) if hasattr(headers, "get") else None
-    if proto and str(proto).lower() == "https":
+
+    client_host = request.client.host if request.client else "127.0.0.1"
+    trusted_proxies = set(getattr(config, "trusted_proxies", ["127.0.0.1", "::1", "localhost", "testclient"]))
+
+    if client_host in trusted_proxies:
+        headers = getattr(request, "headers", {})
+        proto = (headers.get("X-Forwarded-Proto") or headers.get("x-forwarded-proto")) if hasattr(headers, "get") else None
+        if proto and str(proto).lower() == "https":
+            return True
+
+    # If auth_cookie_secure is explicitly set to True, only enforce it if not on plain local HTTP test client
+    # Direct local HTTP requests (e.g. http://127.0.0.1:8000) without X-Forwarded-Proto: https
+    # should allow non-secure cookies so local browser testing does not drop session cookies.
+    if getattr(config, "auth_cookie_secure", False):
+        origin = ""
+        if hasattr(request, "headers"):
+            origin = request.headers.get("Origin") or request.headers.get("Referer") or ""
+        if origin.startswith("http://127.0.0.1") or origin.startswith("http://localhost"):
+            return False
         return True
-    app_url = getattr(config, "auth_public_app_url", "")
-    return app_url.startswith("https://")
+
+    return False
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -250,7 +295,8 @@ async def get_current_account(current_user: Dict[str, Any] = Depends(get_current
         id=current_user["id"],
         email=current_user["email"],
         name=current_user["name"],
-        is_verified=current_user["is_verified"],
+        username=current_user.get("name"),
+        is_verified=True,
         created_at=current_user["created_at"],
         is_guest=False
     )

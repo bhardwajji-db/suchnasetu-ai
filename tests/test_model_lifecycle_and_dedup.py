@@ -121,7 +121,7 @@ def test_in_flight_deduplication_prevents_duplicate_inference():
     """Concurrent requests for identical un-cached notice text share one single inference."""
     call_count = 0
 
-    def mock_slow_analyze(text):
+    def mock_slow_analyze(text, *args, **kwargs):
         nonlocal call_count
         call_count += 1
         time.sleep(0.3)  # Simulate slow local LLM inference

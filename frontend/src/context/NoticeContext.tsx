@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type {
   StructuredNotice,
   SixCoreFields,
@@ -97,6 +97,9 @@ interface NoticeContextType {
   analysisDuration: number | null;
   analysisError: string | null;
   clearAnalysisError: () => void;
+  isTranslatingNotice: boolean;
+  noticeTranslationError: string | null;
+  translateActiveNotice: (targetLang: string) => Promise<void>;
   currentUser: UserProfile | null;
   setCurrentUser: (user: UserProfile | null) => void;
   isAuthLoading: boolean;
@@ -194,7 +197,7 @@ const restoreCompletedSteps = (checklist: ActionChecklist | null, fp: string | n
   }
 };
 
-export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: number }> = ({ children, initialTab = 0 }) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [rawNoticeText, setRawNoticeText] = useState<string>('');
   const [uploadedImage, setUploadedImageState] = useState<string | null>(null);
@@ -210,6 +213,21 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [localizedSummary, setLocalizedSummary] = useState<PlainLanguageSummary | null>(null);
   const [localizedChecklist, setLocalizedChecklist] = useState<ActionChecklist | null>(null);
 
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isTranslatingNotice, setIsTranslatingNotice] = useState<boolean>(false);
+  const [noticeTranslationError, setNoticeTranslationError] = useState<string | null>(null);
+
+  const originalStructuredNoticeRef = useRef<StructuredNotice | null>(null);
+  const originalSixCoreFieldsRef = useRef<SixCoreFields | null>(null);
+  const originalSummaryEnRef = useRef<PlainLanguageSummary | null>(null);
+  const originalChecklistEnRef = useRef<ActionChecklist | null>(null);
+  const translationCacheRef = useRef<Map<string, {
+    summary: PlainLanguageSummary;
+    checklist: ActionChecklist;
+    structuredNotice?: StructuredNotice | null;
+    sixCoreFields?: SixCoreFields | null;
+  }>>(new Map());
+
   const i18n = useTranslation();
   const [localLang, setLocalLang] = useState<string>(() => {
     try {
@@ -220,22 +238,13 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   const selectedLang = i18n?.language || localLang;
-  const setSelectedLang = useCallback((lang: string) => {
-    setLocalLang(lang);
-    if (i18n?.setLanguage) {
-      i18n.setLanguage(lang as any);
-    }
+  const [outputLang, setOutputLang] = useState<string>(() => {
     try {
-      localStorage.setItem('suchnasetu_user_language', lang);
-      document.documentElement.lang = lang;
-      document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
-    } catch {}
-      if (currentUser) {
-        apiClient.saveUserPreferences({ language: lang }).catch(() => {});
-      }
-  }, [i18n]);
-
-  const [outputLang, setOutputLang] = useState<string>('en');
+      return localStorage.getItem('suchnasetu_user_language') || 'en';
+    } catch {
+      return 'en';
+    }
+  });
   const [sourceLang, setSourceLang] = useState<string>('auto');
   const [detectedLangMeta, setDetectedLangMeta] = useState<{
     detected_language: string;
@@ -263,7 +272,109 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
   const clearAnalysisError = useCallback(() => setAnalysisError(null), []);
 
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const translateActiveNotice = useCallback(
+    async (targetLang: string) => {
+      const cleanLang = (targetLang || 'en').toLowerCase().trim();
+      const fp = analyzedFingerprint || currentFingerprint;
+
+      const activeNotice = originalStructuredNoticeRef.current || structuredNotice;
+      const activeSummaryEn = originalSummaryEnRef.current || summaryEn;
+      const activeChecklistEn = originalChecklistEnRef.current || checklistEn;
+
+      if (!activeSummaryEn && !activeChecklistEn && !activeNotice) {
+        return;
+      }
+
+      if (cleanLang === 'en') {
+        if (originalSummaryEnRef.current) setSummaryEn(originalSummaryEnRef.current);
+        if (originalChecklistEnRef.current) setChecklistEn(originalChecklistEnRef.current);
+        if (originalStructuredNoticeRef.current) setStructuredNotice(originalStructuredNoticeRef.current);
+        if (originalSixCoreFieldsRef.current) setSixCoreFields(originalSixCoreFieldsRef.current);
+        setLocalizedSummary(null);
+        setLocalizedChecklist(null);
+        setNoticeTranslationError(null);
+        return;
+      }
+
+      const cacheKey = `${fp || 'active'}_${cleanLang}`;
+      const cached = translationCacheRef.current.get(cacheKey);
+      if (cached) {
+        setLocalizedSummary(cached.summary);
+        setLocalizedChecklist(restoreCompletedSteps(cached.checklist, fp));
+        if (cached.structuredNotice) setStructuredNotice(cached.structuredNotice);
+        if (cached.sixCoreFields) setSixCoreFields(cached.sixCoreFields);
+        setNoticeTranslationError(null);
+        return;
+      }
+
+      setIsTranslatingNotice(true);
+      setNoticeTranslationError(null);
+
+      try {
+        const res = await apiClient.translateNotice({
+          session_id: sessionId || undefined,
+          fingerprint: fp || undefined,
+          target_language: cleanLang,
+          reading_level: readingLevel,
+          structured_notice: activeNotice || undefined,
+          summary_en: activeSummaryEn || undefined,
+          checklist_en: activeChecklistEn || undefined,
+        });
+
+        if (res && res.status === 'success') {
+          translationCacheRef.current.set(cacheKey, {
+            summary: res.summary,
+            checklist: res.checklist,
+            structuredNotice: res.structured_notice,
+            sixCoreFields: res.six_core_fields,
+          });
+
+          setLocalizedSummary(res.summary);
+          setLocalizedChecklist(restoreCompletedSteps(res.checklist, fp));
+          if (res.structured_notice) {
+            setStructuredNotice(res.structured_notice);
+          }
+          if (res.six_core_fields) {
+            setSixCoreFields(res.six_core_fields);
+          }
+        }
+      } catch (err: any) {
+        console.error('Notice translation error:', err);
+        setNoticeTranslationError(err.message || 'Failed to translate notice into selected language.');
+      } finally {
+        setIsTranslatingNotice(false);
+      }
+    },
+    [
+      analyzedFingerprint,
+      currentFingerprint,
+      structuredNotice,
+      summaryEn,
+      checklistEn,
+      sessionId,
+      readingLevel,
+    ]
+  );
+
+  const setSelectedLang = useCallback(
+    (lang: string) => {
+      setLocalLang(lang);
+      setOutputLang(lang);
+      if (i18n?.setLanguage) {
+        i18n.setLanguage(lang as any);
+      }
+      try {
+        localStorage.setItem('suchnasetu_user_language', lang);
+        document.documentElement.lang = lang;
+        document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
+      } catch {}
+      if (currentUser) {
+        apiClient.saveUserPreferences({ language: lang }).catch(() => {});
+      }
+      translateActiveNotice(lang);
+    },
+    [i18n, currentUser, translateActiveNotice]
+  );
 
   const [theme, setThemeState] = useState<AppTheme>(() => {
     try {
@@ -312,6 +423,8 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const user = await fetchAuthMe();
       setCurrentUser(user);
       if (user) {
+        // Authenticated citizen: automatically navigate from startup auth screen to dashboard
+        setActiveTabState((prev) => (prev === 99 ? 0 : prev));
         try {
           const prefData = await apiClient.getUserPreferences();
           if (prefData?.preferences) {
@@ -363,6 +476,8 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       await logoutAccount();
     } finally {
       setCurrentUser(null);
+      setAuthPageMode('login');
+      setActiveTabState(99);
     }
   }, []);
 
@@ -372,7 +487,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [providers, setProviders] = useState<LLMProviderStatus[]>([]);
   const [activeProvider, setActiveProvider] = useState<string>('ollama');
   const [samples, setSamples] = useState<SampleFixture[]>([]);
-  const [activeTab, setActiveTabState] = useState<number>(0);
+  const [activeTab, setActiveTabState] = useState<number>(initialTab);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const toggleMobileMenu = useCallback(() => setIsMobileMenuOpen((prev) => !prev), []);
   const setActiveTab = useCallback((tab: number) => {
@@ -758,6 +873,13 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setAnalyzedFingerprint(null);
     setAnalysisDuration(null);
     setAnalysisError(null);
+    setIsTranslatingNotice(false);
+    setNoticeTranslationError(null);
+    originalStructuredNoticeRef.current = null;
+    originalSixCoreFieldsRef.current = null;
+    originalSummaryEnRef.current = null;
+    originalChecklistEnRef.current = null;
+    translationCacheRef.current.clear();
     setFollowUpHistory([]);
     setIsOriginalNoticeOpen(false);
     setConfirmingFact(null);
@@ -873,6 +995,41 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (res.localized_checklist) {
           setLocalizedChecklist(restoreCompletedSteps(res.localized_checklist, fp));
         }
+
+        // Cache base English and Hindi results
+        originalStructuredNoticeRef.current = res.structured_notice || null;
+        originalSixCoreFieldsRef.current = res.six_core_fields || null;
+        originalSummaryEnRef.current = res.summary_en || null;
+        originalChecklistEnRef.current = res.checklist_en || null;
+        translationCacheRef.current.clear();
+        if (res.summary_en && res.checklist_en) {
+          translationCacheRef.current.set(`${fp}_en`, {
+            summary: res.summary_en,
+            checklist: res.checklist_en,
+            structuredNotice: res.structured_notice,
+            sixCoreFields: res.six_core_fields,
+          });
+        }
+        if (res.summary_hi && res.checklist_hi) {
+          translationCacheRef.current.set(`${fp}_hi`, {
+            summary: res.summary_hi,
+            checklist: res.checklist_hi,
+          });
+        }
+        if (res.localized_summary && res.localized_checklist && targetLang !== 'en' && targetLang !== 'hi') {
+          translationCacheRef.current.set(`${fp}_${targetLang}`, {
+            summary: res.localized_summary,
+            checklist: res.localized_checklist,
+            structuredNotice: res.structured_notice,
+            sixCoreFields: res.six_core_fields,
+          });
+        }
+
+        // If the user's active UI language is non-English and differs from targetLang, translate immediately
+        const activeUILang = (selectedLang || outputLang || 'en').toLowerCase().trim();
+        if (activeUILang !== 'en' && activeUILang !== targetLang.toLowerCase().trim()) {
+          translateActiveNotice(activeUILang);
+        }
         if (res.document_id) {
           setDocumentId(res.document_id);
         }
@@ -935,6 +1092,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       activeProvider,
       currentFingerprint,
       sourceLang,
+      translateActiveNotice,
     ]
   );
 
@@ -1111,7 +1269,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const askQuestion = async (question: string) => {
     if (!question.trim() || !rawNoticeText.trim()) return;
     try {
-      const langForQuery = outputLang || 'en';
+      const langForQuery = selectedLang || outputLang || 'en';
       const answer = await apiClient.askFollowUp(question, rawNoticeText, sessionId, langForQuery);
       setFollowUpHistory((prev) => [answer, ...prev]);
     } catch (err: any) {
@@ -1179,6 +1337,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         analysisDuration,
         analysisError,
         clearAnalysisError,
+        isTranslatingNotice,
+        noticeTranslationError,
+        translateActiveNotice,
         currentUser,
         setCurrentUser,
         isAuthLoading,

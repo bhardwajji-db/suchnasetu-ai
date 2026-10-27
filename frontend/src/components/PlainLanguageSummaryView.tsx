@@ -1,24 +1,28 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { useTranslation } from '../i18n';
-import { Volume2, VolumeX, Sparkles, AlertCircle } from 'lucide-react';
+import { Volume2, VolumeX, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
 
 export const PlainLanguageSummaryView: React.FC = () => {
   const {
     summaryEn,
     summaryHi,
     localizedSummary,
+    selectedLang,
     outputLang,
     readingLevel,
     changeReadingLevel,
+    isTranslatingNotice,
+    noticeTranslationError,
   } = useNotice();
   const { t } = useTranslation();
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
 
-  const summary = (outputLang === 'hi')
+  const activeLang = (selectedLang || outputLang || 'en').toLowerCase().trim();
+  const summary = (activeLang === 'hi')
     ? (summaryHi || localizedSummary || summaryEn)
-    : (outputLang === 'en')
+    : (activeLang === 'en')
     ? (summaryEn || localizedSummary || summaryHi)
     : (localizedSummary || summaryEn || summaryHi);
   if (!summary) return null;
@@ -44,7 +48,19 @@ export const PlainLanguageSummaryView: React.FC = () => {
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(fullText);
-      utterance.lang = outputLang === 'hi' ? 'hi-IN' : 'en-US';
+      const speechLangMap: Record<string, string> = {
+        hi: 'hi-IN',
+        bn: 'bn-IN',
+        ta: 'ta-IN',
+        te: 'te-IN',
+        mr: 'mr-IN',
+        gu: 'gu-IN',
+        pa: 'pa-IN',
+        kn: 'kn-IN',
+        ur: 'ur-PK',
+        en: 'en-US',
+      };
+      utterance.lang = speechLangMap[activeLang] || 'en-US';
       utterance.rate = 0.95;
       utterance.onstart = () => setIsPlayingAudio(true);
       utterance.onend = () => setIsPlayingAudio(false);
@@ -75,7 +91,13 @@ export const PlainLanguageSummaryView: React.FC = () => {
         <div>
           <h2 className="text-base font-bold text-[#12233D] flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#08785D]" />
-            {t('summaryTitle')}
+            <span>{t('summaryTitle')}</span>
+            {isTranslatingNotice && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse ml-2">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Translating notice...
+              </span>
+            )}
           </h2>
           <p className="text-xs text-[#526176] mt-0.5">
             {t('summarySubtitle')}
@@ -149,6 +171,13 @@ export const PlainLanguageSummaryView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {noticeTranslationError && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+          <span>{noticeTranslationError}</span>
+        </div>
+      )}
 
       {audioError && (
         <div className="p-3 rounded-xl bg-[#FFF4D6] border border-[#FDE68A] text-xs text-[#92500A] flex items-center gap-2">

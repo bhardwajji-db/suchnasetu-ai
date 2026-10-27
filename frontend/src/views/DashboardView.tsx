@@ -6,8 +6,7 @@ import { OCRPanel } from '../components/OCRPanel';
 import { NoticeBuffer } from '../components/NoticeBuffer';
 import { CivicWelcomeIllustration } from '../components/CivicWelcomeIllustration';
 import { apiClient } from '../services/apiClient';
-import { fetchAuthMe } from '../services/api';
-import type { UserProfile, UserNotification, UserActivity } from '../types/api';
+import type { UserNotification, UserActivity } from '../types/api';
 import {
   UploadCloud,
   Sparkles,
@@ -47,14 +46,13 @@ export const DashboardView: React.FC = () => {
     toggleSaveNotice,
     openEvidenceInspector,
     clearBuffer,  resetSession,
-    currentUser: contextUser,
+    currentUser,
     setUnreadNotificationsCount,
   } = useNotice();
 
   const { t } = useTranslation();
 
   // Local state for dashboard data
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [savedNotices, setSavedNotices] = useState<any[]>([]);
   const [weeklyPlan, setWeeklyPlan] = useState<any | null>(null);
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
@@ -84,10 +82,7 @@ export const DashboardView: React.FC = () => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      // Determine if authenticated from session probe or context
-      const authUser = await fetchAuthMe().catch(() => null);
-      const activeUser = authUser || contextUser || null;
-      setCurrentUser(activeUser);
+      const activeUser = currentUser;
 
       // Fetch public / guest-compatible dashboard resources
       const calls: Promise<any>[] = [
@@ -123,8 +118,8 @@ export const DashboardView: React.FC = () => {
       if (actsRes.status === 'fulfilled') {
         setActivities(actsRes.value || []);
       }
-      if (checklistRes.status === 'fulfilled') {
-        const progress = checklistRes.value?.checklist_progress || {};
+      if (checklistRes && checklistRes.status === 'fulfilled') {
+        const progress = (checklistRes as PromiseFulfilledResult<any>).value?.checklist_progress || {};
         setCompletedTaskIds((prev) => ({ ...prev, ...progress }));
       }
     } catch (err: any) {
@@ -132,11 +127,11 @@ export const DashboardView: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentUser, setUnreadNotificationsCount]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [fetchDashboardData, savedNoticeIds.length, contextUser]);
+  }, [fetchDashboardData, savedNoticeIds.length]);
 
   // Handlers
   const handleLoadDemo = () => {

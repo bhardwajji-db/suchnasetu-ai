@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { apiClient } from '../services/apiClient';
 import { useTranslation } from '../i18n';
-import { Eye, RefreshCw, Trash2, AlertTriangle, ShieldCheck, Compass, FileCheck } from 'lucide-react';
+import { Eye, RefreshCw, Trash2, AlertTriangle, ShieldCheck, Compass, FileCheck, CheckCircle2 } from 'lucide-react';
 
 export const OCRPanel: React.FC = () => {
   const { uploadedImage, uploadedFile, setUploadedImage, setRawNoticeText, setOcrResult, ocrResult } = useNotice();
@@ -189,6 +189,61 @@ export const OCRPanel: React.FC = () => {
             >
               {t('rawOcr')}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Verified Critical Fields Card */}
+      {ocrResult && ocrResult.critical_fields && Object.keys(ocrResult.critical_fields).length > 0 && (
+        <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl p-3.5 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 font-bold text-xs text-[#12233D]">
+              <CheckCircle2 className="w-4 h-4 text-[#08785D]" />
+              <span>Verified Statutory Fields</span>
+              {ocrResult.field_accuracy_score != null && (
+                <span className="ml-1 text-[10px] font-semibold bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2] px-2 py-0.5 rounded-full">
+                  {ocrResult.field_accuracy_score.toFixed(0)}% accuracy
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] text-[#526176] font-medium">
+              {Object.keys(ocrResult.critical_fields).length} fields detected
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 text-xs">
+            {Object.entries(ocrResult.critical_fields).map(([key, item]: [string, any]) => {
+              const label = key
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, (c) => c.toUpperCase());
+              return (
+                <div
+                  key={key}
+                  className="bg-white p-2 rounded-lg border border-[#E1E7EE] flex flex-col justify-between"
+                >
+                  <div className="flex items-center justify-between text-[10px] text-[#526176] mb-1">
+                    <span className="font-semibold truncate max-w-[140px]">{label}</span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        item.status === 'verified'
+                          ? 'bg-[#E8F7F0] text-[#08785D]'
+                          : 'bg-[#FFFAEB] text-[#B54708]'
+                      }`}
+                    >
+                      {item.confidence ? `${item.confidence.toFixed(0)}%` : 'verified'}
+                    </span>
+                  </div>
+                  <div className="text-xs font-medium text-[#12233D] select-all break-words">
+                    {item.value}
+                  </div>
+                  {item.source && (
+                    <div className="text-[9px] text-[#94A3B8] mt-1 italic">
+                      via {item.source.replace(/_/g, ' ')}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

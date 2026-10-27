@@ -231,9 +231,20 @@ class WorkspaceService:
         )
 
 
-# Global workspace singleton for standard session
-_GLOBAL_WORKSPACE = WorkspaceService("default_workspace")
+# Thread-safe isolated workspaces indexed by user or session ID
+_WORKSPACES: Dict[str, WorkspaceService] = {}
+_MAX_CACHED_WORKSPACES = 250
 
 
-def get_workspace() -> WorkspaceService:
-    return _GLOBAL_WORKSPACE
+def get_workspace(workspace_id: str = "default_workspace") -> WorkspaceService:
+    """
+    Returns an isolated WorkspaceService instance for the given user/session workspace ID.
+    Prevents cross-tenant state leakage and multi-user workspace collisions.
+    """
+    workspace_key = str(workspace_id).strip() or "default_workspace"
+    if workspace_key not in _WORKSPACES:
+        if len(_WORKSPACES) >= _MAX_CACHED_WORKSPACES:
+            oldest_key = next(iter(_WORKSPACES))
+            _WORKSPACES.pop(oldest_key, None)
+        _WORKSPACES[workspace_key] = WorkspaceService(workspace_id=workspace_key)
+    return _WORKSPACES[workspace_key]

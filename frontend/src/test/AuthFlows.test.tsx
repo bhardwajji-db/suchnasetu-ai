@@ -1,3 +1,7 @@
+import { AuthPageView } from '../views/AuthPageView';
+import { NoticeProvider } from '../context/NoticeContext';
+import { I18nProvider } from '../i18n';
+import { App } from '../App';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { LoginPage } from '../components/auth/LoginPage';
@@ -31,7 +35,7 @@ describe('Citizen Authentication UI Suite', () => {
     expect(handleContinueAsGuest).toHaveBeenCalledTimes(1);
   });
 
-  it('renders SignupPage with full name, email, password confirmation', () => {
+  it('renders SignupPage with username, email, and password without OTP', () => {
     render(
       <SignupPage
         currentLanguage="en"
@@ -41,10 +45,10 @@ describe('Citizen Authentication UI Suite', () => {
     );
 
     expect(screen.getByText(/Create Citizen Account/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Full Name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Username/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Password/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Confirm Password/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Confirm Password/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Create Account/i })).toBeInTheDocument();
   });
 
@@ -94,5 +98,48 @@ describe('Citizen Authentication UI Suite', () => {
     expect(screen.getByLabelText(/^New Password/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Confirm New Password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Reset Password/i })).toBeInTheDocument();
+  });
+
+  it('renders AuthPageView with clean tabs, no stray parenthesis, and smooth tab switching', () => {
+    const handleComplete = vi.fn();
+    const { container } = render(
+      <I18nProvider>
+        <NoticeProvider>
+          <AuthPageView onComplete={handleComplete} />
+        </NoticeProvider>
+      </I18nProvider>
+    );
+
+    // Verify tablist and clean tabs
+    const tablist = screen.getByRole('tablist');
+    expect(tablist).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Sign In/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Register|Create Account/i })).toBeInTheDocument();
+
+    // Verify stray '(' character is absent from the DOM
+    const rawText = container.textContent || '';
+    expect(rawText).not.toMatch(/\(\s*Sign In/);
+
+    // Switch to Create Account / Register tab
+    fireEvent.click(screen.getByRole('tab', { name: /Register|Create Account/i }));
+    expect(screen.getByLabelText(/Username/i)).toBeInTheDocument();
+
+    // Switch back to Sign In tab
+    fireEvent.click(screen.getByRole('tab', { name: /Sign In/i }));
+    expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
+
+    // Test Guest continue button
+    const guestBtn = screen.getByText(/Continue exploring as Guest Citizen/i);
+    expect(guestBtn).toBeInTheDocument();
+    fireEvent.click(guestBtn);
+    expect(handleComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens application directly to AuthPageView on startup for unauthenticated visitors', () => {
+    render(<App />);
+
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.getByText(/Sign In to SuchnaSetu AI/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
   });
 });

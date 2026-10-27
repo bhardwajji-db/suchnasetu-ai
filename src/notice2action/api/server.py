@@ -150,6 +150,8 @@ from notice2action.translation import (
 
     translate_checklist_to_hindi,
 
+    translate_notice_package,
+
 )
 
 from notice2action.followup import FollowUpAssistant
@@ -202,7 +204,7 @@ from notice2action.services.workspace_service import get_workspace
 
 from notice2action.services.weekly_planner_service import weekly_planner
 
-from notice2action.api.auth_routes import router as auth_router, get_current_user, get_current_user_or_guest
+from notice2action.api.auth_routes import router as auth_router, get_current_user, get_current_user_or_guest, _is_request_https
 
 from notice2action.auth.auth_service import auth_service
 
@@ -219,6 +221,9 @@ app = FastAPI(
     version="2.1.0",
 
     description="REST backend for SuchnaSetu AI Notice-to-Action Accessibility Assistant (PS02)",
+    docs_url="/docs" if getattr(config, "enable_api_docs", True) else None,
+    redoc_url="/redoc" if getattr(config, "enable_api_docs", True) else None,
+    openapi_url="/openapi.json" if getattr(config, "enable_api_docs", True) else None,
 
 )
 
@@ -226,28 +231,22 @@ app = FastAPI(
 
 # Authorized CORS origins configuration (Vite dev, local clients, and configured app URL)
 
+import re
+
+cors_regex = getattr(config, "cors_origin_regex", None)
+if not cors_regex:
+    if getattr(config, "app_env", "development").lower() != "production":
+        cors_regex = r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+|169\.254\.\d+\.\d+|[a-zA-Z0-9-]+\.trycloudflare\.com)(:\d+)?$"
+    else:
+        cors_regex = r"^https?://([a-zA-Z0-9-]+\.)?trycloudflare\.com$"
+
 app.add_middleware(
-
     CORSMiddleware,
-
     allow_origins=config.get_cors_origins(),
-
-    allow_origin_regex=(
-
-        r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+|169\.254\.\d+\.\d+)(:\d+)?$"
-
-        if getattr(config, "app_env", "development").lower() != "production"
-
-        else None
-
-    ),
-
+    allow_origin_regex=cors_regex,
     allow_credentials=True,
-
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-
     allow_headers=["*"],
-
 )
 
 
@@ -345,26 +344,71 @@ async def verify_csrf_and_origin(request: Request, call_next):
     if request.method in ("POST", "PUT", "DELETE", "PATCH"):
 
         origin = request.headers.get("origin")
+        client_host = request.client.host if request.client else "127.0.0.1"
+
+        if not origin:
+            referer = request.headers.get("referer")
+            if referer:
+                try:
+                    from urllib.parse import urlparse
+                    ref_p = urlparse(referer)
+                    if ref_p.scheme and ref_p.netloc:
+                        origin = f"{ref_p.scheme}://{ref_p.netloc}"
+                except Exception:
+                    origin = None
+
+
+        has_session_cookie = bool(
+            request.cookies.get("suchnasetu_session")
+            or request.cookies.get("notice2action_session")
+            or request.cookies.get(getattr(config, "auth_cookie_name", "suchnasetu_session"))
+        )
+        trusted_origins = set(config.get_cors_origins())
+        is_dev = getattr(config, "app_env", "development").lower() != "production"
+
+        # Check trusted reverse proxy (e.g. cloudflared bound to loopback 127.0.0.1)
+        client_host = request.client.host if request.client else "127.0.0.1"
+        trusted_proxies = set(getattr(config, "trusted_proxies", ["127.0.0.1", "::1", "localhost", "testclient"]))
+
+        if client_host in trusted_proxies:
+            # Trust forwarded origin ONLY when request originates from a verified trusted proxy
+            forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+            forwarded_proto = request.headers.get("x-forwarded-proto") or (
+                "https" if _is_request_https(request) else "http"
+            )
+            if forwarded_host:
+                forwarded_host_clean = forwarded_host.split(",")[0].strip()
+                if forwarded_host_clean and not any(c in forwarded_host_clean for c in " /\\?#@"):
+                    trusted_origins.add(f"{forwarded_proto}://{forwarded_host_clean}".rstrip("/"))
 
         if origin:
-
-            trusted_origins = set(config.get_cors_origins())
-
-            is_dev = getattr(config, "app_env", "development").lower() != "production"
-
-            if origin.rstrip("/") not in trusted_origins and not (is_dev and _is_private_dev_origin(origin)):
-
-                logger.warning(f"Blocked state-changing request from untrusted origin: {origin}")
-
+            clean_origin = origin.rstrip("/")
+            is_tunnel_origin = bool(re.match(r"^https?://[a-zA-Z0-9-]+\.trycloudflare\.com$", clean_origin, re.IGNORECASE))
+            is_matched_regex = False
+            if cors_regex:
+                try:
+                    is_matched_regex = bool(re.match(cors_regex, clean_origin, re.IGNORECASE))
+                except Exception:
+                    pass
+            if clean_origin not in trusted_origins and not (is_dev and _is_private_dev_origin(clean_origin)) and not is_tunnel_origin and not is_matched_regex:
+                logger.warning(f"Blocked state-changing request from untrusted origin: {clean_origin}")
                 return JSONResponse(
-
                     status_code=403,
-
                     content={"detail": "Untrusted request origin / CSRF verification failed."}
-
                 )
+        elif has_session_cookie:
+            logger.warning("Blocked state-changing request with session cookie but missing Origin/Referer")
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Origin or Referer header required for cookie-authenticated state-changing requests."}
+            )
 
-    return await call_next(request)
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+    return response
 
 
 
@@ -585,6 +629,8 @@ class OCRResponse(BaseModel):
     orientation_applied: Optional[int] = None
 
     uncertain_spans: Optional[List[Dict[str, Any]]] = None
+    critical_fields: Optional[Dict[str, Any]] = None
+    field_accuracy_score: Optional[float] = None
 
 
 
@@ -828,6 +874,13 @@ class ExtractCriteriaRequest(BaseModel):
 
 
 
+@app.get("/health")
+@app.get("/healthz")
+def root_health_check() -> Dict[str, Any]:
+    """Lightweight 200 OK health check for cloud container orchestrators and Render."""
+    return {"status": "ok", "app": "SuchnaSetu AI", "version": "2.0.0"}
+
+
 @app.get("/api/health")
 def get_health() -> Dict[str, Any]:
     """Runs preflight diagnostics and returns system health status."""
@@ -840,12 +893,15 @@ def get_health() -> Dict[str, Any]:
         None,
     )
 
+    db_item = next((i for i in report.items if i.name == "SQLite Database"), None)
     ollama_connected = (ollama_item.status == "ok") if ollama_item else False
     tesseract_available = (tesseract_item.status == "ok") if tesseract_item else False
+    database_ready = (db_item.status == "ok") if db_item else False
     model_ready = (model_item.status == "ok") if model_item else False
 
     return {
         "overall_status": report.overall_status,
+        "database_ready": database_ready,
         "active_provider": config.llm_provider,
         "model_name": config.ollama_model if config.llm_provider == "ollama" else getattr(config, f"{config.llm_provider}_model", "unknown"),
         "is_ready_for_inference": report.is_ready_for_inference(),
@@ -940,25 +996,25 @@ def select_provider(payload: SelectProviderRequest) -> Dict[str, Any]:
 
 
 @app.get("/api/models/status")
-
 def get_models_status() -> Dict[str, Any]:
-
-    """Retrieves real-time RAM/VRAM resource allocation and loaded model info from Ollama."""
-
+    """Retrieves real-time RAM/VRAM resource allocation and loaded model info."""
+    if config.llm_provider != "ollama":
+        cloud_model = getattr(config, f"{config.llm_provider}_model", "unknown")
+        return {
+            "provider": config.llm_provider,
+            "target_model": cloud_model,
+            "loaded_models_count": 1,
+            "loaded_models": [{"name": cloud_model, "size": "hosted", "details": "cloud"}],
+            "is_cloud": True,
+        }
     client = get_llm_client("ollama")
-
     loaded = client.get_loaded_models() if hasattr(client, "get_loaded_models") else []
-
     return {
-
         "provider": "ollama",
-
         "target_model": config.ollama_model,
-
         "loaded_models_count": len(loaded),
-
         "loaded_models": loaded,
-
+        "is_cloud": False,
     }
 
 
@@ -966,17 +1022,13 @@ def get_models_status() -> Dict[str, Any]:
 
 
 @app.post("/api/models/warmup")
-
 def warmup_model_endpoint() -> Dict[str, Any]:
-
     """Preloads model weights into RAM/VRAM to eliminate cold-start delay during demos."""
-
+    if config.llm_provider != "ollama":
+        return {"success": True, "message": f"Provider '{config.llm_provider}' is cloud-hosted; local VRAM warmup is not required."}
     client = get_llm_client("ollama")
-
     if hasattr(client, "warmup"):
-
         return client.warmup()
-
     return {"success": False, "message": "Provider does not support local warmup."}
 
 
@@ -984,33 +1036,21 @@ def warmup_model_endpoint() -> Dict[str, Any]:
 
 
 @app.post("/api/models/unload")
-
 def unload_model_endpoint() -> Dict[str, Any]:
-
     """Unloads model weights from RAM/VRAM to immediately free system memory."""
-
+    if config.llm_provider != "ollama":
+        return {"success": True, "status": "skipped", "message": f"Provider '{config.llm_provider}' is cloud-hosted; local VRAM unload is not required."}
     client = get_llm_client("ollama")
-
     if hasattr(client, "unload_model"):
-
         res = client.unload_model()
-
         if isinstance(res, dict):
-
             return res
-
         return {
-
             "success": bool(res),
-
             "unloaded": bool(res),
-
             "model": getattr(client, "model", config.ollama_model),
-
             "message": "Model unloaded from memory." if res else "Failed to unload model.",
-
         }
-
     return {"success": False, "message": "Provider does not support local unload."}
 
 
@@ -1646,7 +1686,8 @@ async def ocr_endpoint(
         orientation_applied=ocr_res.orientation_applied,
 
         uncertain_spans=ocr_res.uncertain_spans,
-
+        critical_fields=ocr_res.critical_fields,
+        field_accuracy_score=ocr_res.field_accuracy_score,
     )
 
 
@@ -2118,6 +2159,8 @@ def get_active_requests_status():
 def unload_ollama_endpoint():
 
     """Explicitly unloads the Ollama model from VRAM/RAM if no analyses are active."""
+    if config.llm_provider != "ollama":
+        return {"status": "skipped", "message": f"Active provider '{config.llm_provider}' is cloud-hosted."}
 
     with _ACTIVE_COUNTER_LOCK:
 
@@ -2335,6 +2378,104 @@ def reading_level_endpoint(payload: ReadingLevelRequest):
 
     )
 
+
+
+
+
+class TranslateNoticeRequest(BaseModel):
+    session_id: Optional[str] = None
+    fingerprint: Optional[str] = None
+    target_language: str = "en"
+    reading_level: str = "standard"
+    structured_notice: Optional[StructuredNotice] = None
+    summary_en: Optional[PlainLanguageSummary] = None
+    checklist_en: Optional[ActionChecklist] = None
+
+
+class TranslateNoticeResponse(BaseModel):
+    target_language: str
+    target_language_name: str
+    summary: PlainLanguageSummary
+    checklist: ActionChecklist
+    structured_notice: Optional[StructuredNotice] = None
+    six_core_fields: Optional[SixCoreFields] = None
+    cached: bool = False
+    status: str = "success"
+
+
+@app.post("/api/translate-notice", response_model=TranslateNoticeResponse)
+async def translate_notice_endpoint(payload: TranslateNoticeRequest, request: Request):
+    """
+    Translates an already-analyzed notice into the selected target language.
+    Translates summary, checklist, and structured notice while strictly preserving
+    original evidence quotes, dates, numbers, and identifiers.
+    """
+    req_lang = payload.target_language.lower().strip() if payload.target_language else "en"
+    if req_lang not in SUPPORTED_LANGUAGES:
+        req_lang = "en"
+
+    summary_en = payload.summary_en
+    checklist_en = payload.checklist_en
+    structured_notice = payload.structured_notice
+    fingerprint = payload.fingerprint
+
+    # Resolve from session if not provided in payload
+    if payload.session_id and (not summary_en or not checklist_en):
+        session = session_store.get_session(payload.session_id)
+        if session:
+            if not summary_en and session.summary_en:
+                summary_en = PlainLanguageSummary(**session.summary_en)
+            if not checklist_en and session.checklist_en:
+                checklist_en = ActionChecklist(**session.checklist_en)
+            if not structured_notice and session.structured_notice:
+                structured_notice = StructuredNotice(**session.structured_notice)
+            if not fingerprint:
+                fingerprint = session.fingerprint
+
+    if not summary_en or not checklist_en:
+        raise HTTPException(
+            status_code=400,
+            detail="Missing summary_en or checklist_en in request and no active session found."
+        )
+
+    llm = None
+    try:
+        llm = get_llm_client()
+    except Exception:
+        llm = None
+
+    result = await asyncio.to_thread(
+        translate_notice_package,
+        summary_en=summary_en,
+        checklist_en=checklist_en,
+        structured_notice=structured_notice,
+        target_lang=req_lang,
+        reading_level=payload.reading_level,
+        fingerprint=fingerprint,
+        client=llm,
+    )
+
+    if payload.session_id:
+        session = session_store.get_session(payload.session_id)
+        if session:
+            session_store.update_session(payload.session_id, {
+                "target_language": req_lang,
+                "localized_summary": result["summary"].model_dump() if result.get("summary") else None,
+                "localized_checklist": result["checklist"].model_dump() if result.get("checklist") else None,
+            })
+
+    sn_res = result.get("structured_notice")
+    sc_res = sn_res.to_six_core_fields() if sn_res and hasattr(sn_res, "to_six_core_fields") else None
+    return TranslateNoticeResponse(
+        target_language=result["target_language"],
+        target_language_name=result["target_language_name"],
+        summary=result["summary"],
+        checklist=result["checklist"],
+        structured_notice=sn_res,
+        six_core_fields=sc_res,
+        cached=result.get("cached", False),
+        status="success",
+    )
 
 
 
@@ -3096,53 +3237,43 @@ class AddWorkspaceNoticeRequest(BaseModel):
 
 
 @app.get("/api/workspace/notices", response_model=List[NoticeMetadata])
-
-def get_workspace_notices_endpoint():
-
-    """Lists all notices registered in the active workspace."""
-
-    return get_workspace().get_notices()
-
-
-
+def get_workspace_notices_endpoint(
+    current_user: Dict[str, Any] = Depends(get_current_user_or_guest),
+):
+    """Lists all notices registered in the active user workspace."""
+    workspace_id = current_user.get("id", "default_workspace")
+    return get_workspace(workspace_id).get_notices()
 
 
 @app.post("/api/workspace/notices", response_model=NoticeMetadata)
-
-def add_workspace_notice_endpoint(payload: AddWorkspaceNoticeRequest):
-
-    """Registers a notice into the multi-document workspace."""
-
+def add_workspace_notice_endpoint(
+    payload: AddWorkspaceNoticeRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user_or_guest),
+):
+    """Registers a notice into the active user workspace."""
     if not payload.text.strip():
-
         raise HTTPException(status_code=422, detail="Notice text cannot be empty.")
-
-    return get_workspace().add_notice(text=payload.text, title=payload.title, doc_id=payload.doc_id)
-
-
-
+    workspace_id = current_user.get("id", "default_workspace")
+    return get_workspace(workspace_id).add_notice(text=payload.text, title=payload.title, doc_id=payload.doc_id)
 
 
 @app.get("/api/workspace/timeline", response_model=WorkspaceTimelineReport)
-
-def get_workspace_timeline_endpoint(active_id: Optional[str] = None):
-
+def get_workspace_timeline_endpoint(
+    active_id: Optional[str] = None,
+    current_user: Dict[str, Any] = Depends(get_current_user_or_guest),
+):
     """Generates cross-notice timeline, relationships, and conflict report across workspace notices."""
-
-    return get_workspace().build_report(active_notice_id=active_id)
-
-
-
+    workspace_id = current_user.get("id", "default_workspace")
+    return get_workspace(workspace_id).build_report(active_notice_id=active_id)
 
 
 @app.post("/api/workspace/clear")
-
-def clear_workspace_endpoint():
-
-    """Clears all notices from the workspace."""
-
-    get_workspace().clear()
-
+def clear_workspace_endpoint(
+    current_user: Dict[str, Any] = Depends(get_current_user_or_guest),
+):
+    """Clears all notices from the active user workspace."""
+    workspace_id = current_user.get("id", "default_workspace")
+    get_workspace(workspace_id).clear()
     return {"status": "ok", "message": "Workspace cleared."}
 
 
@@ -3322,23 +3453,37 @@ def detect_language_endpoint(payload: Dict[str, Any]):
 
 
 @app.get("/api/documents")
+def list_saved_documents_endpoint(
+    limit: int = 50,
+    offset: int = 0,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Lists saved documents scoped to the authenticated citizen to prevent cross-tenant data leakage."""
+    user_id = current_user.get("id")
+    if current_user.get("is_admin") or current_user.get("role") == "admin":
+        docs = get_db().list_documents(limit=limit, offset=offset)
+        return [d.to_dict() for d in docs]
 
-def list_saved_documents_endpoint(limit: int = 50, offset: int = 0):
-
-    """Lists saved documents from the SQLite database."""
+    user_notices = get_db().list_saved_notices_for_user(user_id=user_id)
+    allowed_doc_ids = {n.get("document_id") for n in user_notices if n.get("document_id")}
+    if not allowed_doc_ids:
+        return []
 
     docs = get_db().list_documents(limit=limit, offset=offset)
-
-    return [d.to_dict() for d in docs]
-
-
-
+    return [d.to_dict() for d in docs if d.id in allowed_doc_ids]
 
 
 @app.post("/api/checklist/{item_id}/toggle")
-def toggle_checklist_item_endpoint(item_id: str, payload: Dict[str, Any]):
+def toggle_checklist_item_endpoint(
+    item_id: str,
+    payload: Dict[str, Any],
+    current_user: Dict[str, Any] = Depends(get_current_user_or_guest),
+):
     """Persistently updates the completion state of an action checklist item in SQLite."""
     completed = bool(payload.get("completed", payload.get("is_completed", False)))
+    user_id = current_user.get("id")
+    if user_id and not current_user.get("is_guest"):
+        get_db().set_user_checklist_progress(user_id=user_id, item_id=item_id, completed=completed)
     ok = get_db().set_checklist_item_completed(item_id, completed)
     return {
         "item_id": item_id,
@@ -3916,10 +4061,17 @@ async def serve_spa_frontend(request: Request, full_path: str):
 
 
 
-    target_file = frontend_dist / clean_path
+    try:
+        resolved_dist = frontend_dist.resolve()
+        target_file = (frontend_dist / clean_path).resolve()
+        if not str(target_file).startswith(str(resolved_dist)):
+            raise HTTPException(status_code=404, detail="Not found")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=404, detail="Not found")
 
     if target_file.is_file() and not clean_path.endswith(".html"):
-
         return FileResponse(str(target_file))
 
 

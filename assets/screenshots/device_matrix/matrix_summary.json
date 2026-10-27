@@ -1,0 +1,146 @@
+[
+  {
+    "device": "mobile_360_galaxy",
+    "viewport": "360x740",
+    "theme": "light",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\mobile_360_galaxy_light_auth.png"
+  },
+  {
+    "device": "mobile_360_galaxy",
+    "viewport": "360x740",
+    "theme": "dark",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\mobile_360_galaxy_dark_auth.png"
+  },
+  {
+    "device": "mobile_390_iphone",
+    "viewport": "390x844",
+    "theme": "light",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\mobile_390_iphone_light_auth.png"
+  },
+  {
+    "device": "mobile_390_iphone",
+    "viewport": "390x844",
+    "theme": "dark",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\mobile_390_iphone_dark_auth.png"
+  },
+  {
+    "device": "mobile_442_user_tested",
+    "viewport": "442x900",
+    "theme": "light",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\mobile_442_user_tested_light_auth.png"
+  },
+  {
+    "device": "mobile_442_user_tested",
+    "viewport": "442x900",
+    "theme": "dark",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\mobile_442_user_tested_dark_auth.png"
+  },
+  {
+    "device": "mobile_412_pixel",
+    "viewport": "412x915",
+    "theme": "light",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\mobile_412_pixel_light_auth.png"
+  },
+  {
+    "device": "mobile_412_pixel",
+    "viewport": "412x915",
+    "theme": "dark",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\mobile_412_pixel_dark_auth.png"
+  },
+  {
+    "device": "tablet_768_ipad_portrait",
+    "viewport": "768x1024",
+    "theme": "light",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\tablet_768_ipad_portrait_light_auth.png"
+  },
+  {
+    "device": "tablet_768_ipad_portrait",
+    "viewport": "768x1024",
+    "theme": "dark",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\tablet_768_ipad_portrait_dark_auth.png"
+  },
+  {
+    "device": "tablet_1024_ipad_landscape",
+    "viewport": "1024x768",
+    "theme": "light",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\tablet_1024_ipad_landscape_light_auth.png"
+  },
+  {
+    "device": "tablet_1024_ipad_landscape",
+    "viewport": "1024x768",
+    "theme": "dark",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\tablet_1024_ipad_landscape_dark_auth.png"
+  },
+  {
+    "device": "laptop_1366_hd",
+    "viewport": "1366x768",
+    "theme": "light",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\laptop_1366_hd_light_auth.png"
+  },
+  {
+    "device": "laptop_1366_hd",
+    "viewport": "1366x768",
+    "theme": "dark",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\laptop_1366_hd_dark_auth.png"
+  },
+  {
+    "device": "desktop_1920_fhd",
+    "viewport": "1920x1080",
+    "theme": "light",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\desktop_1920_fhd_light_auth.png"
+  },
+  {
+    "device": "desktop_1920_fhd",
+    "viewport": "1920x1080",
+    "theme": "dark",
+    "auth_horizontal_overflow": false,
+    "header_buttons_clipped": false,
+    "dashboard_horizontal_overflow": false,
+    "screenshot_auth": "assets/screenshots/device_matrix\\desktop_1920_fhd_dark_auth.png"
+  }
+]

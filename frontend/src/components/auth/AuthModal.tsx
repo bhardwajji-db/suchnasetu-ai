@@ -85,6 +85,7 @@ const AuthModalContent: React.FC<{
               currentLanguage={currentLanguage}
               onLanguageChange={onLanguageChange}
               onNavigateAuth={handleNavigate}
+              onSignupSuccess={handleLogin}
             />
           )}
 

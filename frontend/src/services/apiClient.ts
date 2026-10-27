@@ -31,11 +31,13 @@ import type {
   DemoLibraryResponse,
   NotificationsResponse,
   UserActivity,
+  TranslateNoticeRequest,
+  TranslateNoticeResponse,
 } from '../types/api';
 
 const getBaseUrl = (): string => {
   if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
   }
   if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') {
     return '';
@@ -229,6 +231,18 @@ export const apiClient = {
     } finally {
       clearTimeout(timeoutId);
     }
+  },
+
+  /**
+   * Translate extracted notice package on-demand when language changes
+   */
+  async translateNotice(payload: TranslateNoticeRequest): Promise<TranslateNoticeResponse> {
+    const res = await apiFetch(`${BASE_URL}/api/translate-notice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return handleResponse<TranslateNoticeResponse>(res);
   },
 
   /**

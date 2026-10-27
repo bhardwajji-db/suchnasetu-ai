@@ -7,7 +7,7 @@ import type { UserProfile, GuestStatus } from '../types/api';
 
 const getBaseUrl = (): string => {
   if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
   }
   if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') {
     return '';
@@ -42,13 +42,15 @@ export async function loginAccount(params: {
 }
 
 export async function registerAccount(params: {
-  name: string;
+  username?: string;
+  name?: string;
   email: string;
   password: string;
   confirmPassword?: string;
 }): Promise<{
   status: string;
   message: string;
+  user?: UserProfile;
   email_delivered?: boolean;
   already_verified?: boolean;
 }> {
@@ -57,7 +59,8 @@ export async function registerAccount(params: {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     body: JSON.stringify({
-      name: params.name,
+      username: params.username || params.name,
+      name: params.name || params.username,
       email: params.email,
       password: params.password,
       confirm_password: params.confirmPassword,

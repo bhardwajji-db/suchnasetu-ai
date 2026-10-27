@@ -1,87 +1,86 @@
 import React, { useState } from 'react';
 import { AuthLayout } from './AuthLayout';
 import { registerAccount } from '../../services/api';
-import type { AuthPageView } from '../../types/api';
+import type { UserProfile, AuthPageView } from '../../types/api';
 import { useTranslation } from '../../i18n';
-import { User, Mail, Lock, Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface SignupPageProps {
   currentLanguage?: string;
   onLanguageChange?: (lang: string) => void;
   onNavigateAuth: (view: AuthPageView, state?: { email?: string }) => void;
+  onSignupSuccess?: (user: UserProfile) => void;
 }
 
 export const SignupPage: React.FC<SignupPageProps> = ({
   currentLanguage,
   onLanguageChange,
   onNavigateAuth,
+  onSignupSuccess,
 }) => {
   const { t } = useTranslation();
 
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [emailDelivered, setEmailDelivered] = useState<boolean>(true);
-  const [alreadyVerified, setAlreadyVerified] = useState<boolean>(false);
-  const [submittedEmail, setSubmittedEmail] = useState<string>('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setError(null);
 
-    const cleanName = name.trim();
+    const cleanUsername = username.trim();
     const cleanEmail = email.trim().toLowerCase();
 
-    if (!cleanName || cleanName.length < 2) {
-      setError(t('signupFullNameRequiredError'));
+    // Frontend validations
+    if (!cleanUsername || cleanUsername.length < 2) {
+      setError(t('signupFullNameRequiredError') || 'Username must be at least 2 characters long.');
       return;
     }
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setError(t('validEmailError'));
+    if (cleanUsername.length > 100) {
+      setError('Username cannot exceed 100 characters.');
+      return;
+    }
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setError(t('validEmailError') || 'Please enter a valid email address.');
       return;
     }
     if (password.length < 8) {
-      setError(t('signupPasswordMinLengthError'));
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError(t('signupPasswordMismatchError'));
+      setError(t('signupPasswordMinLengthError') || 'Password must be at least 8 characters long.');
       return;
     }
 
     setIsLoading(true);
     try {
       const res = await registerAccount({
-        name: cleanName,
+        username: cleanUsername,
+        name: cleanUsername,
         email: cleanEmail,
         password,
-        confirmPassword,
       });
 
-      setSubmittedEmail(cleanEmail);
-      try {
-        sessionStorage.setItem('suchnasetu_pending_verification_email', cleanEmail);
-      } catch {}
+      const user = res.user || {
+        id: 'user_registered',
+        email: cleanEmail,
+        name: cleanUsername,
+        username: cleanUsername,
+        is_verified: true,
+        created_at: new Date().toISOString(),
+      };
 
-      const isAlready = !!res.already_verified;
-      setAlreadyVerified(isAlready);
-      const isDelivered = res.email_delivered !== false && !isAlready;
-      setEmailDelivered(isDelivered);
+      setSuccessMessage('Account created successfully! Directing to your dashboard...');
 
-      setSuccessMessage(
-        res.message ||
-          (isAlready
-            ? t('signupAlreadyHaveAccount')
-            : t('verifyEmailSuccessHeading'))
-      );
+      if (onSignupSuccess) {
+        setTimeout(() => {
+          onSignupSuccess(user);
+        }, 500);
+      }
     } catch (err: any) {
-      setError(err.message || t('invalidCredentialsError'));
+      setError(err.message || 'Registration failed. Please check your details.');
     } finally {
       setIsLoading(false);
     }
@@ -89,63 +88,22 @@ export const SignupPage: React.FC<SignupPageProps> = ({
 
   return (
     <AuthLayout
-      title={t('signupTitle')}
-      subtitle={t('signupSubtitle')}
+      title={t('signupTitle') || 'Create Account'}
+      subtitle={t('signupSubtitle') || 'Register for your secure citizen account'}
       currentLanguage={currentLanguage}
       onLanguageChange={onLanguageChange}
     >
       {successMessage ? (
-        <div className="auth-success-state">
-          <div className={emailDelivered ? 'auth-success-icon-badge' : 'auth-success-icon-badge warning'}>
-            {emailDelivered ? (
-              <CheckCircle2 size={36} className="text-emerald-600" />
-            ) : (
-              <AlertCircle size={36} className="text-amber-600" />
-            )}
+        <div className="auth-success-state p-6 text-center space-y-4">
+          <div className="auth-success-icon-badge flex justify-center">
+            <CheckCircle2 size={42} className="text-[#08785D]" />
           </div>
-          <h2 className="auth-success-title">
-            {alreadyVerified
-              ? t('signupAlreadyHaveAccount')
-              : emailDelivered
-                ? t('verifyEmailSuccessHeading')
-                : t('signupTitle')}
+          <h2 className="text-lg font-bold text-[#12233D]">
+            {successMessage}
           </h2>
-          <p className="auth-success-text">{successMessage}</p>
-          <div className="auth-success-notice">
-            <p>
-              {alreadyVerified
-                ? `${t('loginEmailLabel')}: ${submittedEmail}`
-                : `${t('verifyEmailCodeLabel')}: ${submittedEmail}`}
-            </p>
-          </div>
-          <div className="auth-success-actions">
-            {alreadyVerified ? (
-              <button
-                type="button"
-                className="btn-auth-primary"
-                onClick={() => onNavigateAuth('login')}
-              >
-                <span>{t('signupSignInDirectly')}</span>
-                <ArrowRight size={16} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn-auth-primary"
-                onClick={() => onNavigateAuth('verify_email', { email: submittedEmail })}
-              >
-                <span>{t('enterVerificationCode')}</span>
-                <ArrowRight size={16} />
-              </button>
-            )}
-            <button
-              type="button"
-              className="btn-auth-secondary"
-              onClick={() => onNavigateAuth('login')}
-            >
-              {t('signupReturnToSignIn')}
-            </button>
-          </div>
+          <p className="text-xs text-[#526176]">
+            Signed in as <strong className="text-[#12233D]">{email}</strong>
+          </p>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="auth-form" noValidate>
@@ -156,31 +114,31 @@ export const SignupPage: React.FC<SignupPageProps> = ({
             </div>
           )}
 
-          {/* Full Name */}
+          {/* 1. Username */}
           <div className="form-group">
-            <label htmlFor="signup-name" className="form-label">
-              {t('signupNameLabel')}
+            <label htmlFor="signup-username" className="form-label">
+              Username
             </label>
             <div className="input-with-icon">
               <User size={16} className="input-icon" />
               <input
-                id="signup-name"
+                id="signup-username"
                 type="text"
                 className="form-input"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('signupNamePlaceholder')}
-                autoComplete="name"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="e.g. arjun_sharma"
+                autoComplete="username"
                 required
                 disabled={isLoading}
               />
             </div>
           </div>
 
-          {/* Email Address */}
+          {/* 2. Email Address */}
           <div className="form-group">
             <label htmlFor="signup-email" className="form-label">
-              {t('loginEmailLabel')}
+              {t('loginEmailLabel') || 'Email Address'}
             </label>
             <div className="input-with-icon">
               <Mail size={16} className="input-icon" />
@@ -198,10 +156,10 @@ export const SignupPage: React.FC<SignupPageProps> = ({
             </div>
           </div>
 
-          {/* Password */}
+          {/* 3. Password */}
           <div className="form-group">
             <label htmlFor="signup-password" className="form-label">
-              {t('loginPasswordLabel')}
+              {t('loginPasswordLabel') || 'Password'}
             </label>
             <div className="input-with-icon">
               <Lock size={16} className="input-icon" />
@@ -226,36 +184,9 @@ export const SignupPage: React.FC<SignupPageProps> = ({
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-          </div>
-
-          {/* Confirm Password */}
-          <div className="form-group">
-            <label htmlFor="signup-confirm-password" className="form-label">
-              {t('signupConfirmPassword')}
-            </label>
-            <div className="input-with-icon">
-              <Lock size={16} className="input-icon" />
-              <input
-                id="signup-confirm-password"
-                type={showConfirmPassword ? 'text' : 'password'}
-                className="form-input pr-10"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••••••"
-                autoComplete="new-password"
-                required
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                className="password-toggle-btn"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                tabIndex={-1}
-              >
-                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
+            <p className="text-[11px] text-[#526176] mt-1">
+              Minimum 8 characters. Must contain letters and numbers.
+            </p>
           </div>
 
           {/* Submit Button */}
@@ -267,25 +198,25 @@ export const SignupPage: React.FC<SignupPageProps> = ({
             {isLoading ? (
               <span className="btn-loading-content">
                 <span className="btn-spinner" />
-                <span>{t('signupCreatingAccount')}</span>
+                <span>Creating Account...</span>
               </span>
             ) : (
               <>
                 <UserPlus size={16} />
-                <span>{t('signupCreateAccountButton')}</span>
+                <span>Create Account</span>
               </>
             )}
           </button>
 
-          {/* Alternate Link */}
+          {/* Link to Sign In */}
           <div className="auth-alternate-action">
-            <span>{t('signupAlreadyHaveAccount')}</span>
+            <span>Already have an account?</span>
             <button
               type="button"
               className="btn-text-link font-semibold"
               onClick={() => onNavigateAuth('login')}
             >
-              {t('signIn')}
+              Sign In
             </button>
           </div>
         </form>

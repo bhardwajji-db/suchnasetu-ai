@@ -28,20 +28,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isUnverified, setIsUnverified] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setError(null);
-    setIsUnverified(false);
 
     const cleanEmail = email.trim();
     if (!cleanEmail || !cleanEmail.includes('@')) {
-      setError(t('validEmailError'));
+      setError(t('validEmailError') || 'Please enter a valid email address.');
       return;
     }
     if (!password) {
-      setError(t('passwordRequiredError'));
+      setError(t('passwordRequiredError') || 'Password is required.');
       return;
     }
 
@@ -50,7 +49,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       const res = await loginAccount({
         email: cleanEmail,
         password,
-        rememberMe,
+        rememberMe: true,
       });
 
       if (res.user) {
@@ -60,21 +59,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           id: 'user_active',
           email: cleanEmail,
           name: cleanEmail.split('@')[0],
+          username: cleanEmail.split('@')[0],
           is_verified: true,
           created_at: new Date().toISOString(),
         });
       }
     } catch (err: any) {
-      const errMsg = err.message || t('invalidCredentialsError');
-      setError(errMsg);
-      if (
-        errMsg.toLowerCase().includes('not verified') ||
-        errMsg.toLowerCase().includes('verification') ||
-        errMsg.toLowerCase().includes('सत्यापित') ||
-        errMsg.toLowerCase().includes('ಪರಿಶೀಲಿಸಲ್ಪಟ್ಟಿಲ್ಲ')
-      ) {
-        setIsUnverified(true);
-      }
+      setError(err.message || 'Invalid email or password.');
     } finally {
       setIsLoading(false);
     }
@@ -93,18 +84,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             <AlertCircle size={16} className="error-icon" />
             <div className="error-text">
               <div>{error}</div>
-              {isUnverified && (
-                <div className="mt-2 pt-2 border-t border-red-200">
-                  <button
-                    type="button"
-                    onClick={() => onNavigateAuth('verify_email', { email: email.trim() })}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-md transition cursor-pointer"
-                  >
-                    <span>{t('enterVerificationCode')}</span>
-                    <ArrowRight size={13} />
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}

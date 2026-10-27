@@ -108,64 +108,22 @@ def test_email_service_console_mode_safe():
 
 
 def test_mocked_signup_verification_flow():
-    """End-to-end signup verification flow with mocked email delivery."""
+    """Verify signup creates verified citizen immediately with direct persistence (no OTP required)."""
     async def _run():
         auth = AuthService()
         synth_email = f"synth_{uuid.uuid4().hex[:8]}@test.suchnasetu.gov.in"
         synth_name = "Synthetic Citizen"
 
-        # Mock email delivery to succeed
-        with patch("notice2action.auth.auth_service.email_service.send_verification_email", new_callable=AsyncMock) as mock_send:
-            mock_send.return_value = EmailDeliveryResult(True, "Mock sent", "mock")
-            res = await auth.register_user(
-                name=synth_name,
-                email=synth_email,
-                password="SecurePassphrase2026#Citizen",
-                client_ip=f"10.0.{uuid.uuid4().int % 200}.1"
-            )
-            assert res["status"] == "success"
-            assert res["email_delivered"] is True
-            assert mock_send.await_count == 1
-            
-            # Verify call arguments
-            call_kwargs = mock_send.call_args.kwargs
-            assert call_kwargs["email"] == synth_email
-            assert call_kwargs["name"] == synth_name
-            code = call_kwargs["code"]
-            assert len(code) == 6 and code.isdigit()
-
-            # Verify email using the generated 6-digit code
-            verify_res = await auth.verify_email(email=synth_email, code=code)
-            assert verify_res["status"] == "success"
-            
-            db = get_db()
-            conn = db.get_connection()
-            cur = conn.execute("SELECT is_verified FROM users WHERE email = ?", (synth_email,))
-            assert cur.fetchone()["is_verified"] == 1
-
-            # Subsequent verification request recognizes already verified account
-            subsequent = await auth.verify_email(email=synth_email, code=code)
-            assert "already verified" in subsequent["message"].lower()
-    asyncio.run(_run())
-
-
-def test_mocked_failed_email_delivery_surfaces_clear_status():
-    """When email delivery fails, the system returns a warning status and does not falsely claim sent."""
-    async def _run():
-        auth = AuthService()
-        synth_email = f"synth_{uuid.uuid4().hex[:8]}@test.suchnasetu.gov.in"
-
-        with patch("notice2action.auth.auth_service.email_service.send_verification_email", new_callable=AsyncMock) as mock_send:
-            mock_send.return_value = EmailDeliveryResult(False, "Connection to mail server timed out", "smtp")
-            res = await auth.register_user(
-                name="Delivery Test",
-                email=synth_email,
-                password="SecurePassphrase2026#Citizen",
-                client_ip=f"10.0.{uuid.uuid4().int % 200}.2"
-            )
-            assert res["status"] == "warning"
-            assert res["email_delivered"] is False
-            assert "could not be delivered" in res["message"].lower()
+        res = await auth.register_user(
+            name=synth_name,
+            email=synth_email,
+            password="SecurePassphrase2026#Citizen",
+            client_ip=f"10.0.{uuid.uuid4().int % 200}.1"
+        )
+        assert res["status"] == "success"
+        assert res["user"]["email"] == synth_email
+        assert res["user"]["is_verified"] == 1
+        assert "session_token" in res
     asyncio.run(_run())
 
 
@@ -176,12 +134,8 @@ def test_password_reset_single_use_and_expiration():
         synth_email = f"synth_{uuid.uuid4().hex[:8]}@test.suchnasetu.gov.in"
         client_ip = f"10.0.{uuid.uuid4().int % 200}.3"
 
-        # Register and verify synthetic account
-        with patch("notice2action.auth.auth_service.email_service.send_verification_email", new_callable=AsyncMock) as mock_v:
-            mock_v.return_value = EmailDeliveryResult(True, "Sent", "mock")
-            await auth.register_user(name="Reset User", email=synth_email, password="OriginalPassphrase2026#", client_ip=client_ip)
-            code = mock_v.call_args.kwargs["code"]
-            await auth.verify_email(email=synth_email, code=code)
+        # Register synthetic account (direct verified)
+        await auth.register_user(name="Reset User", email=synth_email, password="OriginalPassphrase2026#", client_ip=client_ip)
 
         # Request password reset code
         with patch("notice2action.auth.auth_service.email_service.send_password_reset_code", new_callable=AsyncMock) as mock_reset:

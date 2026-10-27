@@ -74,7 +74,7 @@ eye.py
 eye_cute.py
 build_player.py
 
-# Local audit output snapshots
+# Local audit output snapshots (generated locally, not needed in repo)
 audit_report/
 reports/BASELINE_AUDIT.md
 reports/FINAL_TEST_COMPARISON.md
@@ -85,6 +85,8 @@ reports/REMAINING_ISSUES.md
 reports/RESEARCH_REQUIREMENTS_MATRIX.md
 reports/SECURITY_REVIEW.md
 reports/TEST_RESULTS.md
+reports/SochnaSetu_AI_Project_Health_Audit.md
+reports/SochnaSetu_AI_Project_Health_Audit.pdf
 
 # Legacy Streamlit UI Screenshots (preserved locally, excluded from git)
 assets/screenshots/viewport_*.png
@@ -106,8 +108,15 @@ uploads/
 data/*.db
 data/*.db-shm
 data/*.db-wal
+data/backups/
 data/uploads/*
 !data/uploads/.gitkeep
 !data/.gitkeep
 
 test_reports/
+
+# Runtime logs directory
+logs/
+
+# Runtime PID/launcher state files
+.launcher_pids.json

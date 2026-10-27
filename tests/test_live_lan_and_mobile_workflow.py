@@ -49,12 +49,12 @@ def is_port_open(port: int, host: str) -> bool:
 
 @pytest.fixture(scope="module", autouse=True)
 def run_live_supervisor():
-    """Starts process supervisor in background and stops it after tests finish."""
-    # First stop any existing process
-    subprocess.run([sys.executable, str(PROJECT_ROOT / "scripts" / "process_supervisor.py"), "--stop"], capture_output=True, timeout=10)
-    time.sleep(1.0)
+    """Ensures services are available for live tests."""
+    if is_port_open(8000, LAN_IP) and is_port_open(5173, LAN_IP):
+        yield
+        return
 
-    # Launch supervisor
+    # Launch supervisor if not running
     proc = subprocess.Popen(
         [sys.executable, str(PROJECT_ROOT / "scripts" / "process_supervisor.py")],
         cwd=str(PROJECT_ROOT),
@@ -62,7 +62,6 @@ def run_live_supervisor():
         stderr=subprocess.PIPE,
     )
 
-    # Wait up to 30s for both ports 8000 and 5173 to be open on LAN IP
     deadline = time.time() + 30
     ready = False
     while time.time() < deadline:
@@ -73,10 +72,6 @@ def run_live_supervisor():
 
     assert ready, f"Services failed to bind to {LAN_IP}:8000 and {LAN_IP}:5173 within 30 seconds"
     yield
-
-    # Clean shutdown
-    subprocess.run([sys.executable, str(PROJECT_ROOT / "scripts" / "process_supervisor.py"), "--stop"], capture_output=True, timeout=10)
-    time.sleep(1.0)
 
 
 def test_ollama_not_exposed_to_lan():
@@ -164,9 +159,15 @@ def test_playwright_mobile_workflow_on_lan_ip():
 
         page.goto(LAN_FRONTEND_URL, wait_until="networkidle", timeout=15000)
 
-        # 1. Check zero horizontal overflow
+        # 1. Check zero horizontal overflow on mobile
         scroll_width, client_width = page.evaluate("() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]")
         assert scroll_width <= client_width + 1, f"Horizontal overflow on mobile: scrollWidth={scroll_width} > clientWidth={client_width}"
+
+        # If on auth screen, enter guest mode to reach mobile bottom nav
+        guest_btn = page.locator("button:has-text('Continue as Guest')")
+        if guest_btn.is_visible():
+            guest_btn.click()
+            page.wait_for_timeout(500)
 
         # 2. Check mobile bottom navigation presence
         bottom_nav = page.locator("[aria-label='Mobile Bottom Navigation']")

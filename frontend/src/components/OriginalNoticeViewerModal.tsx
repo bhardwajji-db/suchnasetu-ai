@@ -118,11 +118,11 @@ export const OriginalNoticeViewerModal: React.FC = () => {
       onClick={(e) => {
         if (e.target === e.currentTarget) closeOriginalNoticeModal();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200"
     >
-      <div className="bg-white border border-[#E1E7EE] rounded-2xl w-full max-w-4xl max-h-[90vh] shadow-2xl overflow-hidden flex flex-col">
+      <div className="bg-white border border-[#E1E7EE] rounded-xl sm:rounded-2xl w-full max-w-4xl max-h-[92vh] sm:max-h-[90vh] shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E1E7EE] bg-[#F8FAFC]">
+        <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-[#E1E7EE] bg-[#F8FAFC]">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#E8F7F0] border border-[#B7E7D2] text-[#08785D] flex items-center justify-center">
               <FileText className="w-4 h-4" />

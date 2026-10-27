@@ -28,15 +28,17 @@ export const ActionChecklistTable: React.FC = () => {
   const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
 
-  const checklist = (outputLang === 'hi')
+  const activeLang = (selectedLang || outputLang || 'en').toLowerCase().trim();
+
+  const checklist = (activeLang === 'hi')
     ? (checklistHi || localizedChecklist || checklistEn)
-    : (outputLang === 'en')
+    : (activeLang === 'en')
     ? (checklistEn || localizedChecklist || checklistHi)
     : (localizedChecklist || checklistEn || checklistHi);
 
-  const summary = (outputLang === 'hi')
+  const summary = (activeLang === 'hi')
     ? (summaryHi || localizedSummary || summaryEn)
-    : (outputLang === 'en')
+    : (activeLang === 'en')
     ? (summaryEn || localizedSummary || summaryHi)
     : (localizedSummary || summaryEn || summaryHi);
   if (!checklist || checklist.items.length === 0) return null;

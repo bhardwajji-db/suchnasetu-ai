@@ -207,18 +207,31 @@ class AuthService:
 
 
     # --------------------------------------------------------------------------
-    # Registration & Verification
+    # Registration & Direct Persistence (No OTP Required)
     # --------------------------------------------------------------------------
     async def register_user(self, name: str, email: str, password: str, client_ip: str = "unknown") -> Dict[str, Any]:
-        """Register a new citizen account with email verification enforcement."""
+        """Register a new citizen account with immediate persistent database storage and session creation (no OTP)."""
         normalized_email = email.strip().lower()
+        user_name = name.strip()
 
-        # Enforce rate limit on registrations: max 5 per 10 minutes per IP
+        # Enforce rate limit on registrations: max 10 per 10 minutes per IP
         is_dev = _is_dev_client_ip(client_ip) and getattr(config, "app_env", "development").lower() != "production"
-        if not is_dev and not self.check_rate_limit(f"reg_ip:{client_ip}", 5, 600):
+        if not is_dev and not self.check_rate_limit(f"reg_ip:{client_ip}", 10, 600):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many registration attempts. Please wait a few minutes before trying again."
+            )
+
+        # Check username requirements
+        if len(user_name) < 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username must be at least 2 characters long."
+            )
+        if len(user_name) > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username cannot exceed 100 characters."
             )
 
         # Check password strength
@@ -240,68 +253,12 @@ class AuthService:
             existing = cur.fetchone()
 
             if existing:
-                if existing["is_verified"]:
-                    logger.info(f"Registration attempted for already verified email: {_mask_email(normalized_email)}")
-                    return {
-                        "status": "success",
-                        "message": "Registration received. An account with this email address is already active and verified. Please sign in directly.",
-                        "email_delivered": False,
-                        "already_verified": True
-                    }
-
-                # Unverified account exists: check resend cooldown
-                if not self.check_rate_limit(f"resend:{normalized_email}", 1, 60):
-                    return {
-                        "status": "success",
-                        "message": "Registration received. An unverified account already exists for this email. A verification message was recently sent. Please check your inbox or wait before requesting a new code.",
-                        "email_delivered": True
-                    }
-
-                verify_token = generate_secure_token(32)
-                verify_code = generate_secure_code(6)
-                token_expiry = self._expires_iso(hours=getattr(config, "auth_verify_expire_hours", 24))
-                now = self._now_iso()
-
-                # Dispatch verification email
-                delivery = await email_service.send_verification_email(
-                    email=normalized_email,
-                    name=existing["name"] or name.strip(),
-                    token=verify_token,
-                    code=verify_code
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email is already registered. Please sign in."
                 )
 
-                if delivery.success:
-                    conn.execute(
-                        "UPDATE auth_tokens SET used_at = ? WHERE user_id = ? AND token_type LIKE 'verify_email%' AND used_at IS NULL",
-                        (now, existing["id"])
-                    )
-                    conn.execute(
-                        """
-                        INSERT INTO auth_tokens (id, user_id, token_type, token_hash, max_attempts, expires_at, created_at)
-                        VALUES (?, ?, 'verify_email', ?, 5, ?, ?)
-                        """,
-                        (str(uuid.uuid4()), existing["id"], hash_token(verify_token), token_expiry, now)
-                    )
-                    conn.execute(
-                        """
-                        INSERT INTO auth_tokens (id, user_id, token_type, token_hash, max_attempts, expires_at, created_at)
-                        VALUES (?, ?, 'verify_email_code', ?, 5, ?, ?)
-                        """,
-                        (str(uuid.uuid4()), existing["id"], hash_code(verify_code), token_expiry, now)
-                    )
-                    return {
-                        "status": "success",
-                        "message": "Registration received. An unverified account already exists for this email. A fresh verification email has been sent.",
-                        "email_delivered": True
-                    }
-                else:
-                    return {
-                        "status": "warning",
-                        "message": "An unverified account already exists for this email, but delivery of a fresh verification email could not be completed. Your existing verification code remains valid.",
-                        "email_delivered": False
-                    }
-
-            # Create new user
+            # Create new user directly active & verified (is_verified = 1)
             user_id = str(uuid.uuid4())
             pwd_hash = hash_password(password)
             now = self._now_iso()
@@ -309,52 +266,41 @@ class AuthService:
             conn.execute(
                 """
                 INSERT INTO users (id, email, name, password_hash, is_verified, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 0, ?, ?)
+                VALUES (?, ?, ?, ?, 1, ?, ?)
                 """,
-                (user_id, normalized_email, name.strip(), pwd_hash, now, now)
+                (user_id, normalized_email, user_name, pwd_hash, now, now)
             )
 
-            verify_token = generate_secure_token(32)
-            verify_code = generate_secure_code(6)
-            token_expiry = self._expires_iso(hours=getattr(config, "auth_verify_expire_hours", 24))
+            # Create immediate active session for auto-login
+            expire_hours = int(getattr(config, "auth_session_expire_hours", 168))
+            session_token = generate_secure_token(32)
+            token_hash = hash_token(session_token)
+            expires_at = self._expires_iso(hours=expire_hours)
+            session_id = str(uuid.uuid4())
 
             conn.execute(
                 """
-                INSERT INTO auth_tokens (id, user_id, token_type, token_hash, max_attempts, expires_at, created_at)
-                VALUES (?, ?, 'verify_email', ?, 5, ?, ?)
+                INSERT INTO sessions (id, user_id, session_token_hash, user_agent, ip_address, expires_at, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (str(uuid.uuid4()), user_id, hash_token(verify_token), token_expiry, now)
-            )
-            conn.execute(
-                """
-                INSERT INTO auth_tokens (id, user_id, token_type, token_hash, max_attempts, expires_at, created_at)
-                VALUES (?, ?, 'verify_email_code', ?, 5, ?, ?)
-                """,
-                (str(uuid.uuid4()), user_id, hash_code(verify_code), token_expiry, now)
+                (session_id, user_id, token_hash, "Registration", client_ip, expires_at, now)
             )
 
-        # Dispatch verification email
-        delivery = await email_service.send_verification_email(
-            email=normalized_email,
-            name=name.strip(),
-            token=verify_token,
-            code=verify_code
-        )
-
-        # Seed the resend cooldown so immediate resend requests are throttled
-        self.check_rate_limit(f"resend:{normalized_email}", 1, 60)
-
-        if not delivery.success:
-            return {
-                "status": "warning",
-                "message": "Account created successfully, but the verification email could not be delivered at this moment. Your account is preserved. Please click 'Resend Verification' on the verification screen.",
-                "email_delivered": False
-            }
+        user_public = {
+            "id": user_id,
+            "email": normalized_email,
+            "name": user_name,
+            "username": user_name,
+            "is_verified": True,
+            "created_at": now,
+            "is_guest": False
+        }
 
         return {
             "status": "success",
-            "message": "Account created successfully. Please check your email to verify your account.",
-            "email_delivered": True
+            "message": "Account created successfully.",
+            "user": user_public,
+            "session_token": session_token
         }
 
     async def verify_email(self, token: Optional[str] = None, email: Optional[str] = None, code: Optional[str] = None) -> Dict[str, Any]:
@@ -581,11 +527,10 @@ class AuthService:
                 detail="Invalid email or password."
             )
 
+        # Ensure account is active and marked verified
         if not user["is_verified"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Your account email is not verified. Please check your inbox for the verification code."
-            )
+            with conn:
+                conn.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (user["id"],))
 
         expire_hours = 720 if remember_me else getattr(config, "auth_session_expire_hours", 168)
         session_token = generate_secure_token(32)

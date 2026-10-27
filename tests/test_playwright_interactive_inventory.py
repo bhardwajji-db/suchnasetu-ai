@@ -77,6 +77,15 @@ def ensure_servers_running():
 
 
 
+def _goto_app(page):
+    page.goto(FRONTEND_URL, wait_until="networkidle")
+    guest_btn = page.locator("button:has-text('Continue as Guest')")
+    if guest_btn.is_visible():
+        guest_btn.click()
+        page.wait_for_timeout(400)
+    page.wait_for_selector("text=PS02", timeout=10000)
+
+
 def test_interactive_navigation_and_header():
     """Verifies all sidebar navigation items (Tabs 0-11), logo, and header controls."""
     with sync_playwright() as p:
@@ -87,7 +96,7 @@ def test_interactive_navigation_and_header():
         context = browser.new_context(viewport={"width": 1366, "height": 768})
         page = context.new_page()
 
-        page.goto(FRONTEND_URL, wait_until="networkidle")
+        _goto_app(page)
         page.wait_for_selector("text=PS02", timeout=10000)
 
         # 1. Verify Header Brand Logo returns to Dashboard (Tab 0)
@@ -133,20 +142,17 @@ def test_interactive_navigation_and_header():
         assert page.locator("input[type='password']").is_visible()
 
         # Return to application
-        close_btn = page.locator("button[aria-label='Return to application'], button[aria-label='Return to Main Application'], button[aria-label='Close authentication modal']").first
+        close_btn = page.locator("button[aria-label='Return to application'], button[aria-label='Return to Main Application'], button[aria-label='Close authentication modal'], button[aria-label='Continue to application as guest']").first
         assert close_btn.is_visible()
         close_btn.click()
         page.wait_for_timeout(300)
 
-        # 4. Verify Language Switching (EN -> HI -> EN)
-        hi_btn = page.locator("button:has-text('हिन्दी')").first
-        assert hi_btn.is_visible()
-        hi_btn.click()
+        # 4. Verify Single Unified Language Selector (EN -> HI -> EN)
+        lang_select = page.locator("select[aria-label='Select Website Language']")
+        assert lang_select.is_visible()
+        lang_select.select_option("hi")
         page.wait_for_timeout(400)
-
-        en_btn = page.locator("button:text-is('EN')").first
-        assert en_btn.is_visible()
-        en_btn.click()
+        lang_select.select_option("en")
         page.wait_for_timeout(400)
 
         page.screenshot(path=str(SCREENSHOT_DIR / "01_header_nav_verified.png"))
@@ -164,7 +170,7 @@ def test_interactive_demo_library_workflow():
         context = browser.new_context(viewport={"width": 1366, "height": 768})
         page = context.new_page()
 
-        page.goto(FRONTEND_URL, wait_until="networkidle")
+        _goto_app(page)
 
         # Navigate to Demo Library
         page.locator("button:has-text('11. Demo Library')").first.click()
@@ -235,7 +241,7 @@ def test_interactive_accessibility_and_settings():
         context = browser.new_context(viewport={"width": 1366, "height": 768})
         page = context.new_page()
 
-        page.goto(FRONTEND_URL, wait_until="networkidle")
+        _goto_app(page)
 
         # Navigate to Settings (Tab 10)
         page.locator("button:has-text('Settings & Health')").first.click()
@@ -294,7 +300,7 @@ def test_interactive_mobile_responsive_controls():
         context = browser.new_context(viewport={"width": 390, "height": 844})
         page = context.new_page()
 
-        page.goto(FRONTEND_URL, wait_until="networkidle")
+        _goto_app(page)
         page.wait_for_selector("text=PS02", timeout=5000)
 
         # 1. Verify Mobile Bottom Navigation is visible
@@ -337,7 +343,7 @@ def test_interactive_eligibility_engine():
         context = browser.new_context(viewport={"width": 1366, "height": 768})
         page = context.new_page()
 
-        page.goto(FRONTEND_URL, wait_until="networkidle")
+        _goto_app(page)
 
         # Navigate to Eligibility Check (Tab 5)
         page.locator("button:has-text('5. Eligibility Check')").first.click()
@@ -378,7 +384,7 @@ def test_interactive_revision_ledger():
         context = browser.new_context(viewport={"width": 1366, "height": 768})
         page = context.new_page()
 
-        page.goto(FRONTEND_URL, wait_until="networkidle")
+        _goto_app(page)
 
         # Navigate to Revision Ledger (Tab 4)
         page.locator("button:has-text('4. Revision Ledger')").first.click()
@@ -404,7 +410,7 @@ def test_interactive_timeline_and_demo_pair():
         context = browser.new_context(viewport={"width": 1366, "height": 768})
         page = context.new_page()
 
-        page.goto(FRONTEND_URL, wait_until="networkidle")
+        _goto_app(page)
 
         # Navigate to Tab 8
         page.locator("button:has-text('8. Multi-Notice Timeline')").first.click()

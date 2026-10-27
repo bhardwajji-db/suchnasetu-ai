@@ -23,12 +23,13 @@ from notice2action.storage.db import get_db, DatabaseManager, DEFAULT_DB_PATH
 from notice2action.auth.security import verify_password, hash_code
 from notice2action.config import config
 
-client = TestClient(app)
+client = TestClient(app, base_url="http://testserver", headers={"Origin": "http://testserver"})
 
 
 @pytest.fixture(scope="function", autouse=True)
 def clean_test_persistence_data():
     """Isolate tests by removing test citizen data."""
+    client.cookies.clear()
     db = get_db()
     conn = db.get_connection()
     with conn:
@@ -82,15 +83,15 @@ def test_duplicate_registration_safety():
     })
     assert resp1.status_code == 200
 
-    # Second registration with same email
+    # Second registration with same email -> rejected with HTTP 400
     resp2 = client.post("/api/auth/register", json={
         "name": "Duplicate Test 2",
         "email": email.upper(),  # Test case-insensitivity
         "password": "DifferentPassword456#",
         "confirm_password": "DifferentPassword456#"
     })
-    assert resp2.status_code == 200
-    assert resp2.json()["status"] == "success"
+    assert resp2.status_code == 400
+    assert "already registered" in resp2.json()["detail"].lower()
 
 
 def test_invalid_credentials_clear_message():
@@ -133,43 +134,33 @@ def test_full_auth_and_real_db_persistence_lifecycle():
         "confirm_password": user_a_pass
     })
     assert reg_resp.status_code == 200
+    user_a_id = reg_resp.json()["user"]["id"]
 
-    # Step 2: Attempt Login before verification -> must be blocked with HTTP 403
-    unverified_login = client.post("/api/auth/login", json={
+    # Step 2: Verify direct login works without OTP
+    direct_login = client.post("/api/auth/login", json={
         "email": user_a_email,
         "password": user_a_pass
     })
-    assert unverified_login.status_code == 403
-    assert "not verified" in unverified_login.json()["detail"].lower()
+    assert direct_login.status_code == 200
+    assert direct_login.json()["status"] == "success"
 
-    # Step 3: Verify User A email using code from DB
-    db = get_db()
-    conn = db.get_connection()
-    with conn:
-        user_row = conn.execute("SELECT id FROM users WHERE email = ?", (user_a_email,)).fetchone()
-        user_a_id = user_row["id"]
-        token_row = conn.execute(
-            "SELECT token_hash FROM auth_tokens WHERE user_id = ? AND token_type = 'verify_email_code'",
-            (user_a_id,)
-        ).fetchone()
-        token_hash = token_row["token_hash"]
-
-    # Match code against hash
-    user_a_code = None
-    for c in range(100000, 1000000):
-        if hash_code(str(c)) == token_hash:
-            user_a_code = str(c)
-            break
-    assert user_a_code is not None
-
-    verify_resp = client.post("/api/auth/verify-email", json={
+    # Step 3: Verify invalid password rejection
+    bad_pass_login = client.post("/api/auth/login", json={
         "email": user_a_email,
-        "code": user_a_code
+        "password": "WrongPassword999#"
     })
-    assert verify_resp.status_code == 200
+    assert bad_pass_login.status_code == 401
+    assert "invalid email or password" in bad_pass_login.json()["detail"].lower()
 
-    # Step 4: Login User A with dedicated client instance (to retain cookies)
-    user_a_client = TestClient(app)
+    # Step 4: Verify unknown email rejection
+    unknown_email_login = client.post("/api/auth/login", json={
+        "email": "completely_unknown_citizen_999@persistence.test.suchnasetu.gov.in",
+        "password": user_a_pass
+    })
+    assert unknown_email_login.status_code == 401
+    assert "invalid email or password" in unknown_email_login.json()["detail"].lower()
+# Step 4: Login User A with dedicated client instance (to retain cookies)
+    user_a_client = TestClient(app, base_url="http://testserver", headers={"Origin": "http://testserver"})
     login_resp = user_a_client.post("/api/auth/login", json={
         "email": user_a_email,
         "password": user_a_pass
@@ -263,12 +254,7 @@ def test_full_auth_and_real_db_persistence_lifecycle():
         "confirm_password": user_b_pass
     })
 
-    with conn:
-        user_b_id = conn.execute("SELECT id FROM users WHERE email = ?", (user_b_email,)).fetchone()["id"]
-        # Direct verification for User B test
-        conn.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (user_b_id,))
-
-    user_b_client = TestClient(app)
+    user_b_client = TestClient(app, base_url="http://testserver", headers={"Origin": "http://testserver"})
     user_b_login = user_b_client.post("/api/auth/login", json={
         "email": user_b_email,
         "password": user_b_pass
@@ -285,7 +271,7 @@ def test_full_auth_and_real_db_persistence_lifecycle():
 
     # Step 15: Guest Mode Isolation Test:
     # An unauthenticated guest client accessing saved notices
-    guest_client = TestClient(app)
+    guest_client = TestClient(app, base_url="http://testserver", headers={"Origin": "http://testserver"})
     guest_notices = guest_client.get("/api/user/saved-notices").json()
     assert not any(n["document_id"] == doc_id for n in guest_notices)
 

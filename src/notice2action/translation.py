@@ -24,6 +24,10 @@ from notice2action.schemas import (
     PlainLanguageSummary,
     ActionChecklist,
     ChecklistItem,
+    StructuredNotice,
+    ExtractedFact,
+    CertaintyStatus,
+    NOT_STATED_LABEL,
 )
 from notice2action.llm.base import BaseLLMClient
 from notice2action.grounding import extract_critical_tokens
@@ -356,3 +360,228 @@ def translate_checklist_to_hindi(
     client: Optional[BaseLLMClient] = None,
 ) -> ActionChecklist:
     return translate_checklist(checklist, target_lang="hi", client=client)
+
+
+# -----------------------------------------------------------------------------
+# Structured Notice and Fact Translation
+# -----------------------------------------------------------------------------
+
+def deterministic_translate_text(text: str, target_lang: str = "en") -> str:
+    """Translates common notice text phrases into target language preserving critical entities."""
+    if not text:
+        return text
+
+    lang = target_lang.lower().strip()
+    if lang not in SUPPORTED_LANGUAGES or lang == "en":
+        return text
+
+    glossary = DETERMINISTIC_TRANSLATION_MAPS.get(lang, DETERMINISTIC_TRANSLATION_MAPS["en"])
+
+    if text.strip() == NOT_STATED_LABEL or text.strip().lower() in ("not stated in the notice.", "not stated"):
+        return glossary.get("not_stated", NOT_STATED_LABEL)
+
+    translated_text = text
+    phrase_maps = [
+        ("Submit Application Form", "submit_form"),
+        ("Pay Application Fee", "pay_fee"),
+        ("Verify Eligibility Requirements", "verify_eligibility"),
+        ("Prepare Required Documents", "prepare_documents"),
+        ("Review Notification Details", "review_notice"),
+        ("Note Submission Deadline", "note_deadline"),
+        ("Contact Helpdesk for Clarifications", "contact_helpdesk"),
+        ("Not stated in the notice.", "not_stated"),
+    ]
+    for en_key, map_key in phrase_maps:
+        if en_key.lower() in translated_text.lower() and map_key in glossary:
+            pattern = re.compile(re.escape(en_key), re.IGNORECASE)
+            translated_text = pattern.sub(glossary[map_key], translated_text)
+
+    return translated_text
+
+
+def translate_extracted_fact(
+    fact: ExtractedFact,
+    target_lang: str = "en",
+    translated_value: Optional[str] = None,
+    translated_explanation: Optional[str] = None,
+) -> ExtractedFact:
+    """
+    Translates an ExtractedFact into target_lang.
+    Crucial: Evidence quote and source location are STRICTLY PRESERVED in the original source language.
+    """
+    lang = target_lang.lower().strip()
+    if lang not in SUPPORTED_LANGUAGES or lang == "en":
+        return fact
+
+    glossary = DETERMINISTIC_TRANSLATION_MAPS.get(lang, DETERMINISTIC_TRANSLATION_MAPS["en"])
+
+    if fact.status == CertaintyStatus.NOT_STATED or fact.value.strip() == NOT_STATED_LABEL:
+        val = glossary.get("not_stated", NOT_STATED_LABEL)
+        expl = None
+    else:
+        val = translated_value or deterministic_translate_text(fact.value, target_lang=lang)
+        expl = translated_explanation or (deterministic_translate_text(fact.explanation, target_lang=lang) if fact.explanation else None)
+
+    return ExtractedFact(
+        field_name=fact.field_name,
+        value=val,
+        status=fact.status,
+        evidence_quote=fact.evidence_quote,  # STRICTLY PRESERVED ORIGINAL VERBATIM QUOTE
+        source_location=fact.source_location,  # STRICTLY PRESERVED ORIGINAL PAGE/LINE LOCATION
+        requires_confirmation=fact.requires_confirmation,
+        user_confirmed=fact.user_confirmed,
+        confirmed_value=fact.confirmed_value,
+        explanation=expl,
+        uncertainty_type=fact.uncertainty_type,
+    )
+
+
+def translate_structured_notice(
+    structured: StructuredNotice,
+    target_lang: str = "en",
+    client: Optional[BaseLLMClient] = None,
+) -> StructuredNotice:
+    """
+    Translates discrete semantic fields of StructuredNotice into the requested target language.
+    Preserves all official identifiers, dates, numbers, amounts, and source quotations verbatim.
+    """
+    lang = target_lang.lower().strip()
+    if lang not in SUPPORTED_LANGUAGES or lang == "en":
+        return structured
+
+    lang_meta = SUPPORTED_LANGUAGES[lang]
+    glossary = DETERMINISTIC_TRANSLATION_MAPS.get(lang, DETERMINISTIC_TRANSLATION_MAPS["en"])
+
+    fields_to_translate = [
+        "issuing_authority",
+        "notice_reference_number",
+        "notice_date",
+        "recipient",
+        "main_subject",
+        "required_action_and_deadline",
+        "purpose",
+        "eligibility",
+        "deadline",
+        "fee_or_cost",
+        "required_documents",
+        "contact_details",
+        "required_actions",
+        "important_conditions",
+    ]
+
+    candidate_texts: Dict[str, str] = {}
+    for fname in fields_to_translate:
+        fact = getattr(structured, fname, None)
+        if fact and fact.status != CertaintyStatus.NOT_STATED and fact.value.strip() != NOT_STATED_LABEL:
+            candidate_texts[fname] = fact.user_confirmed and fact.confirmed_value if fact.user_confirmed and fact.confirmed_value else fact.value
+
+    llm_translations: Dict[str, str] = {}
+    if client and candidate_texts:
+        system_prompt = (
+            f"You are an expert translator for official public notices translating into {lang_meta['name']} ({lang_meta['native']}).\n"
+            f"Script: {lang_meta['script']}. Direction: {lang_meta['dir'].upper()}.\n"
+            "MANDATORY ACCURACY RULES:\n"
+            "1. Do NOT change, omit, or alter any numbers, dates, monetary amounts, reference numbers, or percentages.\n"
+            "2. Translate descriptions, eligibility rules, and instructions into natural, clear, accessible phrasing.\n"
+            "3. Output strictly valid JSON mapping each key to its translated text."
+        )
+        user_prompt = "Translate each of these extracted notice fields:\n" + "\n".join(f"{k}: {v}" for k, v in candidate_texts.items())
+        try:
+            res = client.generate_structured_json(system_prompt, user_prompt)
+            if isinstance(res, dict):
+                for k, v in res.items():
+                    if isinstance(v, str) and v.strip():
+                        orig = candidate_texts.get(k, "")
+                        ok, missing = audit_entity_preservation(orig, v)
+                        if ok:
+                            llm_translations[k] = v.strip()
+                        else:
+                            llm_translations[k] = f"{v.strip()} ({orig})"
+        except Exception:
+            pass
+
+    translated_facts: Dict[str, ExtractedFact] = {}
+    for fname in fields_to_translate:
+        fact = getattr(structured, fname, None)
+        if fact:
+            translated_facts[fname] = translate_extracted_fact(
+                fact,
+                target_lang=lang,
+                translated_value=llm_translations.get(fname),
+            )
+
+    # Translate missing_information and uncertain details strings
+    trans_missing = [deterministic_translate_text(m, target_lang=lang) for m in structured.missing_information]
+    trans_uncertain = [deterministic_translate_text(u, target_lang=lang) for u in structured.uncertain_or_conflicting_details]
+
+    return StructuredNotice(
+        issuing_authority=translated_facts.get("issuing_authority", structured.issuing_authority),
+        notice_reference_number=translated_facts.get("notice_reference_number", structured.notice_reference_number),
+        notice_date=translated_facts.get("notice_date", structured.notice_date),
+        recipient=translated_facts.get("recipient", structured.recipient),
+        main_subject=translated_facts.get("main_subject", structured.main_subject),
+        required_action_and_deadline=translated_facts.get("required_action_and_deadline", structured.required_action_and_deadline),
+        purpose=translated_facts.get("purpose", structured.purpose),
+        eligibility=translated_facts.get("eligibility", structured.eligibility),
+        deadline=translated_facts.get("deadline", structured.deadline),
+        fee_or_cost=translated_facts.get("fee_or_cost", structured.fee_or_cost),
+        required_documents=translated_facts.get("required_documents", structured.required_documents),
+        contact_details=translated_facts.get("contact_details", structured.contact_details),
+        required_actions=translated_facts.get("required_actions", structured.required_actions),
+        important_conditions=translated_facts.get("important_conditions", structured.important_conditions),
+        missing_information=trans_missing,
+        uncertain_or_conflicting_details=trans_uncertain,
+        raw_notice_text=structured.raw_notice_text,  # STRICTLY PRESERVE ORIGINAL RAW NOTICE
+    )
+
+
+# In-memory thread-safe LRU translation package cache
+_NOTICE_TRANSLATION_CACHE: Dict[str, Dict[str, Any]] = {}
+
+def translate_notice_package(
+    summary_en: PlainLanguageSummary,
+    checklist_en: ActionChecklist,
+    structured_notice: Optional[StructuredNotice],
+    target_lang: str,
+    reading_level: str = "standard",
+    fingerprint: Optional[str] = None,
+    client: Optional[BaseLLMClient] = None,
+) -> Dict[str, Any]:
+    """
+    Translates all user-facing notice outputs (summary, checklist, structured facts)
+    into the target language with robust entity preservation and memory caching.
+    """
+    lang = target_lang.lower().strip()
+    if lang not in SUPPORTED_LANGUAGES or lang == "en":
+        return {
+            "target_language": "en",
+            "target_language_name": "English",
+            "summary": summary_en,
+            "checklist": checklist_en,
+            "structured_notice": structured_notice,
+            "cached": True,
+            "status": "success",
+        }
+
+    fp = fingerprint or str(hash(summary_en.about))
+    cache_key = f"{fp}:{lang}:{reading_level}"
+    if cache_key in _NOTICE_TRANSLATION_CACHE:
+        cached_result = _NOTICE_TRANSLATION_CACHE[cache_key]
+        return {**cached_result, "cached": True, "status": "success"}
+
+    trans_summary = translate_summary(summary_en, target_lang=lang, client=client)
+    trans_checklist = translate_checklist(checklist_en, target_lang=lang, client=client)
+    trans_structured = None
+    if structured_notice:
+        trans_structured = translate_structured_notice(structured_notice, target_lang=lang, client=client)
+
+    result = {
+        "target_language": lang,
+        "target_language_name": SUPPORTED_LANGUAGES[lang]["name"],
+        "summary": trans_summary,
+        "checklist": trans_checklist,
+        "structured_notice": trans_structured,
+    }
+
+    _NOTICE_TRANSLATION_CACHE[cache_key] = result
+    return {**result, "cached": False, "status": "success"}

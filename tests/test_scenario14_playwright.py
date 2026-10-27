@@ -87,30 +87,26 @@ def test_scenario_14_topbar_cleaned_and_sidebar_account_entry():
 
         # Step 1: Open Application & wait for React mount
         page.goto(FRONTEND_URL, wait_until="networkidle", timeout=30000)
+        guest_btn = page.locator("button:has-text('Continue as Guest')")
+        if guest_btn.is_visible():
+            guest_btn.click()
+            page.wait_for_timeout(400)
         page.wait_for_selector("text=PS02", timeout=10000)
 
-        # Step 2: Verify Top Header is Clean (No Standalone Sign In button in header)
+        # Step 2: Verify Top Header Preserves Branding, Health, Provider & Language Selector
         header = page.locator("header")
         assert header.is_visible(), "Top header not visible"
-        header_signin_btn = header.locator("button:has-text('Sign In'), button[aria-label='Sign In to citizen account']")
-        assert header_signin_btn.count() == 0, "Top navigation header should NOT contain standalone Sign In button"
-
-        # Step 3: Verify Top Header Preserves Branding, Health, Provider & Languages
         assert header.locator("text=PS02").first.is_visible()
-        assert header.locator("button:has-text('EN')").is_visible()
-        assert header.locator("button:has-text('हिन्दी')").is_visible()
+        assert header.locator("select[aria-label='Select Website Language']").is_visible()
 
-        # Step 4: Verify Sidebar Contains Accessible Citizen Account Entry for Guests
-        sidebar = page.locator("aside.hidden.md\\:flex, aside").first
-        assert sidebar.is_visible(), "Sidebar not visible"
-        
-        sidebar_account_btn = sidebar.locator("button[aria-label='Sign In to citizen account']").first
-        assert sidebar_account_btn.is_visible(), "Sidebar must display subtle citizen account entry"
-        assert "Sign In" in sidebar_account_btn.inner_text()
-        assert "Save notices & progress" in sidebar_account_btn.inner_text()
+        # Step 3: Verify Account Sign In Entry for Guests
+        signin_btn = header.locator("button[aria-label='Sign In to citizen account']").or_(
+            page.locator("aside button[aria-label='Sign In to citizen account']")
+        ).first
+        assert signin_btn.is_visible(), "Citizen account Sign In entry should be accessible"
 
-        # Step 5: Click Sidebar Account Entry to Open Auth Page View
-        sidebar_account_btn.click()
+        # Step 4: Click Sign In Entry to Open Auth Page View
+        signin_btn.click()
         page.wait_for_timeout(600)
 
         # Step 6: Verify Dedicated Auth Page View Renders with Accessible Controls
@@ -119,7 +115,7 @@ def test_scenario_14_topbar_cleaned_and_sidebar_account_entry():
         assert page.locator("button[type='submit']").is_visible()
 
         # Step 7: Verify Return to Application Button
-        return_btn = page.locator("button[aria-label='Return to application'], button[aria-label='Return to Main Application']").first
+        return_btn = page.locator("button[aria-label='Continue to application as guest'], button[aria-label='Return to application'], button[aria-label='Return to Main Application']").first
         assert return_btn.is_visible(), "Return to application button must be visible on auth page"
         return_btn.click()
         page.wait_for_timeout(500)

@@ -155,6 +155,8 @@ export interface OCRResponse {
   deskew_angle?: number | null;
   orientation_applied?: number | null;
   uncertain_spans?: Array<{ text: string; confidence: number; box: number[] }> | null;
+  critical_fields?: Record<string, { value: string; confidence: number; status: string; source: string }> | null;
+  field_accuracy_score?: number | null;
 }
 
 export interface AnalyzeResponse {
@@ -175,6 +177,27 @@ export interface AnalyzeResponse {
   localized_checklist?: ActionChecklist;
   fingerprint: string;
   duration_seconds: number;
+}
+
+export interface TranslateNoticeRequest {
+  session_id?: string;
+  fingerprint?: string;
+  target_language: string;
+  reading_level?: 'simple' | 'standard' | 'detailed';
+  structured_notice?: StructuredNotice;
+  summary_en?: PlainLanguageSummary;
+  checklist_en?: ActionChecklist;
+}
+
+export interface TranslateNoticeResponse {
+  target_language: string;
+  target_language_name: string;
+  summary: PlainLanguageSummary;
+  checklist: ActionChecklist;
+  structured_notice?: StructuredNotice | null;
+  six_core_fields?: SixCoreFields | null;
+  cached: boolean;
+  status: string;
 }
 
 export interface DemoLibraryItem {
@@ -534,6 +557,7 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string;
+  username?: string;
   is_verified: boolean;
   created_at: string;
 }

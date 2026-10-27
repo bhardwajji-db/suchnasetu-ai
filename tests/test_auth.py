@@ -24,12 +24,13 @@ from notice2action.auth.email_service import EmailDeliveryResult, email_service
 from notice2action.auth.auth_service import auth_service
 from notice2action.config import config
 
-client = TestClient(app)
+client = TestClient(app, base_url="http://testserver", headers={"Origin": "http://testserver"})
 
 
 @pytest.fixture(scope="function", autouse=True)
 def clean_test_auth_tables():
     """Ensure test rate limits and test users are clean between tests."""
+    client.cookies.clear()
     db = get_db()
     conn = db.get_connection()
     with conn:
@@ -38,9 +39,9 @@ def clean_test_auth_tables():
 
 
 def test_registration_success():
-    """Citizen can register with valid details and receives an unverified account."""
+    """Citizen can register with username/email/password without OTP and receives an active account."""
     payload = {
-        "name": "Arjun Sharma",
+        "username": "Arjun Sharma",
         "email": "arjun.sharma@test.suchnasetu.gov.in",
         "password": "SecurePassphrase2026#Citizen",
         "confirm_password": "SecurePassphrase2026#Citizen"
@@ -49,7 +50,9 @@ def test_registration_success():
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "success"
-    assert "verify" in data["message"].lower()
+    assert "created" in data["message"].lower()
+    cookie_name = getattr(config, "auth_cookie_name", "suchnasetu_session")
+    assert cookie_name in resp.cookies or "session" in str(resp.headers)
 
     db = get_db()
     conn = db.get_connection()
@@ -60,7 +63,7 @@ def test_registration_success():
         )
         row = cur.fetchone()
         assert row is not None
-        assert row["is_verified"] == 0
+        assert row["is_verified"] == 1
         assert verify_password("SecurePassphrase2026#Citizen", row["password_hash"])
         assert "$argon2id$" in row["password_hash"]
 
@@ -90,7 +93,7 @@ def test_registration_short_password():
 
 
 def test_registration_duplicate_handling_generic():
-    """Duplicate registration returns generic success message to prevent account enumeration."""
+    """Duplicate email registration is rejected with HTTP 400."""
     payload = {
         "name": "Arjun Sharma",
         "email": "arjun.sharma@test.suchnasetu.gov.in",
@@ -106,72 +109,48 @@ def test_registration_duplicate_handling_generic():
         "confirm_password": "AnotherPassword2026#"
     }
     resp = client.post("/api/auth/register", json=dup_payload)
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
+    assert resp.status_code == 400
+    assert "already registered" in resp.json()["detail"].lower()
 
 
 def test_login_unverified_account_forbidden():
-    """Unverified account cannot sign in (HTTP 403)."""
+    """Accounts without prior verification can sign in directly without OTP barrier."""
     payload = {
-        "name": "Unverified User",
-        "email": "unverified@test.suchnasetu.gov.in",
+        "name": "Direct Login User",
+        "email": "direct@test.suchnasetu.gov.in",
         "password": "SecurePassphrase2026#Citizen",
         "confirm_password": "SecurePassphrase2026#Citizen"
     }
     client.post("/api/auth/register", json=payload)
 
     resp = client.post("/api/auth/login", json={
-        "email": "unverified@test.suchnasetu.gov.in",
+        "email": "direct@test.suchnasetu.gov.in",
         "password": "SecurePassphrase2026#Citizen"
     })
-    assert resp.status_code == 403
-    assert "not verified" in resp.json()["detail"].lower()
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "success" 
 
 
 def test_verify_email_with_code():
-    """Citizen can verify their account with the 6-digit code."""
+    """Citizen account is immediately verified upon registration with no pending OTP tokens."""
     email = "verify.code@test.suchnasetu.gov.in"
-    client.post("/api/auth/register", json={
+    reg_resp = client.post("/api/auth/register", json={
         "name": "Verify Citizen",
         "email": email,
         "password": "SecurePassphrase2026#Citizen",
         "confirm_password": "SecurePassphrase2026#Citizen"
     })
+    assert reg_resp.status_code == 200
 
-    # Retrieve valid code from database for testing
     db = get_db()
-    conn = db.get_connection()
-    with conn:
-        cur = conn.execute("SELECT id FROM users WHERE email = ?", (email,))
+    with db.get_connection() as conn:
+        cur = conn.execute("SELECT id, is_verified FROM users WHERE email = ?", (email,))
         user = cur.fetchone()
-        cur = conn.execute(
-            "SELECT token_hash FROM auth_tokens WHERE user_id = ? AND token_type = 'verify_email_code'",
-            (user["id"],)
-        )
-        token_hash = cur.fetchone()["token_hash"]
-
-    # Match code against hash
-    test_code = None
-    for c in range(100000, 1000000):
-        if hash_code(str(c)) == token_hash:
-            test_code = str(c)
-            break
-
-    assert test_code is not None, "Failed to resolve test code"
-
-    resp = client.post("/api/auth/verify-email", json={
-        "email": email,
-        "code": test_code
-    })
-    assert resp.status_code == 200
-    assert "verified" in resp.json()["message"].lower()
-
-    # Verify user in database
-    with conn:
-        cur = conn.execute("SELECT is_verified FROM users WHERE email = ?", (email,))
-        assert cur.fetchone()["is_verified"] == 1
-
-
+        assert user is not None
+        assert user["is_verified"] == 1
+        # No OTP tokens inserted for registration
+        cur = conn.execute("SELECT COUNT(*) as count FROM auth_tokens WHERE user_id = ? AND token_type LIKE 'verify_email%'", (user["id"],))
+        assert cur.fetchone()["count"] == 0
 def test_login_success_and_session_cookie():
     """Verified citizen signs in and receives an HttpOnly session cookie."""
     email = "login.success@test.suchnasetu.gov.in"
@@ -469,16 +448,21 @@ def test_api_responses_never_expose_tokens_or_hashes():
 
 
 def test_resend_verification_cooldown():
-    """Calling resend-verification within 60 seconds returns HTTP 429."""
-    email = "cooldown.user@test.suchnasetu.gov.in"
+    """Cooldown limits repeated resend verification requests for unverified accounts."""
+    email = "cooldown@test.suchnasetu.gov.in"
     client.post("/api/auth/register", json={
         "name": "Cooldown User",
         "email": email,
         "password": "Password123#Citizen",
         "confirm_password": "Password123#Citizen"
     })
+    db = get_db()
+    with db.get_connection() as conn:
+        conn.execute("UPDATE users SET is_verified = 0 WHERE email = ?", (email,))
 
-    # Immediate second call must trigger cooldown
+    # First resend
+    client.post("/api/auth/resend-verification", json={"email": email})
+    # Second immediate resend triggers cooldown
     resend_resp = client.post("/api/auth/resend-verification", json={"email": email})
     assert resend_resp.status_code == 429
     assert "wait" in resend_resp.json()["detail"].lower()

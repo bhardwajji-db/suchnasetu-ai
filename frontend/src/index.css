@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --color-primary: #08785D;
   --color-primary-hover: #06664E;
@@ -176,6 +178,7 @@ html[data-theme="dark"] .bg-\[\#F5F8FA\] {
 }
 
 html[data-theme="dark"] .bg-\[\#F8FAFC\],
+html[data-theme="dark"] .bg-\[\#F1F5F9\],
 html[data-theme="dark"] .bg-slate-50,
 html[data-theme="dark"] .bg-slate-100 {
   background-color: #17243A !important;
@@ -353,3 +356,38 @@ html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* =========================================================================
+   Auth Page Seamless Dark/Light Background & Card Theme Integration
+   ========================================================================= */
+.auth-page-root {
+  background-color: #F8FAFC;
+  background-image: radial-gradient(circle at 50% 0%, rgba(8, 120, 93, 0.04) 0%, transparent 60%),
+                    linear-gradient(to bottom right, #F5F8FA, #FFFFFF, rgba(232, 247, 240, 0.3));
+}
+
+.auth-page-root main {
+  background-color: transparent !important;
+}
+
+html[data-theme="dark"] .auth-page-root,
+html[data-theme="dark"] [data-view="auth-page"],
+:root[data-theme="dark"] .auth-page-root {
+  background-color: #0B1220 !important;
+  background-image: radial-gradient(circle at 50% 0%, rgba(20, 184, 166, 0.12) 0%, transparent 60%),
+                    radial-gradient(circle at 90% 90%, rgba(14, 165, 233, 0.06) 0%, transparent 50%),
+                    linear-gradient(to bottom, #070D19, #0B1220, #070D19) !important;
+  color: #E8EEF7 !important;
+}
+
+html[data-theme="dark"] .auth-page-root main {
+  background-color: transparent !important;
+}
+
+html[data-theme="dark"] .auth-page-root .auth-card {
+  background-color: #111C2F !important;
+  border-color: #29384D !important;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.75) !important;
+}
+

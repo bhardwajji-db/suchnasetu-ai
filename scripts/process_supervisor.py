@@ -28,6 +28,12 @@ LOGS_DIR = PROJECT_ROOT / "logs"
 BACKEND_LOG = LOGS_DIR / "backend.log"
 FRONTEND_LOG = LOGS_DIR / "frontend.log"
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(PROJECT_ROOT / ".env")
+except Exception:
+    pass
+
 # Global state for signal/cleanup handling
 supervisor_state: Dict[str, Any] = {
     "backend_proc": None,
@@ -444,9 +450,9 @@ def start_supervisor():
         "--app-dir",
         "src",
         "--host",
-        "0.0.0.0",
+        os.getenv("BACKEND_HOST", os.getenv("HOST", "0.0.0.0")),
         "--port",
-        "8000",
+        os.getenv("BACKEND_PORT", os.getenv("PORT", "8000")),
     ]
     try:
         backend_proc = subprocess.Popen(
@@ -478,8 +484,11 @@ def start_supervisor():
         sys.exit(1)
 
     # Health check backend
+    # Use the lightweight /healthz endpoint (instant 200 OK, no diagnostics) for startup
+    # readiness — avoids the 10-second Ollama network timeout inside /api/health blocking us.
+    time.sleep(2.0)
     backend_ready = False
-    for _ in range(25):
+    for _ in range(60):  # 60 × 0.5s = 30 seconds total
         time.sleep(0.5)
         if backend_proc.poll() is not None:
             exit_code = backend_proc.returncode
@@ -495,14 +504,15 @@ def start_supervisor():
                     pass
             cleanup_launcher_processes()
             sys.exit(1)
-        if check_http_endpoint("http://127.0.0.1:8000/api/health"):
+        # /healthz is a lightweight instant-200 route (no Ollama/DB probes) — safe for startup check
+        if check_http_endpoint("http://127.0.0.1:8000/healthz"):
             backend_ready = True
             supervisor_state["last_health_check"] = "HTTP 200 OK"
             supervisor_state["last_health_time"] = time.time()
             break
 
     if not backend_ready:
-        log("Backend failed health check at /api/health within 12 seconds.")
+        log("Backend failed health check at /healthz within 30 seconds.")
         if BACKEND_LOG.exists():
             log(f"--- Diagnostic Traceback / Output from {BACKEND_LOG} (Last 25 lines) ---")
             try:

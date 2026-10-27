@@ -64,8 +64,8 @@ def test_master_auth_and_user_isolation():
         "password": password,
         "confirm_password": password
     })
-    assert dup.status_code == 200
-    assert "already" in dup.json()["message"].lower() or dup.json().get("already_verified")
+    assert dup.status_code == 400
+    assert "already" in dup.json().get("detail", "").lower()
 
     # 3. Invalid login rejection
     bad_login = client1.post("/api/auth/login", json={
@@ -162,6 +162,15 @@ def test_master_auth_and_user_isolation():
 # 6-15. Comprehensive UI, Responsive Viewports & Interactive Playwright Tests
 # -----------------------------------------------------------------------------
 
+
+def _goto_app(page):
+    page.goto(FRONTEND_URL, wait_until="networkidle")
+    guest_btn = page.locator("button[aria-label='Continue to application as guest'], button:has-text('Continue as Guest')").first
+    if guest_btn.is_visible():
+        guest_btn.click()
+        page.wait_for_timeout(400)
+    page.wait_for_selector("text=PS02", timeout=8000)
+
 def test_master_browser_workflows_and_viewports():
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -183,8 +192,7 @@ def test_master_browser_workflows_and_viewports():
         for vp_name, width, height in viewports:
             ctx = browser.new_context(viewport={"width": width, "height": height})
             page = ctx.new_page()
-            page.goto(FRONTEND_URL, wait_until="networkidle")
-            page.wait_for_selector("text=PS02", timeout=8000)
+            _goto_app(page)
 
             # Check horizontal overflow
             scroll_width = page.evaluate("() => document.documentElement.scrollWidth")
@@ -200,8 +208,7 @@ def test_master_browser_workflows_and_viewports():
         # -----------------------------------------------------------------
         context = browser.new_context(viewport={"width": 1366, "height": 768})
         page = context.new_page()
-        page.goto(FRONTEND_URL, wait_until="networkidle")
-        page.wait_for_selector("text=PS02", timeout=8000)
+        _goto_app(page)
 
         # 1. Verify single unified language selector exists in header
         lang_selector = page.locator("select[aria-label='Select Website Language']")

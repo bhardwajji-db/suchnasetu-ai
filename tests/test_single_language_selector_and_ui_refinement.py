@@ -21,6 +21,15 @@ CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 FRONTEND_URL = "http://localhost:5173"
 
 
+def _goto_app(page):
+    page.goto(FRONTEND_URL, wait_until="networkidle")
+    guest_btn = page.locator("button[aria-label='Continue to application as guest'], button:has-text('Continue as Guest')").first
+    if guest_btn.is_visible():
+        guest_btn.click()
+        page.wait_for_timeout(400)
+    page.wait_for_selector("text=PS02", timeout=8000)
+
+
 def test_single_language_selector_and_persistence():
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -31,8 +40,7 @@ def test_single_language_selector_and_persistence():
         page = context.new_page()
 
         # Step 1: Open app
-        page.goto(FRONTEND_URL, wait_until="networkidle")
-        page.wait_for_selector("text=PS02", timeout=8000)
+        _goto_app(page)
 
         # Step 2: Confirm exactly ONE language selector in header
         header = page.locator("header")
@@ -73,12 +81,16 @@ def test_single_language_selector_and_persistence():
 
         # Step 6: Test persistence across page reload
         page.reload(wait_until="networkidle")
+        guest_btn = page.locator("button[aria-label='Continue to application as guest']")
+        guest_btn.wait_for(state="visible", timeout=8000)
+        guest_btn.click()
+        page.wait_for_timeout(500)
         page.wait_for_selector("text=PS02", timeout=8000)
         reloaded_lang = page.locator("html").get_attribute("lang")
         assert reloaded_lang == "hi", f"Language should remain 'hi' after reload, got '{reloaded_lang}'"
 
         # Step 7: Test Hindi to English switching
-        header.locator("select[aria-label='Select Website Language']").select_option("en")
+        page.locator("header select[aria-label='Select Website Language']").select_option("en")
         page.wait_for_timeout(500)
         restored_lang = page.locator("html").get_attribute("lang")
         assert restored_lang == "en", f"Expected html lang='en', got '{restored_lang}'"
@@ -114,8 +126,7 @@ def test_responsive_viewports_and_no_overflow():
         for name, width, height in viewports:
             ctx = browser.new_context(viewport={"width": width, "height": height})
             page = ctx.new_page()
-            page.goto(FRONTEND_URL, wait_until="networkidle")
-            page.wait_for_selector("text=PS02", timeout=8000)
+            _goto_app(page)
 
             # Check horizontal overflow
             scroll_width = page.evaluate("() => document.documentElement.scrollWidth")
@@ -142,8 +153,7 @@ def test_all_workspace_views_navigation_and_retained_controls():
         context = browser.new_context(viewport={"width": 1366, "height": 850})
         page = context.new_page()
 
-        page.goto(FRONTEND_URL, wait_until="networkidle")
-        page.wait_for_selector("text=PS02", timeout=8000)
+        _goto_app(page)
 
         # Check retained header controls
         header = page.locator("header")

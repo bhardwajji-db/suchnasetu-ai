@@ -32,7 +32,7 @@ def test_e2e_registration_verification_login_and_logout_flow():
     test_password = "SecurePassword@2026!"
     test_name = f"Citizen {unique_id}"
 
-    # 1. Citizen Registration
+    # 1. Citizen Registration (Direct verified registration)
     reg_resp = client.post(
         "/api/auth/register",
         json={
@@ -45,58 +45,15 @@ def test_e2e_registration_verification_login_and_logout_flow():
     assert reg_resp.status_code == 200
     reg_data = reg_resp.json()
     assert reg_data["status"] == "success"
-    assert "verify" in reg_data["message"].lower()
 
-    # Verify user exists in database as unverified
+    # Verify user exists in database as verified citizen
     conn = db.get_connection()
     user_row = conn.execute("SELECT id, email, is_verified FROM users WHERE email = ?", (test_email,)).fetchone()
     assert user_row is not None
-    assert user_row["is_verified"] == 0
+    assert user_row["is_verified"] == 1
     user_id = user_row["id"]
 
-    # Verify auth_token was created with type verify_email_code
-    token_row = conn.execute(
-        "SELECT id, token_hash, attempts, used_at FROM auth_tokens WHERE user_id = ? AND token_type = 'verify_email_code'",
-        (user_id,),
-    ).fetchone()
-    assert token_row is not None
-    assert token_row["used_at"] is None
-
-    # 2. Unverified Citizen Login Attempt -> Must be strictly rejected with HTTP 403
-    unverified_login = client.post(
-        "/api/auth/login",
-        json={"email": test_email, "password": test_password},
-    )
-    assert unverified_login.status_code == 403
-    assert "not verified" in unverified_login.json()["detail"].lower()
-
-    # 3. Email Verification with 6-digit OTP code
-    test_otp = "852963"
-    code_hash = hash_code(test_otp)
-    conn.execute("UPDATE auth_tokens SET token_hash = ? WHERE id = ?", (code_hash, token_row["id"]))
-    conn.commit()
-
-    # Test invalid OTP code first
-    invalid_verify = client.post(
-        "/api/auth/verify-email",
-        json={"email": test_email, "code": "000000"},
-    )
-    assert invalid_verify.status_code == 400
-    assert "invalid" in invalid_verify.json()["detail"].lower()
-
-    # Verify with correct 6-digit code
-    verify_resp = client.post(
-        "/api/auth/verify-email",
-        json={"email": test_email, "code": test_otp},
-    )
-    assert verify_resp.status_code == 200
-    assert verify_resp.json()["status"] == "success"
-
-    # Confirm user is now marked verified in database
-    verified_user = conn.execute("SELECT is_verified FROM users WHERE id = ?", (user_id,)).fetchone()
-    assert verified_user["is_verified"] == 1
-
-    # 4. Verified Citizen Login -> Must succeed and issue HttpOnly session cookie
+    # 2. Verified Citizen Login -> Must succeed and issue HttpOnly session cookie
     login_resp = client.post(
         "/api/auth/login",
         json={"email": test_email, "password": test_password, "remember_me": True},

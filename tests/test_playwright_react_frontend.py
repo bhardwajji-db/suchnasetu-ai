@@ -117,6 +117,15 @@ def is_frontend_running() -> bool:
     return _probe_url(FRONTEND_URL)
 
 
+def _goto_app(page):
+    page.goto(FRONTEND_URL, wait_until="networkidle")
+    guest_btn = page.locator("button:has-text('Continue as Guest')")
+    if guest_btn.is_visible():
+        guest_btn.click()
+        page.wait_for_timeout(400)
+    page.wait_for_selector("text=PS02", timeout=10000)
+
+
 def test_react_frontend_multi_viewport_and_no_overflow():
     """Verifies that the React frontend renders with zero horizontal overflow across 6 viewports."""
     if not is_frontend_running():
@@ -134,7 +143,7 @@ def test_react_frontend_multi_viewport_and_no_overflow():
             context = browser.new_context(viewport={"width": vp["width"], "height": vp["height"]})
             page = context.new_page()
 
-            page.goto(FRONTEND_URL, wait_until="networkidle")
+            _goto_app(page)
             page.wait_for_selector("text=PS02", timeout=10000)
 
             # Assert zero horizontal overflow
@@ -178,7 +187,7 @@ def test_react_frontend_full_workflow_and_tabs():
         page = context.new_page()
 
         # Step 1: Ingestion view
-        page.goto(FRONTEND_URL, wait_until="networkidle")
+        _goto_app(page)
         page.wait_for_selector("text=PS02", timeout=10000)
 
         # Step 2: Load Competition Demo

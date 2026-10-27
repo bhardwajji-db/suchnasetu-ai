@@ -388,7 +388,7 @@ export const Header: React.FC = () => {
         </button>
 
         {/* Single Unified Language Selector */}
-        <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#F8FAFC] border border-[#E1E7EE]">
+        <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg bg-[#F8FAFC] border border-[#E1E7EE]">
           <Globe className="w-3.5 h-3.5 text-[#08785D] shrink-0" />
           <select
             value={selectedLang}
@@ -399,7 +399,7 @@ export const Header: React.FC = () => {
             }}
             aria-label="Select Website Language"
             title="Select Website Language"
-            className="bg-transparent text-[#12233D] text-[11px] sm:text-xs font-bold outline-hidden cursor-pointer"
+            className="bg-transparent text-[#12233D] text-[11px] sm:text-xs font-bold outline-hidden cursor-pointer max-w-[65px] xs:max-w-[95px] sm:max-w-none truncate"
           >
             {LANGUAGE_CODES.map((code) => (
               <option key={code} value={code} className="bg-white text-[#12233D]">
@@ -520,12 +520,13 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={() => openAuthPage('login')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] shadow-2xs transition cursor-pointer"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] shadow-2xs transition cursor-pointer shrink-0"
               aria-label="Sign In or Create Citizen Account"
               title="Sign In to access persistent notices and tasks"
             >
-              <User className="w-3.5 h-3.5" />
-              <span>Sign In</span>
+              <User className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden xs:inline">Sign In</span>
+              <span className="xs:hidden">Login</span>
             </button>
           )}
         </div>

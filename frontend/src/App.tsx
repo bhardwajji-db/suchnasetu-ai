@@ -5,7 +5,7 @@ import { ApplicationLayout } from './components/ApplicationLayout';
 export function App() {
   return (
     <I18nProvider>
-      <NoticeProvider>
+      <NoticeProvider initialTab={99}>
         <ApplicationLayout />
       </NoticeProvider>
     </I18nProvider>

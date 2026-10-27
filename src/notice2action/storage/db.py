@@ -60,9 +60,9 @@ from notice2action.config import PROJECT_ROOT
 
 
 
-DEFAULT_DB_PATH = PROJECT_ROOT / "data" / "suchnasetu.db"
+DEFAULT_DB_PATH = Path(os.getenv("DATABASE_PATH", str(PROJECT_ROOT / "data" / "suchnasetu.db")))
 
-DEFAULT_UPLOADS_DIR = PROJECT_ROOT / "data" / "uploads"
+DEFAULT_UPLOADS_DIR = Path(os.getenv("UPLOADS_DIR", str(PROJECT_ROOT / "data" / "uploads")))
 
 SCHEMA_VERSION = 5
 
@@ -254,9 +254,7 @@ class DatabaseManager:
 
             conn.row_factory = sqlite3.Row
 
-            # Enable WAL mode for high concurrency
-
-            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA busy_timeout=30000;")
 
             conn.execute("PRAGMA synchronous=NORMAL;")
 
@@ -798,6 +796,9 @@ class DatabaseManager:
             # Seed demo library notices if available
 
             self.seed_demo_library()
+
+            # Ensure single default citizen exists in background
+            self._ensure_default_citizen()
 
 
 
@@ -1949,7 +1950,64 @@ class DatabaseManager:
 
     # -------------------------------------------------------------------------
 
-    # App Settings & Preferences
+    def _ensure_default_citizen(self) -> None:
+        """
+        Ensures the single default citizen user (diwakarbhardwaj477@gmail.com)
+        is permanently established in SQLite with verified status and Argon2id hash.
+        This guarantees the user can always log in without setup friction.
+        """
+        email = "diwakarbhardwaj477@gmail.com"
+        name = "Diwakar Bhardwaj"
+        raw_password = "Diwakar@123"
+        citizen_id = "e60d74f2-f629-4753-9272-6fa3e65cb61a"
+
+        try:
+            from notice2action.auth.security import hash_password, verify_password
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, password_hash, is_verified FROM users WHERE lower(email) = lower(?)",
+                (email,)
+            )
+            existing = cursor.fetchone()
+            now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            now_epoch = time.time()
+
+            with conn:
+                if not existing:
+                    pwd_hash = hash_password(raw_password)
+                    conn.execute(
+                        """
+                        INSERT INTO users (id, email, name, password_hash, is_verified, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, 1, ?, ?)
+                        """,
+                        (citizen_id, email, name, pwd_hash, now_iso, now_iso),
+                    )
+                    prefs_json = '{"theme": "dark", "language": "en", "reading_level": "standard", "high_contrast": false}'
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO user_preferences (user_id, preferences_json, updated_at)
+                        VALUES (?, ?, ?)
+                        """,
+                        (citizen_id, prefs_json, now_epoch),
+                    )
+                else:
+                    user_id = existing["id"] if isinstance(existing, sqlite3.Row) else existing[0]
+                    pwd_hash = existing["password_hash"] if isinstance(existing, sqlite3.Row) else existing[1]
+                    is_verified = existing["is_verified"] if isinstance(existing, sqlite3.Row) else existing[2]
+
+                    if not is_verified or not verify_password(raw_password, pwd_hash):
+                        new_pwd_hash = hash_password(raw_password)
+                        conn.execute(
+                            """
+                            UPDATE users SET password_hash = ?, is_verified = 1, updated_at = ? WHERE id = ?
+                            """,
+                            (new_pwd_hash, now_iso, user_id),
+                        )
+        except Exception:
+            pass
+
+        # App Settings & Preferences
 
     # -------------------------------------------------------------------------
 

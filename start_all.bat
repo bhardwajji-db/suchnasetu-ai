@@ -15,3 +15,7 @@ if not exist "%PROJECT_ROOT%.venv\Scripts\python.exe" (
 
 :: 2. Launch through deterministic process supervisor
 "%PROJECT_ROOT%.venv\Scripts\python.exe" scripts\process_supervisor.py %*
+
+
+
+
