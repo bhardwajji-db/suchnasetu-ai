@@ -58,9 +58,36 @@ def get_available_tesseract_languages() -> List[str]:
         return ["eng"]
 
 
+def _score_orientation_candidate(cand_img: Image.Image) -> Tuple[float, int, float]:
+    """
+    Evaluates text orientation candidate quality via fast word-level confidence and count.
+    Used as an empirical fallback when Tesseract OSD fails on short or non-standard documents.
+    """
+    w, h = cand_img.size
+    target_dim = 1200.0
+    if max(w, h) > 1600:
+        scale = target_dim / max(w, h)
+        sample = cand_img.resize((int(w * scale), int(h * scale)), Image.Resampling.BILINEAR)
+    else:
+        sample = cand_img
+
+    try:
+        data = pytesseract.image_to_data(sample, output_type=pytesseract.Output.DATAFRAME)
+        valid = data[(data.conf > 20) & (data.text.astype(str).str.strip().str.len() > 1)]
+        conf_sum = float(valid.conf.sum())
+        word_count = int(len(valid))
+        avg_conf = float(valid.conf.mean()) if word_count > 0 else 0.0
+        return conf_sum, word_count, avg_conf
+    except Exception:
+        return 0.0, 0, 0.0
+
+
 def detect_image_orientation(image: Image.Image) -> Tuple[Image.Image, int]:
     """
-    Detects 90/180/270 degree rotation via Tesseract OSD and rotates upright.
+    Detects 90/180/270 degree rotation via a hybrid pipeline:
+    1. Primary Pass: Tesseract OSD (Orientation and Script Detection) with confidence thresholding.
+    2. Fallback Pass: Directional projection profile analysis to isolate line orientation
+       (0°/180° vs 90°/270°), followed by fast character recognition confidence scoring.
     Returns (corrected_image, degrees_applied).
     """
     if not config.tesseract_cmd or not Path(config.tesseract_cmd).is_file():
@@ -69,8 +96,10 @@ def detect_image_orientation(image: Image.Image) -> Tuple[Image.Image, int]:
     if config.tessdata_dir and Path(config.tessdata_dir).is_dir():
         os.environ["TESSDATA_PREFIX"] = str(Path(config.tessdata_dir).resolve())
 
+    w, h = image.size
+
+    # Step 1: Primary Tesseract OSD pass
     try:
-        w, h = image.size
         osd_img = image
         if max(w, h) > 1600:
             s = 1600.0 / max(w, h)
@@ -78,13 +107,67 @@ def detect_image_orientation(image: Image.Image) -> Tuple[Image.Image, int]:
 
         osd_text = pytesseract.image_to_osd(osd_img)
         rot_match = re.search(r"Rotate:\s*(\d+)", osd_text)
+        conf_match = re.search(r"Orientation confidence:\s*([\d\.]+)", osd_text)
         if rot_match:
             rot = int(rot_match.group(1))
-            if rot in (90, 180, 270):
-                corrected = image.rotate(360 - rot, expand=True)
-                return corrected, rot
+            conf = float(conf_match.group(1)) if conf_match else 0.0
+            if conf >= 2.0 and rot in (0, 90, 180, 270):
+                if rot != 0:
+                    corrected = image.rotate(360 - rot, expand=True)
+                    return corrected, rot
+                return image, 0
     except Exception:
         pass
+
+    # Step 2: Geometric & Empirical Projection Profile Fallback (handles short notices & low text)
+    try:
+        small_scale = min(1.0, 600.0 / max(w, h))
+        small = image.resize((int(w * small_scale), int(h * small_scale)), Image.Resampling.BILINEAR) if small_scale < 1.0 else image
+        arr = np.array(small.convert("L"), dtype=np.float32)
+        mean_val = float(np.mean(arr))
+        thresh = arr < (mean_val - 15)
+        ink_pixels = int(np.sum(thresh))
+
+        # Blank or nearly blank images: do not rotate
+        if ink_pixels < 50:
+            return image, 0
+
+        h_var = float(np.var(np.sum(thresh, axis=1)))
+        v_var = float(np.var(np.sum(thresh, axis=0)))
+
+        # Determine primary text direction: horizontal text lines produce high horizontal projection variance
+        if h_var >= v_var:
+            candidates = [0, 180]
+        else:
+            candidates = [90, 270]
+
+        best_cand = candidates[0]
+        best_score = -1.0
+        scores: dict[int, float] = {}
+
+        for cand in candidates:
+            corr_cand = image.rotate(360 - cand if cand != 0 else 0, expand=True)
+            conf_sum, word_count, _ = _score_orientation_candidate(corr_cand)
+            score = conf_sum * (1.0 + 0.05 * word_count)
+            scores[cand] = score
+            if score > best_score:
+                best_score = score
+                best_cand = cand
+
+        # Conservative safeguard against false rotations on 0° documents:
+        # Require 180° candidate to show >= 25% higher score than 0° and a non-trivial score
+        if 0 in candidates:
+            if scores.get(180, 0.0) > scores.get(0, 0.0) * 1.25 and scores.get(180, 0.0) > 50.0:
+                best_cand = 180
+            else:
+                best_cand = 0
+
+        if best_cand in (90, 180, 270):
+            corrected = image.rotate(360 - best_cand, expand=True)
+            return corrected, best_cand
+    except Exception:
+        pass
+
     return image, 0
 
 
