@@ -27,6 +27,9 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 LOGS_DIR = PROJECT_ROOT / "logs"
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -36,14 +39,24 @@ TUNNEL_LOG = LOGS_DIR / "cloudflared.log"
 URL_FILE = LOGS_DIR / "active_tunnel_url.txt"
 PID_FILE = PROJECT_ROOT / ".deploy_pids.json"
 
-from scripts.launch_tunnel import (
-    URL_PATTERN,
-    update_env_file as sync_env_origins,
-    get_configured_named_tunnel_token,
-    is_port_open as is_port_listening,
-    wait_for_server as poll_http_ready,
-    get_cloudflared_path,
-)
+try:
+    from scripts.launch_tunnel import (
+        URL_PATTERN,
+        update_env_file as sync_env_origins,
+        get_configured_named_tunnel_token,
+        is_port_open as is_port_listening,
+        wait_for_server as poll_http_ready,
+        get_cloudflared_path,
+    )
+except ImportError:
+    from launch_tunnel import (
+        URL_PATTERN,
+        update_env_file as sync_env_origins,
+        get_configured_named_tunnel_token,
+        is_port_open as is_port_listening,
+        wait_for_server as poll_http_ready,
+        get_cloudflared_path,
+    )
 
 
 def log_step(status: str, message: str):
