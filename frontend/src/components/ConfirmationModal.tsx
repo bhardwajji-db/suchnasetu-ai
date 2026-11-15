@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { useTranslation } from '../i18n';
-import { ShieldAlert, Quote, Check, X, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, Quote, Check, X, AlertTriangle, Eye } from 'lucide-react';
 
 interface DialogProps {
   fieldName: string;
@@ -19,6 +19,7 @@ const ConfirmationModalDialog: React.FC<DialogProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation();
+  const { openReviewHighlight } = useNotice();
   const [correctedValue, setCorrectedValue] = useState<string>(
     fact.confirmed_value || fact.value || ''
   );
@@ -112,9 +113,20 @@ const ConfirmationModalDialog: React.FC<DialogProps> = ({
           {/* Evidence Quote */}
           {fact.evidence_quote && (
             <div className="space-y-1">
-              <span className="font-semibold text-[#68778B] uppercase tracking-wider text-[10px] flex items-center gap-1">
-                <Quote className="w-3 h-3 text-[#08785D]" /> Grounded Evidence Quote:
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-[#68778B] uppercase tracking-wider text-[10px] flex items-center gap-1">
+                  <Quote className="w-3 h-3 text-[#08785D]" /> Grounded Evidence Quote:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => openReviewHighlight(fieldName, displayName, fact)}
+                  data-testid="confirm-modal-locate-in-notice"
+                  className="text-[10px] font-bold text-[#08785D] hover:underline flex items-center gap-1 cursor-pointer"
+                  title="Locate and highlight in original notice with red underline"
+                >
+                  <Eye className="w-3 h-3" /> Locate in Notice
+                </button>
+              </div>
               <div className="p-3 rounded-xl bg-[#F8FAFC] border-l-3 border-[#08785D] text-[#526176] font-mono italic">
                 "{fact.evidence_quote}"
               </div>

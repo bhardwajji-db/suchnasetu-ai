@@ -1,20 +1,7 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
-import { DashboardView } from '../views/DashboardView';
-import { IngestionView } from '../views/IngestionView';
-import { GroundedFactsView } from '../views/GroundedFactsView';
-import { SummaryActionsView } from '../views/SummaryActionsView';
-import { RevisionLedgerView } from '../views/RevisionLedgerView';
-import { EligibilityEngineView } from '../views/EligibilityEngineView';
-import { FollowUpQAView } from '../views/FollowUpQAView';
-import { PersonalizedActionNavigatorView } from '../views/PersonalizedActionNavigatorView';
-import { CrossNoticeTimelineView } from '../views/CrossNoticeTimelineView';
-import { NoticeHistoryView } from '../views/NoticeHistoryView';
-import { SettingsView } from '../views/SettingsView';
-import { DemoLibraryView } from '../views/DemoLibraryView';
-import { AuthPageView } from '../views/AuthPageView';
 import { ErrorBoundary } from './ErrorBoundary';
 import { AnalysisProgressModal } from './AnalysisProgressModal';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -22,6 +9,29 @@ import { OriginalNoticeViewerModal } from './OriginalNoticeViewerModal';
 import { EvidenceInspectorDrawer } from './EvidenceInspectorDrawer';
 import { VoiceGuidanceBar } from './VoiceGuidanceBar';
 import { MobileBottomNav } from './MobileBottomNav';
+
+import { AuthPageView } from '../views/AuthPageView';
+
+// Code-split dynamic view imports to eliminate monolithic bundle
+const DashboardView = lazy(() => import('../views/DashboardView').then(m => ({ default: m.DashboardView })));
+const IngestionView = lazy(() => import('../views/IngestionView').then(m => ({ default: m.IngestionView })));
+const GroundedFactsView = lazy(() => import('../views/GroundedFactsView').then(m => ({ default: m.GroundedFactsView })));
+const SummaryActionsView = lazy(() => import('../views/SummaryActionsView').then(m => ({ default: m.SummaryActionsView })));
+const RevisionLedgerView = lazy(() => import('../views/RevisionLedgerView').then(m => ({ default: m.RevisionLedgerView })));
+const EligibilityEngineView = lazy(() => import('../views/EligibilityEngineView').then(m => ({ default: m.EligibilityEngineView })));
+const FollowUpQAView = lazy(() => import('../views/FollowUpQAView').then(m => ({ default: m.FollowUpQAView })));
+const PersonalizedActionNavigatorView = lazy(() => import('../views/PersonalizedActionNavigatorView').then(m => ({ default: m.PersonalizedActionNavigatorView })));
+const CrossNoticeTimelineView = lazy(() => import('../views/CrossNoticeTimelineView').then(m => ({ default: m.CrossNoticeTimelineView })));
+const NoticeHistoryView = lazy(() => import('../views/NoticeHistoryView').then(m => ({ default: m.NoticeHistoryView })));
+const SettingsView = lazy(() => import('../views/SettingsView').then(m => ({ default: m.SettingsView })));
+const DemoLibraryView = lazy(() => import('../views/DemoLibraryView').then(m => ({ default: m.DemoLibraryView })));
+
+const ViewLoadingFallback: React.FC = () => (
+  <div className="flex flex-col items-center justify-center p-12 min-h-[360px] space-y-3" role="status" aria-label="Loading view">
+    <div className="w-8 h-8 border-3 border-[#08785D] border-t-transparent rounded-full animate-spin" />
+    <span className="text-xs font-semibold text-[#526176]">Loading view...</span>
+  </div>
+);
 
 export const ApplicationLayout: React.FC = () => {
   const { activeTab, setActiveTab, authPageMode, accessibilityPrefs, theme } = useNotice();
@@ -92,7 +102,9 @@ export const ApplicationLayout: React.FC = () => {
         <Sidebar />
         <main className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-8 max-w-7xl mx-auto w-full min-w-0">
           <ErrorBoundary key={activeTab}>
-            {renderActiveView()}
+            <Suspense fallback={<ViewLoadingFallback />}>
+              {renderActiveView()}
+            </Suspense>
           </ErrorBoundary>
         </main>
       </div>

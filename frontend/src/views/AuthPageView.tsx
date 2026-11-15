@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { useTranslation, SUPPORTED_LANGUAGES, type LanguageCode } from '../i18n';
-import { loginAccount, registerAccount } from '../services/api';
+import { loginAccount, registerAccount } from '../services/apiClient';
 import { BrandLogo } from '../components/BrandLogo';
 import {
   Mail,

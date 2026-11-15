@@ -2,7 +2,7 @@ import React from 'react';
 import type { ExtractedFact } from '../types/api';
 import { useNotice } from '../context/NoticeContext';
 import { useTranslation } from '../i18n';
-import { Quote, AlertCircle, CheckCircle, Check, Edit3 } from 'lucide-react';
+import { Quote, AlertCircle, CheckCircle, Check, Edit3, Eye } from 'lucide-react';
 
 interface FactCardProps {
   fact: ExtractedFact;
@@ -11,7 +11,7 @@ interface FactCardProps {
 }
 
 export const FactCard: React.FC<FactCardProps> = ({ fact, fieldName, displayName }) => {
-  const { openConfirmationModal } = useNotice();
+  const { openConfirmationModal, openReviewHighlight } = useNotice();
   const { t } = useTranslation();
 
   const getStatusBadge = () => {
@@ -94,13 +94,18 @@ export const FactCard: React.FC<FactCardProps> = ({ fact, fieldName, displayName
 
         {/* Verbatim Evidence Quote (Preserved in Original Source Language) */}
         {fact.evidence_quote && (
-          <div className="mt-2.5 p-3 rounded-lg bg-[#F8FAFC] border-l-3 border-[#08785D] text-xs text-[#526176] font-mono italic leading-relaxed">
+          <div
+            onClick={() => openReviewHighlight(fieldName, displayName, fact)}
+            data-testid={`quote-highlight-${fieldName}`}
+            className="mt-2.5 p-3 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] border-l-3 border-[#08785D] text-xs text-[#526176] font-mono italic leading-relaxed cursor-pointer transition group"
+            title="Click to view and highlight with red underline in original notice"
+          >
             <div className="flex items-center justify-between text-[#08785D] font-sans font-bold text-[10px] uppercase mb-1">
               <span className="flex items-center gap-1">
                 <Quote className="w-3 h-3" /> {t('groundedEvidenceQuote')}
               </span>
-              <span className="text-[9px] font-medium text-[#68778B] lowercase px-1.5 py-0.5 bg-slate-200/70 rounded">
-                original source quotation
+              <span className="text-[9px] font-medium text-[#08785D] group-hover:underline flex items-center gap-1">
+                <Eye className="w-2.5 h-2.5" /> review in notice
               </span>
             </div>
             "{fact.evidence_quote}"
@@ -116,46 +121,79 @@ export const FactCard: React.FC<FactCardProps> = ({ fact, fieldName, displayName
         )}
       </div>
 
-      {/* Confirmation Actions */}
-      <div className="mt-4 pt-3 border-t border-[#E1E7EE] flex items-center justify-between">
+      {/* Confirmation & Review Actions */}
+      <div className="mt-4 pt-3 border-t border-[#E1E7EE] flex items-center justify-between gap-2 flex-wrap">
         {fact.requires_confirmation && !fact.user_confirmed ? (
           <>
             <span className="text-xs text-[#92500A] font-medium">
               ⚠️ {t('needsReviewBeforeAction')}
             </span>
-            <button
-              type="button"
-              onClick={() => openConfirmationModal(fieldName, displayName, fact)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs cursor-pointer"
-            >
-              <CheckCircle className="w-3.5 h-3.5" /> {t('reviewConfirmDetail')}
-            </button>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => openReviewHighlight(fieldName, displayName, fact)}
+                data-testid={`review-btn-${fieldName}`}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-[#92500A] bg-[#FFF4D6] hover:bg-[#FDE68A] border border-[#FDE68A] transition shadow-xs cursor-pointer"
+                title={`Review and highlight ${displayName} in original notice`}
+              >
+                <Eye className="w-3.5 h-3.5" /> Review
+              </button>
+              <button
+                type="button"
+                onClick={() => openConfirmationModal(fieldName, displayName, fact)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#08785D] hover:bg-[#06664E] transition shadow-xs cursor-pointer"
+              >
+                <CheckCircle className="w-3.5 h-3.5" /> {t('reviewConfirmDetail')}
+              </button>
+            </div>
           </>
         ) : fact.user_confirmed ? (
           <>
             <span className="text-[11px] text-[#08785D] font-medium flex items-center gap-1">
               <Check className="w-3 h-3" /> {t('verifiedByUser')}
             </span>
-            <button
-              type="button"
-              onClick={() => openConfirmationModal(fieldName, displayName, fact)}
-              className="flex items-center gap-1 text-xs text-[#526176] hover:text-[#08785D] transition cursor-pointer"
-            >
-              <Edit3 className="w-3 h-3" /> {t('editBtn')}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => openReviewHighlight(fieldName, displayName, fact)}
+                data-testid={`review-btn-${fieldName}`}
+                className="flex items-center gap-1 text-xs text-[#526176] hover:text-[#08785D] transition cursor-pointer"
+                title={`Review ${displayName} in original notice`}
+              >
+                <Eye className="w-3.5 h-3.5" /> Review
+              </button>
+              <button
+                type="button"
+                onClick={() => openConfirmationModal(fieldName, displayName, fact)}
+                className="flex items-center gap-1 text-xs text-[#526176] hover:text-[#08785D] transition cursor-pointer"
+              >
+                <Edit3 className="w-3 h-3" /> {t('editBtn')}
+              </button>
+            </div>
           </>
         ) : (
           <>
             <span className="text-[11px] text-[#68778B]">
               {t('verifiedGroundTruth')}
             </span>
-            <button
-              type="button"
-              onClick={() => openConfirmationModal(fieldName, displayName, fact)}
-              className="text-xs text-[#526176] hover:text-[#08785D] transition cursor-pointer"
-            >
-              {t('verifyEditBtn')}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => openReviewHighlight(fieldName, displayName, fact)}
+                data-testid={`review-btn-${fieldName}`}
+                className="flex items-center gap-1 text-xs text-[#526176] hover:text-[#08785D] transition cursor-pointer"
+                title={`Review ${displayName} in original notice`}
+              >
+                <Eye className="w-3.5 h-3.5" /> Review
+              </button>
+              <button
+                type="button"
+                onClick={() => openConfirmationModal(fieldName, displayName, fact)}
+                className="text-xs text-[#526176] hover:text-[#08785D] transition cursor-pointer"
+              >
+                {t('verifyEditBtn')}
+              </button>
+            </div>
           </>
         )}
       </div>

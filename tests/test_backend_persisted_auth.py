@@ -25,12 +25,19 @@ from notice2action.storage.db import get_db, DatabaseManager, DEFAULT_DB_PATH
 from notice2action.auth.security import verify_password
 from notice2action.config import config
 
-client = TestClient(app)
+def make_client(**kwargs):
+    headers = {"Origin": "http://testserver"}
+    if "headers" in kwargs:
+        headers.update(kwargs.pop("headers"))
+    return TestClient(app, base_url="http://testserver", headers=headers, **kwargs)
+
+client = make_client()
 
 
 @pytest.fixture(scope="function", autouse=True)
 def clean_test_users():
     """Ensure test users and sessions are clean before and after tests."""
+    client.cookies.clear()
     db = get_db()
     with db.get_connection() as conn:
         conn.execute("DELETE FROM users WHERE email LIKE '%@no-otp.test.suchnasetu.gov.in'")
@@ -104,7 +111,7 @@ def test_03_valid_login_same_credentials():
         "password": password
     })
 
-    login_client = TestClient(app)
+    login_client = make_client()
     resp = login_client.post("/api/auth/login", json={
         "email": email,
         "password": password
@@ -149,7 +156,7 @@ def test_06_session_restoration_after_refresh():
     """6. Session restoration after browser refresh via /api/auth/me."""
     email = "session-user@no-otp.test.suchnasetu.gov.in"
     password = "SessionPassword2026#"
-    session_client = TestClient(app)
+    session_client = make_client()
 
     reg_resp = session_client.post("/api/auth/register", json={
         "username": "session_user",
@@ -171,7 +178,7 @@ def test_07_logout_and_subsequent_access_denial():
     """7. Logout invalidates the server session and subsequently denies access."""
     email = "logout-user@no-otp.test.suchnasetu.gov.in"
     password = "LogoutPassword2026#"
-    auth_client = TestClient(app)
+    auth_client = make_client()
 
     reg_resp = auth_client.post("/api/auth/register", json={
         "username": "logout_user",
@@ -210,7 +217,7 @@ def test_08_persistence_after_backend_restart():
         assert row["name"] == "restart_user"
 
     # Verify user can log in after simulated restart
-    new_client = TestClient(app)
+    new_client = make_client()
     login_resp = new_client.post("/api/auth/login", json={
         "email": email,
         "password": password
@@ -221,8 +228,8 @@ def test_08_persistence_after_backend_restart():
 
 def test_09_access_isolation_between_two_users():
     """9. Strict access isolation: User A cannot view User B's saved notices."""
-    user_a_client = TestClient(app)
-    user_b_client = TestClient(app)
+    user_a_client = make_client()
+    user_b_client = make_client()
 
     user_a_client.post("/api/auth/register", json={
         "username": "user_alpha",
@@ -259,7 +266,7 @@ def test_10_save_retrieve_notice_across_logout_relogin():
     """10. Notice saved by authenticated user is retrieved intact after logout and re-login."""
     email = "lifecycle-notice@no-otp.test.suchnasetu.gov.in"
     password = "LifecyclePass2026#"
-    user_client = TestClient(app)
+    user_client = make_client()
 
     user_client.post("/api/auth/register", json={
         "username": "lifecycle_user",
@@ -280,7 +287,7 @@ def test_10_save_retrieve_notice_across_logout_relogin():
     user_client.post("/api/auth/logout")
 
     # Re-login with fresh client instance
-    fresh_client = TestClient(app)
+    fresh_client = make_client()
     login_resp = fresh_client.post("/api/auth/login", json={
         "email": email,
         "password": password
@@ -297,7 +304,7 @@ def test_11_checklist_and_notification_persistence():
     """11. Checklist items and notifications persist for authenticated user."""
     email = "checklist-user@no-otp.test.suchnasetu.gov.in"
     password = "ChecklistPass2026#"
-    user_client = TestClient(app)
+    user_client = make_client()
 
     user_client.post("/api/auth/register", json={
         "username": "checklist_citizen",
@@ -325,7 +332,7 @@ def test_11_checklist_and_notification_persistence():
 
 def test_12_guest_workflows_work_independently():
     """12. Guest mode workflows remain operational without registration."""
-    guest_client = TestClient(app)
+    guest_client = make_client()
     # Guest status check
     status_resp = guest_client.get("/api/auth/guest-status")
     assert status_resp.status_code == 200

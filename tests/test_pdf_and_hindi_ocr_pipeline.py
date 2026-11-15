@@ -162,9 +162,10 @@ def test_07_tesseract_hindi_ocr_support():
     assert "hin" in langs, f"Hindi traineddata should be discovered in assets/tessdata (found: {langs})"
 
     # Render a clear bilingual notice image
-    img = Image.new("RGB", (500, 100), color="white")
+    img = Image.new("RGB", (1000, 200), color="white")
     d = ImageDraw.Draw(img)
-    d.text((15, 35), "SCHOLARSHIP NOTICE 2026", fill="black")
+    d.text((40, 70), "SCHOLARSHIP NOTICE 2026", fill="black")
+    img = img.resize((2000, 400), Image.Resampling.NEAREST)
 
     res = extract_text_from_image(img, target_lang="hin")
     assert res.error is None
@@ -276,4 +277,46 @@ def test_09_ingest_upload_endpoint_pdf():
     assert "higher_ed_notice.pdf" in data["filename"]
     assert "30 November 2026" in data["raw_text"]
     assert data["char_count"] > 20
+
+
+# 10. RapidOCR ONNX integration and word box generation
+def test_10_rapidocr_engine_execution_and_word_boxes():
+    from notice2action.ocr import get_ocr_engine, RapidOCREngine
+
+    img = Image.new("RGB", (600, 150), color=(255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    draw.text((20, 30), "SCHOLARSHIP NOTICE 2026", fill=(0, 0, 0))
+    draw.text((20, 80), "Date: 15/11/2026 Amount: Rs. 50,000", fill=(0, 0, 0))
+
+    engine = get_ocr_engine("rapidocr")
+    assert isinstance(engine, RapidOCREngine)
+    res = engine.extract_text(img)
+
+    assert res.engine_used == "rapidocr"
+    assert "SCHOLARSHIP" in res.extracted_text
+    assert res.confidence_score > 0.0
+    assert len(res.word_boxes) > 0
+    assert res.image_dimensions == [600, 150]
+    first_box = res.word_boxes[0]
+    assert "box" in first_box and len(first_box["box"]) == 4
+    assert first_box["confidence"] > 0.0
+
+
+# 11. Intra-numeral and intra-date whitespace normalization
+def test_11_intra_numeral_space_normalization():
+    from notice2action.ocr import normalize_intra_numeral_spaces, repair_common_ocr_artifacts
+
+    cases = [
+        ("The deadline is 15/1 1/2026.", "The deadline is 15/11/2026."),
+        ("Scheduled on 15 / 11 / 2026 at 10 : 30 AM.", "Scheduled on 15/11/2026 at 10:30 AM."),
+        ("Grant of Rs. 50, 000 with 80 % attendance.", "Grant of Rs. 50,000 with 80% attendance."),
+        ("₹ 25, 000 disbursed on 01-1 2-2026.", "₹ 25,000 disbursed on 01-12-2026."),
+    ]
+    for raw, expected in cases:
+        normalized = normalize_intra_numeral_spaces(raw)
+        assert normalized == expected, f"Expected {expected!r}, got {normalized!r}"
+
+    repaired = repair_common_ocr_artifacts("Date: 15/1 1/2026 Amount: Rs. 50, 000")
+    assert "15/11/2026" in repaired
+    assert "Rs. 50,000" in repaired
 

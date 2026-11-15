@@ -1,0 +1,82 @@
+{
+  "doc_id": "DOC-03",
+  "filename": "DOC-03_low_resolution_scan.png",
+  "category": "Low-resolution scan",
+  "hash_sha256": "e6c897321798260902d055b5a7af91466c90d68b25f4ba6b5117592147baf126",
+  "file_size_bytes": 132715,
+  "ocr_metrics": {
+    "cer": 1.0,
+    "wer": 1.0,
+    "duration_seconds": 1.0625746250152588,
+    "confidence": 95.1,
+    "critical_preserved": 4,
+    "critical_total": 4
+  },
+  "ai_metrics": {
+    "duration_seconds": 103.65833401679993,
+    "error": null
+  },
+  "field_evaluations": [
+    {
+      "field": "issuing_authority",
+      "expected_value": "STAFF SELECTION COMMISSION",
+      "expected_status": "PRESENT",
+      "source_quote": "STAFF SELECTION COMMISSION",
+      "ocr_preserved": true,
+      "ai_value": "STAFF SELECTION COMMISSION",
+      "ai_status": "stated",
+      "ai_quote": "STAFF SELECTION COMMISSION",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "final_deadline",
+      "expected_value": "25 April 2026",
+      "expected_status": "PRESENT",
+      "source_quote": "Closing Date for Online Applications: 25 April 2026",
+      "ocr_preserved": true,
+      "ai_value": "25 April 2026",
+      "ai_status": "stated",
+      "ai_quote": "Closing Date for Online Applications: 25 April 2026.",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "application_fee",
+      "expected_value": "Rs. 100",
+      "expected_status": "PRESENT",
+      "source_quote": "Application Fee: Rs. 100",
+      "ocr_preserved": true,
+      "ai_value": "Rs. 100 (Exempted for Women and SC/ST candidates).",
+      "ai_status": "stated",
+      "ai_quote": "Application Fee: Rs. 100 (Exempted for Women and SC/ST candidates).",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "eligibility_percentage",
+      "expected_value": "55%",
+      "expected_status": "PRESENT",
+      "source_quote": "minimum 55% marks",
+      "ocr_preserved": true,
+      "ai_value": "Candidates must hold a recognized University Degree with minimum 55% marks and be between 18 and 30 years of age on 01 January 2026.",
+      "ai_status": "uncertain",
+      "ai_quote": "1. Eligible candidates holding a recognized University Degree with minimum 55% marks may apply. ... 2. Candidates must be between 18 and 30 years of age on 01 January 2026.",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "official_portal_url",
+      "expected_value": "https://ssc.gov.in/portal",
+      "expected_status": "PRESENT",
+      "source_quote": "https://ssc.gov.in/portal",
+      "ocr_preserved": true,
+      "ai_value": "Apply online.",
+      "ai_status": "stated",
+      "ai_quote": "Closing Date for Online Applications: 25 April 2026.",
+      "verdict": "FAIL",
+      "root_cause": "AI extraction missed or formatted differently"
+    }
+  ],
+  "downstream_evaluations": {}
+}

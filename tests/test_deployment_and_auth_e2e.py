@@ -21,7 +21,7 @@ from notice2action.storage.db import get_db
 from notice2action.auth.auth_service import auth_service
 from notice2action.auth.security import hash_token, hash_code
 
-client = TestClient(app)
+client = TestClient(app, base_url="http://localhost:5173", headers={"Origin": "http://localhost:5173"})
 
 
 def test_e2e_registration_verification_login_and_logout_flow():

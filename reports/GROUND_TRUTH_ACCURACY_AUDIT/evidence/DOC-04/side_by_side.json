@@ -1,0 +1,70 @@
+{
+  "doc_id": "DOC-04",
+  "filename": "DOC-04_skewed_scan.png",
+  "category": "Slightly rotated or skewed scan",
+  "hash_sha256": "6db72b02408e285c91926ac53ee964e143e2bba7928646cf9a3cc2cf770ecbe9",
+  "file_size_bytes": 341386,
+  "ocr_metrics": {
+    "cer": 1.0,
+    "wer": 1.0,
+    "duration_seconds": 1.7050635814666748,
+    "confidence": 92.3,
+    "critical_preserved": 3,
+    "critical_total": 3
+  },
+  "ai_metrics": {
+    "duration_seconds": 102.19236421585083,
+    "error": null
+  },
+  "field_evaluations": [
+    {
+      "field": "issuing_authority",
+      "expected_value": "Ministry of Education, Government of India",
+      "expected_status": "PRESENT",
+      "source_quote": "Ministry of Education",
+      "ocr_preserved": true,
+      "ai_value": "Ministry of Education, Government of India",
+      "ai_status": "stated",
+      "ai_quote": "Ministry of Education, Government of India",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "final_deadline",
+      "expected_value": "31 March 2026",
+      "expected_status": "PRESENT",
+      "source_quote": "31 March 2026",
+      "ocr_preserved": true,
+      "ai_value": "31 March 2026, 11:59 PM IST",
+      "ai_status": "stated",
+      "ai_quote": "Final Submission Deadline: 31 March 2026, 11:59 PM IST",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "application_fee",
+      "expected_value": "Rs. 500",
+      "expected_status": "PRESENT",
+      "source_quote": "Rs. 500",
+      "ocr_preserved": true,
+      "ai_value": "Rs. 500 for General and OBC candidates; Nil for SC, ST, and Female applicants.",
+      "ai_status": "uncertain",
+      "ai_quote": "Application Fee: Rs. 500 for General and OBC candidates. Fee is fully exempted (Nil) for SC, ST, and Female applicants.",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "official_portal_url",
+      "expected_value": "https://scholarships.gov.in/apply2026",
+      "expected_status": "PRESENT",
+      "source_quote": "https://scholarships.gov.in/apply2026",
+      "ocr_preserved": true,
+      "ai_value": "Online Registration (starting 20 January 2026); Submission of mandatory documents.",
+      "ai_status": "uncertain",
+      "ai_quote": "Online Registration Opens: 20 January 2026... Final Submission Deadline: 31 March 2026, 11:59 PM IST",
+      "verdict": "PASS",
+      "root_cause": null
+    }
+  ],
+  "downstream_evaluations": {}
+}

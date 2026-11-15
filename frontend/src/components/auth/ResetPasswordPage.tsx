@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AuthLayout } from './AuthLayout';
-import { completePasswordReset } from '../../services/api';
+import { completePasswordReset } from '../../services/apiClient';
 import { useTranslation } from '../../i18n';
 import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, Mail, KeyRound, LogIn } from 'lucide-react';
 

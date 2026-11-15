@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AuthLayout } from './AuthLayout';
-import { registerAccount } from '../../services/api';
+import { registerAccount } from '../../services/apiClient';
 import type { UserProfile, AuthPageView } from '../../types/api';
 import { useTranslation } from '../../i18n';
 import { User, Mail, Lock, Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';

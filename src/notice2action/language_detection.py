@@ -9,7 +9,9 @@ mr (Marathi), gu (Gujarati), pa (Punjabi), kn (Kannada), ur (Urdu).
 from __future__ import annotations
 
 import re
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 
@@ -199,3 +201,150 @@ def detect_document_language(text: Optional[str]) -> LanguageDetectionResult:
         secondary_languages=secondary_langs,
         uncertainty_warning=warning,
     )
+
+
+def get_ocr_language_for_detection(detection: LanguageDetectionResult) -> str:
+    """
+    Maps a LanguageDetectionResult to the optimal OCR engine language parameter.
+    e.g. en -> 'eng', hi -> 'hin', mixed/bilingual -> 'hin+eng'
+    """
+    if detection.is_mixed:
+        return "hin+eng"
+    lang = detection.detected_language
+    if lang == "en":
+        return "eng"
+    if lang in ("hi", "mr"):
+        if detection.script_distribution.get("en", 0.0) >= 0.10:
+            return "hin+eng"
+        return "hin"
+    lang_map = {
+        "bn": "ben",
+        "gu": "guj",
+        "pa": "pan",
+        "ta": "tam",
+        "te": "tel",
+        "kn": "kan",
+        "ur": "urd",
+    }
+    return lang_map.get(lang, "hin+eng")
+
+
+def detect_image_language(image) -> LanguageDetectionResult:
+    """
+    Intelligently detects natural language directly from an image or scanned document.
+    Executes a fast script & character analysis pass:
+    1. Tesseract OSD script detection (Orientation and Script Detection).
+    2. Fast text sampling via bilingual OCR or RapidOCR.
+    3. Character block distribution and lexical analysis across 10 languages.
+    """
+    from PIL import Image as PILImage
+    import pytesseract
+    import numpy as np
+    from notice2action.config import config
+
+    if not config.tesseract_cmd or not Path(config.tesseract_cmd).is_file():
+        meta = LANGUAGE_REGISTRY["en"]
+        return LanguageDetectionResult(
+            detected_language="en",
+            language_name=meta.name,
+            native_name=meta.native_name,
+            confidence=0.5,
+            script="Latin",
+            is_mixed=False,
+            script_distribution={"en": 1.0},
+            uncertainty_warning="OCR binary unavailable; defaulted to English.",
+        )
+
+    pytesseract.pytesseract.tesseract_cmd = config.tesseract_cmd
+    if config.tessdata_dir and Path(config.tessdata_dir).is_dir():
+        os.environ["TESSDATA_PREFIX"] = str(Path(config.tessdata_dir).resolve())
+
+    # 1. Quick OSD check for script classification
+    osd_script = None
+    try:
+        w, h = image.size
+        scale = min(1.0, 1000.0 / max(w, h))
+        osd_img = image.resize((int(w * scale), int(h * scale)), PILImage.Resampling.BILINEAR) if scale < 1.0 else image
+        osd_text = pytesseract.image_to_osd(osd_img)
+        sm = re.search(r"Script:\s*([A-Za-z]+)", osd_text)
+        if sm:
+            osd_script = sm.group(1).lower()
+    except Exception:
+        pass
+
+    # 2. Fast sampling text extraction
+    sample_text = ""
+    # If OSD detected Devanagari, prioritize Tesseract hin+eng because standard RapidOCR
+    # is trained on Latin/Chinese and will misclassify Devanagari by only reading English headings.
+    if osd_script == "devanagari":
+        try:
+            w, h = image.size
+            scale = min(1.0, 1400.0 / max(w, h))
+            sample_img = image.resize((int(w * scale), int(h * scale)), PILImage.Resampling.BILINEAR) if scale < 1.0 else image
+            sample_text = pytesseract.image_to_string(sample_img, lang="hin+eng")
+        except Exception:
+            pass
+
+    if not sample_text:
+        try:
+            from rapidocr_onnxruntime import RapidOCR
+            engine = RapidOCR()
+            res, _ = engine(np.array(image))
+            if res:
+                sample_text = " ".join(item[1] for item in res)
+        except Exception:
+            pass
+
+    if not sample_text or len(sample_text.strip()) < 30:
+        try:
+            w, h = image.size
+            scale = min(1.0, 1400.0 / max(w, h))
+            sample_img = image.resize((int(w * scale), int(h * scale)), PILImage.Resampling.BILINEAR) if scale < 1.0 else image
+            sample_text = pytesseract.image_to_string(sample_img, lang="hin+eng")
+        except Exception:
+            pass
+
+    # 3. Analyze sample text distribution
+    if sample_text and sample_text.strip():
+        det = detect_document_language(sample_text)
+        if osd_script == "devanagari" and det.detected_language == "en":
+            det.detected_language = "hi"
+            det.is_mixed = True
+        return det
+
+    # 4. If text extraction produced no characters, fall back to OSD script or English
+    if osd_script == "devanagari":
+        meta = LANGUAGE_REGISTRY["hi"]
+        return LanguageDetectionResult(
+            detected_language="hi",
+            language_name=meta.name,
+            native_name=meta.native_name,
+            confidence=0.75,
+            script="Devanagari",
+            is_mixed=False,
+            script_distribution={"devanagari": 1.0},
+        )
+    elif osd_script == "latin":
+        meta = LANGUAGE_REGISTRY["en"]
+        return LanguageDetectionResult(
+            detected_language="en",
+            language_name=meta.name,
+            native_name=meta.native_name,
+            confidence=0.85,
+            script="Latin",
+            is_mixed=False,
+            script_distribution={"en": 1.0},
+        )
+
+    meta = LANGUAGE_REGISTRY["en"]
+    return LanguageDetectionResult(
+        detected_language="en",
+        language_name=meta.name,
+        native_name=meta.native_name,
+        confidence=0.40,
+        script="Latin",
+        is_mixed=False,
+        script_distribution={"en": 1.0},
+        uncertainty_warning="Low document content detected. Defaulted to English with manual override enabled.",
+    )
+

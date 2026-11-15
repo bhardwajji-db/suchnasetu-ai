@@ -1,0 +1,161 @@
+{
+  "test_1_language_detection": [
+    {
+      "label": "IIMT Notice (English)",
+      "detected_language": "en",
+      "expected_language": "en",
+      "confidence": 1.0,
+      "selected_ocr_mode": "eng",
+      "is_mixed": false,
+      "passed": true
+    },
+    {
+      "label": "Gazette 2017 (Hindi/Bilingual)",
+      "detected_language": "hi",
+      "expected_language": "hi",
+      "confidence": 0.8515358361774744,
+      "selected_ocr_mode": "hin+eng",
+      "is_mixed": false,
+      "passed": true
+    },
+    {
+      "label": "Synthetic Scholarship (English)",
+      "detected_language": "en",
+      "expected_language": "en",
+      "confidence": 1.0,
+      "selected_ocr_mode": "eng",
+      "is_mixed": false,
+      "passed": true
+    }
+  ],
+  "test_2_pdf_extraction": {
+    "digital_pdf": {
+      "passed": true,
+      "source_type": "pdf",
+      "chars": 137
+    },
+    "scanned_pdf": {
+      "passed": true,
+      "source_type": "pdf",
+      "chars": 134
+    }
+  },
+  "test_3_accuracy_benchmarks": {
+    "synthetic_scholarship": {
+      "tesseract": {
+        "cer": 0.0069,
+        "wer": 0.0606,
+        "char_accuracy_pct": 99.31
+      },
+      "rapidocr": {
+        "cer": 0.0222,
+        "wer": 0.2424,
+        "char_accuracy_pct": 97.78
+      }
+    },
+    "gazette_2017": {
+      "tesseract": {
+        "cer": 0.0275,
+        "wer": 0.0707,
+        "char_accuracy_pct": 97.25
+      },
+      "rapidocr": {
+        "cer": 0.835,
+        "wer": 0.977,
+        "char_accuracy_pct": 16.5
+      }
+    },
+    "iimt_notice": {
+      "tesseract": {
+        "cer": 0.0221,
+        "wer": 0.0645,
+        "char_accuracy_pct": 97.79
+      },
+      "rapidocr": {
+        "cer": 0.1086,
+        "wer": 0.8763,
+        "char_accuracy_pct": 89.14
+      }
+    }
+  },
+  "test_4_critical_fields": {
+    "iimt_notice": {
+      "ref_number_tesseract": true,
+      "ref_number_rapidocr": true,
+      "date_notice": true,
+      "date_event_deadline": true,
+      "time_window": true,
+      "venue_auditorium": true,
+      "signatory_shilpi_singh": true,
+      "signatory_head_iqac": true,
+      "authority_meerut_campus": true
+    }
+  },
+  "test_5_rotation_preprocessing": {
+    "iimt_rot_0": {
+      "detected": 0,
+      "expected": 0,
+      "passed": true
+    },
+    "iimt_rot_90": {
+      "detected": 90,
+      "expected": 90,
+      "passed": true
+    },
+    "iimt_rot_180": {
+      "detected": 180,
+      "expected": 180,
+      "passed": true
+    },
+    "iimt_rot_270": {
+      "detected": 270,
+      "expected": 270,
+      "passed": true
+    },
+    "deskew_synthetic": {
+      "applied_angle": -4.0,
+      "expected_angle": -4.0,
+      "passed": true
+    }
+  },
+  "test_6_uncertain_spans": {
+    "span_count": 2,
+    "keys_valid": true,
+    "sample": {
+      "id": "rev-1-85805",
+      "text": "IMT/[QAC/2026-27/11",
+      "original_text": "IMT/[QAC/2026-27/11",
+      "corrected_text": null,
+      "confidence": 35,
+      "box": [
+        141,
+        185,
+        328,
+        199
+      ],
+      "status": "repaired",
+      "reason": "suspicious_number",
+      "page_number": 1,
+      "is_critical": false
+    }
+  },
+  "test_7_persistence_restart": {
+    "passed": true
+  },
+  "test_8_apply_corrections": {
+    "passed": true,
+    "updated_text": "Ref. No. : IIMT/IQAC/2026-27/11 on 30th October"
+  },
+  "test_9_canvas_search": {
+    "token_count": 184,
+    "search_matches": 1,
+    "passed": true
+  },
+  "test_10_ai_analysis": {
+    "status": "fallback_success",
+    "duration_s": 0.0,
+    "authority": "ENGINEERING COLLEGE erg):",
+    "mode": "deterministic_fallback",
+    "passed": true
+  }
+}

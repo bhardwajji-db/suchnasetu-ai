@@ -40,6 +40,7 @@ ENV/
 *.coverage
 htmlcov/
 .tox/
+tests/adversarial_ocr/generated_images/
 
 # Streamlit
 .streamlit/*
@@ -121,3 +122,4 @@ logs/
 # Runtime PID/launcher state files
 .launcher_pids.json
 .tunnel_pids.json
+.deploy_pids.json

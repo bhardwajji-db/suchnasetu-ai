@@ -181,3 +181,15 @@ def test_api_upload_endpoint_corrupt_pdf(client):
     resp = client.post("/api/ingest/upload", files=files)
     assert resp.status_code == 400
     assert "PDF" in resp.json()["detail"]
+
+
+def test_pypdfium2_rasterizer_fallback_renders_valid_image():
+    """Verifies that _render_pdf_page_to_image leverages pypdfium2 to return a valid PIL Image."""
+    from notice2action.ingestion import _render_pdf_page_to_image
+    pdf_data = _create_sample_digital_pdf()
+    img = _render_pdf_page_to_image(pdf_data, page_idx=1, dpi=150)
+    assert img is not None
+    assert isinstance(img, Image.Image)
+    assert img.width > 0
+    assert img.height > 0
+

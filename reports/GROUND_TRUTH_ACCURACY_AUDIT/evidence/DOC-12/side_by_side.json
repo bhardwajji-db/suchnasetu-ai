@@ -1,0 +1,58 @@
+{
+  "doc_id": "DOC-12",
+  "filename": "DOC-12_tiered_fees_notice.png",
+  "category": "Currency amounts and application fees",
+  "hash_sha256": "3bee44913f6061fd4d2217613b4ed61e5bcd1b3d0d49173820b638ae9c77723b",
+  "file_size_bytes": 51120,
+  "ocr_metrics": {
+    "cer": 1.0,
+    "wer": 1.0,
+    "duration_seconds": 0.633413553237915,
+    "confidence": 93.3,
+    "critical_preserved": 3,
+    "critical_total": 3
+  },
+  "ai_metrics": {
+    "duration_seconds": 31.71905279159546,
+    "error": null
+  },
+  "field_evaluations": [
+    {
+      "field": "final_deadline",
+      "expected_value": "14 May 2026",
+      "expected_status": "PRESENT",
+      "source_quote": "14 May 2026",
+      "ocr_preserved": true,
+      "ai_value": "14 May 2026",
+      "ai_status": "stated",
+      "ai_quote": "Last Date for Online Fee Payment: 14 May 2026.",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "application_fee",
+      "expected_value": "Rs. 850",
+      "expected_status": "PRESENT",
+      "source_quote": "General / OBC Category: Rs. 850",
+      "ocr_preserved": true,
+      "ai_value": "General / OBC Category: Rs. 850; EWS Category: Rs. 850; SC/ ST / PwD Candidates: Rs. 175",
+      "ai_status": "uncertain",
+      "ai_quote": "General / OBC Category: Rs. 850\n\nEWS Category: Rs. 850\n\nSC/ ST / PwD Candidates: Rs. 175",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "official_portal_url",
+      "expected_value": "https://ibps.in/crp-po-2026",
+      "expected_status": "PRESENT",
+      "source_quote": "https://ibps.in/crp-po-2026",
+      "ocr_preserved": true,
+      "ai_value": "Online Fee Payment.",
+      "ai_status": "stated",
+      "ai_quote": "Last Date for Online Fee Payment: 14 May 2026.",
+      "verdict": "PASS",
+      "root_cause": null
+    }
+  ],
+  "downstream_evaluations": {}
+}

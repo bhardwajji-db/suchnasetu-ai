@@ -1,0 +1,70 @@
+{
+  "doc_id": "DOC-11",
+  "filename": "DOC-11_multiple_deadlines.png",
+  "category": "Dates and multiple deadlines",
+  "hash_sha256": "2f42b38c81ce5ec260d15ee215c83408f7330f53308bff49a75e39774f1e3f98",
+  "file_size_bytes": 63073,
+  "ocr_metrics": {
+    "cer": 1.0,
+    "wer": 1.0,
+    "duration_seconds": 0.8355236053466797,
+    "confidence": 95.4,
+    "critical_preserved": 3,
+    "critical_total": 3
+  },
+  "ai_metrics": {
+    "duration_seconds": 39.520806074142456,
+    "error": null
+  },
+  "field_evaluations": [
+    {
+      "field": "issuing_authority",
+      "expected_value": "NATIONAL TESTING AGENCY",
+      "expected_status": "PRESENT",
+      "source_quote": "NATIONAL TESTING AGENCY",
+      "ocr_preserved": true,
+      "ai_value": "NATIONAL TESTING AGENCY",
+      "ai_status": "stated",
+      "ai_quote": "NATIONAL TESTING AGENCY - EXAMINATION NOTICE",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "final_deadline",
+      "expected_value": "10 March 2026",
+      "expected_status": "PRESENT",
+      "source_quote": "Final Cutoff Deadline for Form Submission: 10 March 2026",
+      "ocr_preserved": true,
+      "ai_value": "Normal Application Fee Payment Deadline: 10 March 2026; Final Cutoff Deadline for Form Submission: 10 March 2026; Application Correction Window ends: 25 March 2026",
+      "ai_status": "uncertain",
+      "ai_quote": "Normal Application Fee Payment Deadline: 10 March 2026 (11:50 PM)... Final Cutoff Deadline for Form Submission: 10 March 2026... Application Correction Window: 22 March to 25 March 2026",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "application_fee",
+      "expected_value": "Rs. 1200",
+      "expected_status": "PRESENT",
+      "source_quote": "Registration Fee: Rs. 1200",
+      "ocr_preserved": true,
+      "ai_value": "Rs. 1200",
+      "ai_status": "stated",
+      "ai_quote": "Registration Fee: Rs. 1200.",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "official_portal_url",
+      "expected_value": "https://nta.ac.in/cuetpg2026",
+      "expected_status": "PRESENT",
+      "source_quote": "https://nta.ac.in/cuetpg2026",
+      "ocr_preserved": true,
+      "ai_value": "Online Registration; Fee Payment; Form Submission/Correction",
+      "ai_status": "uncertain",
+      "ai_quote": "Online Registration Commences: 01 February 2026... Normal Application Fee Payment Deadline: 10 March 2026... Application Correction Window: 22 March to 25 March 2026",
+      "verdict": "PASS",
+      "root_cause": null
+    }
+  ],
+  "downstream_evaluations": {}
+}

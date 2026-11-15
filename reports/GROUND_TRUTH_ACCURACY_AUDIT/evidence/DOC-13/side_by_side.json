@@ -1,0 +1,58 @@
+{
+  "doc_id": "DOC-13",
+  "filename": "DOC-13_strict_marks_boundary.png",
+  "category": "Percentages and minimum marks",
+  "hash_sha256": "4b17835f4460fa9020a066a0d66491e0750869cf5aa6a28567df85c5acb8ab41",
+  "file_size_bytes": 38972,
+  "ocr_metrics": {
+    "cer": 1.0,
+    "wer": 1.0,
+    "duration_seconds": 0.6003215312957764,
+    "confidence": 95.1,
+    "critical_preserved": 3,
+    "critical_total": 3
+  },
+  "ai_metrics": {
+    "duration_seconds": 28.89157509803772,
+    "error": null
+  },
+  "field_evaluations": [
+    {
+      "field": "final_deadline",
+      "expected_value": "22 June 2026",
+      "expected_status": "PRESENT",
+      "source_quote": "22 June 2026",
+      "ocr_preserved": true,
+      "ai_value": "22 June 2026",
+      "ai_status": "stated",
+      "ai_quote": "Last Date of Submission: 22 June 2026",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "application_fee",
+      "expected_value": "Rs. 350",
+      "expected_status": "PRESENT",
+      "source_quote": "Rs. 350",
+      "ocr_preserved": true,
+      "ai_value": "Rs. 350.",
+      "ai_status": "stated",
+      "ai_quote": "Application Fee: Rs. 350.",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "eligibility_percentage",
+      "expected_value": "72.5%",
+      "expected_status": "PRESENT",
+      "source_quote": "strictly no less than 72.5% marks",
+      "ocr_preserved": true,
+      "ai_value": "Undergraduate degree in B.Tech / B.E. with strictly no less than 72.5% marks.",
+      "ai_status": "stated",
+      "ai_quote": "Applicants must possess an undergraduate degree in B.Tech / B.E. with strictly no less than 72.5% marks.",
+      "verdict": "PASS",
+      "root_cause": null
+    }
+  ],
+  "downstream_evaluations": {}
+}

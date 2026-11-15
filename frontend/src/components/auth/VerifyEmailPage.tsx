@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthLayout } from './AuthLayout';
-import { verifyEmailAddress, resendEmailVerification } from '../../services/api';
+import { verifyEmailAddress, resendEmailVerification } from '../../services/apiClient';
 import { useTranslation } from '../../i18n';
 import { CheckCircle2, AlertCircle, RefreshCw, Mail, KeyRound, LogIn } from 'lucide-react';
 

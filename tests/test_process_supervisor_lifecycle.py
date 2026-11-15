@@ -109,7 +109,10 @@ def test_supervisor_live_start_and_stop_releases_ports():
     """Verify live startup of services, port binding, and clean port release via --stop."""
     # Ensure ports are clear before starting
     subprocess.run([sys.executable, str(PROJECT_ROOT / "scripts" / "process_supervisor.py"), "--stop"], capture_output=True, timeout=10)
-    time.sleep(1.0)
+    for _ in range(10):
+        if not is_port_bound(8000) and not is_port_bound(5173):
+            break
+        time.sleep(0.5)
     assert not is_port_bound(8000)
     assert not is_port_bound(5173)
 

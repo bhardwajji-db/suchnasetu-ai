@@ -1,0 +1,178 @@
+{
+  "issuing_authority": {
+    "field_name": "issuing_authority",
+    "value": "UNION PUBLIC SERVICE COMMISSION",
+    "status": "stated",
+    "evidence_quote": "UNION PUBLIC SERVICE COMMISSION",
+    "source_location": "Line 1",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "notice_reference_number": {
+    "field_name": "notice_reference_number",
+    "value": "EXAMINATION NOTICE NO. 01/2026-ENGG",
+    "status": "stated",
+    "evidence_quote": "EXAMINATION NOTICE NO. 01/2026-ENGG",
+    "source_location": "Line 2",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "notice_date": {
+    "field_name": "notice_date",
+    "value": "05 January 2026",
+    "status": "stated",
+    "evidence_quote": "Date of Notice: 05 January 2026",
+    "source_location": "Line 3",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "recipient": {
+    "field_name": "recipient",
+    "value": "Candidates",
+    "status": "stated",
+    "evidence_quote": "Candidates to ensure their eligibility for the examination:",
+    "source_location": "Line 7",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "main_subject": {
+    "field_name": "main_subject",
+    "value": "Engineering Services Examination 2026",
+    "status": "stated",
+    "evidence_quote": "Engineering Services Examination 2026",
+    "source_location": "Line 5",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "required_action_and_deadline": {
+    "field_name": "required_action_and_deadline",
+    "value": "Submit applications by 18 February 2026 till 6.00 PM.",
+    "status": "stated",
+    "evidence_quote": "Last Date for Submission of Applications: 18 February 2026 till 6.00 PM.",
+    "source_location": "Line 14",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "purpose": {
+    "field_name": "purpose",
+    "value": "Examination",
+    "status": "stated",
+    "evidence_quote": "Engineering Services Examination 2026",
+    "source_location": "Line 5",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "eligibility": {
+    "field_name": "eligibility",
+    "value": "Minimum Educational Qualification: Degree in Engineering (B.E./B. Tech) from a recognized University. Age Limits: Must have attained the age of 21 years and must not have attained the age of 30 years.",
+    "status": "uncertain",
+    "evidence_quote": "Minimum Educational Qualification: Degree in Engineering (B.E./B. Tech) from a recognized University. ... Age Limits: A candidate must have attained the age of 21 years and must not have attained the age of 30 years on 0",
+    "source_location": null,
+    "requires_confirmation": true,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": "The provided evidence quotation could not be found anywhere in the notice text.",
+    "uncertainty_type": null
+  },
+  "deadline": {
+    "field_name": "deadline",
+    "value": "18 February 2026",
+    "status": "stated",
+    "evidence_quote": "Last Date for Submission of Applications: 18 February 2026 till 6.00 PM.",
+    "source_location": "Line 14",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "fee_or_cost": {
+    "field_name": "fee_or_cost",
+    "value": "Rs. 200 (Exempted for SC/ST/PwBD and Women candidates).",
+    "status": "stated",
+    "evidence_quote": "Fee: Candidates are required to pay a fee of Rs. 200 (SC/ST/PwBD and Women candidates exempted).",
+    "source_location": "Line 12",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "required_documents": {
+    "field_name": "required_documents",
+    "value": "Matriculation Certificate, Degree Certificate, Photo ID.",
+    "status": "stated",
+    "evidence_quote": "Required Documents: Matriculation Certificate, Degree Certificate, Photo ID.",
+    "source_location": "Line 16",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "contact_details": {
+    "field_name": "contact_details",
+    "value": "011-23385271",
+    "status": "stated",
+    "evidence_quote": "Facilitation Counter Phone: 011-23385271",
+    "source_location": "Line 20",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "required_actions": {
+    "field_name": "required_actions",
+    "value": "Pay fee (if applicable) and submit application online via the specified portal.",
+    "status": "uncertain",
+    "evidence_quote": "Candidates are required to pay a fee of Rs. 200... Last Date for Submission of Applications: 18 February 2026 till 6.00 PM. ... Online Portal: https://upsconline.nic.in",
+    "source_location": null,
+    "requires_confirmation": true,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": "The provided evidence quotation could not be found anywhere in the notice text.",
+    "uncertainty_type": null
+  },
+  "important_conditions": {
+    "field_name": "important_conditions",
+    "value": "Applications must be submitted through the online portal: https://upsconline.nic.in.",
+    "status": "stated",
+    "evidence_quote": "Online Portal: https://upsconline.nic.in",
+    "source_location": "Line 18",
+    "requires_confirmation": false,
+    "user_confirmed": false,
+    "confirmed_value": null,
+    "explanation": null,
+    "uncertainty_type": null
+  },
+  "missing_information": [
+    "Specific details regarding the examination syllabus or pattern"
+  ],
+  "uncertain_or_conflicting_details": [
+    "Eligibility: The provided evidence quotation could not be found anywhere in the notice text.",
+    "Required Actions: The provided evidence quotation could not be found anywhere in the notice text."
+  ],
+  "raw_notice_text": "UNION PUBLIC SERVICE COMMISSION\nEXAMINATION NOTICE NO. 01/2026-ENGG\nDate of Notice: 05 January 2026\n\nEngineering Services Examination 2026\n\nCandidates to ensure their eligibility for the examination:\n\n. Minimum Educational Qualification: Degree in Engineering (B.E./B. Tech) from a recognized University.\n\n. Age Limits: A candidate must have attained the age of 21 years and must not have attained the age of 30 years on 0\n. Fee: Candidates are required to pay a fee of Rs. 200 (SC/ST/PwBD and Women candidates exempted).\n\n. Last Date for Submission of Applications: 18 February 2026 till 6.00 PM.\n\n. Required Documents: Matriculation Certificate, Degree Certificate, Photo ID.\n\n. Online Portal: https://upsconline.nic.in\n\n. Facilitation Counter Phone: 011-23385271\n\nNOoOPR WN ="
+}

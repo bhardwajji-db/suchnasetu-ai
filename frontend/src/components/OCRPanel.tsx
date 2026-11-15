@@ -2,35 +2,63 @@ import React, { useState, useEffect } from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { apiClient } from '../services/apiClient';
 import { useTranslation } from '../i18n';
-import { Eye, RefreshCw, Trash2, AlertTriangle, ShieldCheck, Compass, FileCheck, CheckCircle2 } from 'lucide-react';
+import {
+  Eye,
+  RefreshCw,
+  Trash2,
+  AlertTriangle,
+  ShieldCheck,
+  Compass,
+  FileCheck,
+  CheckCircle2,
+  Check,
+  Save,
+  Languages,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  XCircle,
+  ExternalLink,
+} from 'lucide-react';
+import type { HumanReviewItem } from '../types/api';
 
 export const OCRPanel: React.FC = () => {
-  const { uploadedImage, uploadedFile, setUploadedImage, setRawNoticeText, setOcrResult, ocrResult } = useNotice();
+  const {
+    uploadedImage,
+    uploadedFile,
+    setUploadedImage,
+    setRawNoticeText,
+    setOcrResult,
+    ocrResult,
+    openReviewHighlight,
+    reviewSummary,
+    updateReviewItem,
+    applyReviewCorrections,
+    detectedLangMeta,
+    documentId,
+  } = useNotice();
   const { t } = useTranslation();
-  const [ocrLang, setOcrLang] = useState<string>('hin+eng');
+
+  const [ocrLang, setOcrLang] = useState<string>('auto');
+  const [isManualOverride, setIsManualOverride] = useState<boolean>(false);
   const [enhanceContrast, setEnhanceContrast] = useState<boolean>(true);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [isApplyingCorrections, setIsApplyingCorrections] = useState<boolean>(false);
+  const [applySuccessMessage, setApplySuccessMessage] = useState<string | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'repaired' | 'raw'>('repaired');
   const [cooldownSec, setCooldownSec] = useState<number>(0);
-  const [isRateLimited, setIsRateLimited] = useState<boolean>(false);
+  const [isReviewOpen, setIsReviewOpen] = useState<boolean>(true);
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'pending' | 'corrected' | 'verified' | 'ignored'>('all');
+  const [draftEdits, setDraftEdits] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (cooldownSec <= 0) {
-      if (isRateLimited) setIsRateLimited(false);
-      return;
-    }
+    if (cooldownSec <= 0) return;
     const timer = setInterval(() => {
-      setCooldownSec((prev) => {
-        if (prev <= 1) {
-          setIsRateLimited(false);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setCooldownSec((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
     return () => clearInterval(timer);
-  }, [cooldownSec, isRateLimited]);
+  }, [cooldownSec]);
 
   if (!uploadedImage) return null;
 
@@ -38,6 +66,7 @@ export const OCRPanel: React.FC = () => {
     if (isProcessing || cooldownSec > 0) return;
     setIsProcessing(true);
     setOcrError(null);
+    setApplySuccessMessage(null);
 
     try {
       let fileToUpload = uploadedFile;
@@ -46,7 +75,14 @@ export const OCRPanel: React.FC = () => {
         fileToUpload = new File([blob], 'notice_preview.png', { type: blob.type || 'image/png' });
       }
 
-      const res = await apiClient.runOCR(fileToUpload, fileToUpload.name, ocrLang, enhanceContrast);
+      const res = await apiClient.runOCR(
+        fileToUpload,
+        fileToUpload.name,
+        ocrLang,
+        enhanceContrast,
+        documentId || undefined
+      );
+
       if (res.error) {
         setOcrError(res.error);
       } else {
@@ -56,11 +92,10 @@ export const OCRPanel: React.FC = () => {
       }
     } catch (err: any) {
       if (err.status === 429 || /rate limit|quota/i.test(err.message || '')) {
-        setIsRateLimited(true);
         setOcrError(err.message || t('error'));
         setCooldownSec(15);
       } else {
-        setOcrError(err.message || t('invalidCredentialsError'));
+        setOcrError(err.message || 'OCR processing failed. Check connection or document.');
       }
     } finally {
       setIsProcessing(false);
@@ -82,9 +117,112 @@ export const OCRPanel: React.FC = () => {
     setOcrResult(null);
   };
 
+  const handleLanguageChange = (newLang: string) => {
+    setOcrLang(newLang);
+    setIsManualOverride(newLang !== 'auto');
+  };
+
+  const handleResetToAuto = () => {
+    setOcrLang('auto');
+    setIsManualOverride(false);
+  };
+
+  const handleDraftChange = (itemId: string, text: string) => {
+    setDraftEdits((prev) => ({ ...prev, [itemId]: text }));
+  };
+
+  const handleSaveCorrection = async (item: HumanReviewItem) => {
+    const textToSave = draftEdits[item.id] !== undefined ? draftEdits[item.id] : item.corrected_text || item.original_text;
+    try {
+      await updateReviewItem(item.id, 'corrected', textToSave);
+    } catch (e: any) {
+      setOcrError(`Failed to save correction: ${e.message}`);
+    }
+  };
+
+  const handleVerifyItem = async (item: HumanReviewItem) => {
+    try {
+      await updateReviewItem(item.id, 'verified');
+    } catch (e: any) {
+      setOcrError(`Failed to verify item: ${e.message}`);
+    }
+  };
+
+  const handleIgnoreItem = async (item: HumanReviewItem) => {
+    try {
+      await updateReviewItem(item.id, 'ignored');
+    } catch (e: any) {
+      setOcrError(`Failed to ignore item: ${e.message}`);
+    }
+  };
+
+  const handleApplyAllCorrections = async () => {
+    if (isApplyingCorrections) return;
+    setIsApplyingCorrections(true);
+    setApplySuccessMessage(null);
+    try {
+      await applyReviewCorrections();
+      setApplySuccessMessage('All reviewed corrections applied to canonical document text.');
+      setTimeout(() => setApplySuccessMessage(null), 4000);
+    } catch (e: any) {
+      setOcrError(`Failed to apply corrections: ${e.message}`);
+    } finally {
+      setIsApplyingCorrections(false);
+    }
+  };
+
   const qualityScore = ocrResult?.document_quality_score ?? ocrResult?.confidence_score ?? 0;
   const isHighQuality = qualityScore >= 80;
   const isModerateQuality = qualityScore >= 65 && qualityScore < 80;
+
+  // Review items source: DB review summary or fallback to OCR uncertain spans
+  const activeReviewItems: HumanReviewItem[] = reviewSummary?.items || (
+    ocrResult?.uncertain_spans ? ocrResult.uncertain_spans.map((s, idx) => ({
+      id: s.id || `span_${idx}`,
+      document_id: documentId || 'temp',
+      page_number: s.page_number || 1,
+      box: s.box,
+      original_text: s.original_text || s.text,
+      corrected_text: s.corrected_text,
+      confidence: s.confidence,
+      reason: s.reason || 'Uncertain token',
+      status: (s.status as any) || 'pending',
+      created_at: '',
+    })) : []
+  );
+
+  const filteredItems = activeReviewItems.filter((item) => {
+    if (reviewFilter === 'all') return true;
+    return item.status === reviewFilter;
+  });
+
+  const pendingCount = reviewSummary?.pending ?? activeReviewItems.filter(i => i.status === 'pending').length;
+  const correctedCount = reviewSummary?.corrected ?? activeReviewItems.filter(i => i.status === 'corrected').length;
+  const verifiedCount = reviewSummary?.verified ?? activeReviewItems.filter(i => i.status === 'verified').length;
+  const ignoredCount = reviewSummary?.ignored ?? activeReviewItems.filter(i => i.status === 'ignored').length;
+  const totalReviewItems = reviewSummary?.total ?? activeReviewItems.length;
+
+  const detectedLang = ocrResult?.detected_language || detectedLangMeta?.detected_language;
+  const detectedConfidence = ocrResult?.language_confidence ?? detectedLangMeta?.confidence ?? 1.0;
+  const isMixed = ocrResult?.is_mixed_language ?? detectedLangMeta?.is_mixed ?? false;
+
+  const getLanguageLabel = (code?: string) => {
+    switch (code) {
+      case 'en':
+      case 'eng':
+        return 'English (eng)';
+      case 'hi':
+      case 'hin':
+        return 'Hindi (hin)';
+      case 'hin+eng':
+      case 'en+hi':
+        return 'Bilingual (Hindi + English)';
+      case 'mr':
+        return 'Marathi (mr)';
+      default:
+        return code ? code.toUpperCase() : 'Unknown';
+    }
+  };
 
   return (
     <div className="bg-white border border-[#E1E7EE] rounded-xl p-5 space-y-4 shadow-xs">
@@ -129,34 +267,75 @@ export const OCRPanel: React.FC = () => {
         </div>
       ) : null}
 
-      {/* OCR Controls */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-        <div>
-          <label className="text-[11px] font-bold text-[#526176] uppercase tracking-wide block mb-1">
-            {t('ocrLanguagePack')}
-          </label>
-          <select
-            value={ocrLang}
-            onChange={(e) => setOcrLang(e.target.value)}
-            className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-3 py-1.5 text-xs text-[#12233D] focus:border-[#08785D] focus:outline-hidden font-medium"
-          >
-            <option value="hin+eng">Bilingual (Hindi + English - Hybrid Fusion)</option>
-            <option value="hin">Hindi (hin)</option>
-            <option value="eng">English (eng)</option>
-          </select>
+      {/* OCR Controls & Auto-Language Detection */}
+      <div className="space-y-2 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[11px] font-bold text-[#526176] uppercase tracking-wide flex items-center justify-between mb-1">
+              <span className="flex items-center gap-1">
+                <Languages className="w-3.5 h-3.5 text-[#08785D]" />
+                {t('ocrLanguagePack')}
+              </span>
+              {isManualOverride && (
+                <button
+                  type="button"
+                  onClick={handleResetToAuto}
+                  className="text-[10px] text-[#08785D] hover:underline font-semibold cursor-pointer"
+                >
+                  Reset to Auto
+                </button>
+              )}
+            </label>
+            <select
+              value={ocrLang}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+              className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-3 py-1.5 text-xs text-[#12233D] focus:border-[#08785D] focus:outline-hidden font-medium"
+            >
+              <option value="auto">Auto-Detect Language (Recommended)</option>
+              <option value="eng">English (eng)</option>
+              <option value="hin">Hindi (hin)</option>
+              <option value="hin+eng">Bilingual (Hindi + English - Hybrid Fusion)</option>
+              <option value="mr">Marathi (mr)</option>
+            </select>
+          </div>
+
+          <div className="flex items-end pb-1.5">
+            <label className="flex items-center gap-2 text-xs font-medium text-[#12233D] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enhanceContrast}
+                onChange={(e) => setEnhanceContrast(e.target.checked)}
+                className="rounded border-[#CBD5E1] text-[#08785D] focus:ring-[#08785D]"
+              />
+              <span>{t('adaptiveContrast')}</span>
+            </label>
+          </div>
         </div>
 
-        <div className="flex items-end pb-1.5">
-          <label className="flex items-center gap-2 text-xs font-medium text-[#12233D] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={enhanceContrast}
-              onChange={(e) => setEnhanceContrast(e.target.checked)}
-              className="rounded border-[#CBD5E1] text-[#08785D] focus:ring-[#08785D]"
-            />
-            <span>{t('adaptiveContrast')}</span>
-          </label>
-        </div>
+        {/* Detected Language Indicator Banner */}
+        {detectedLang && (
+          <div className="flex items-center justify-between px-3 py-1.5 bg-[#E8F7F0]/60 border border-[#B7E7D2] rounded-lg text-xs text-[#08785D]">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-[#08785D] shrink-0" />
+              <span className="font-semibold">
+                Detected: <span className="font-bold">{getLanguageLabel(detectedLang)}</span>
+                {isMixed && ' (Mixed Hindi+English)'}
+              </span>
+              <span className="text-[10px] bg-white/80 border border-[#B7E7D2] px-1.5 py-0.5 rounded font-mono font-bold">
+                {(detectedConfidence * 100).toFixed(0)}% confidence
+              </span>
+            </div>
+            {isManualOverride ? (
+              <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                Manual Override Active: {ocrLang}
+              </span>
+            ) : (
+              <span className="text-[10px] font-semibold text-[#08785D]">
+                Auto-Selected for OCR
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Switcher between Repaired and Raw OCR */}
@@ -219,10 +398,12 @@ export const OCRPanel: React.FC = () => {
               return (
                 <div
                   key={key}
-                  className="bg-white p-2 rounded-lg border border-[#E1E7EE] flex flex-col justify-between"
+                  onClick={() => openReviewHighlight(key, label, null, item.value)}
+                  className="bg-white p-2 rounded-lg border border-[#E1E7EE] hover:border-[#B7E7D2] flex flex-col justify-between cursor-pointer transition group"
+                  title="Click to view and highlight in original notice"
                 >
                   <div className="flex items-center justify-between text-[10px] text-[#526176] mb-1">
-                    <span className="font-semibold truncate max-w-[140px]">{label}</span>
+                    <span className="font-semibold truncate max-w-[140px] group-hover:text-[#08785D]">{label}</span>
                     <span
                       className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                         item.status === 'verified'
@@ -248,45 +429,213 @@ export const OCRPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Low-confidence / uncertain span warnings */}
-      {(() => {
-        const unresolved = ocrResult?.uncertain_spans?.filter(s => s.status !== 'repaired') || [];
-        const repaired = ocrResult?.uncertain_spans?.filter(s => s.status === 'repaired') || [];
+      {/* PERSISTENT HUMAN REVIEW DRAWER */}
+      {totalReviewItems > 0 && (
+        <div className="bg-white border border-[#CBD5E1] rounded-xl overflow-hidden shadow-xs transition-all">
+          {/* Header */}
+          <div
+            onClick={() => setIsReviewOpen(!isReviewOpen)}
+            className="flex items-center justify-between p-3.5 bg-gradient-to-r from-amber-50/80 to-slate-50 border-b border-[#E1E7EE] cursor-pointer hover:bg-amber-50 transition"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span className="font-bold text-xs text-[#12233D]">
+                Human Review Workspace ({totalReviewItems} items)
+              </span>
+              <div className="flex items-center gap-1 ml-2">
+                {pendingCount > 0 && (
+                  <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.5 rounded-full">
+                    {pendingCount} Pending
+                  </span>
+                )}
+                {correctedCount > 0 && (
+                  <span className="text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300 px-1.5 py-0.5 rounded-full">
+                    {correctedCount} Corrected
+                  </span>
+                )}
+                {verifiedCount > 0 && (
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 px-1.5 py-0.5 rounded-full">
+                    {verifiedCount} Verified
+                  </span>
+                )}
+                {ignoredCount > 0 && (
+                  <span className="text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300 px-1.5 py-0.5 rounded-full">
+                    {ignoredCount} Ignored
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {isReviewOpen ? (
+                <ChevronUp className="w-4 h-4 text-[#526176]" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-[#526176]" />
+              )}
+            </div>
+          </div>
 
-        return (
-          <>
-            {unresolved.length > 0 && (
-              <div className="p-3 rounded-lg bg-[#FFFAEB] border border-[#FEDF89] text-xs text-[#B54708] space-y-1">
-                <div className="flex items-center gap-1.5 font-bold">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>{t('humanReviewAdvised')} ({unresolved.length})</span>
-                </div>
-                <p className="text-[11px] text-[#7A271A]">
-                  {t('humanReviewAdvisedDesc')}
-                </p>
-                <div className="flex flex-wrap gap-1.5 mt-1.5 pt-1 border-t border-[#FEDF89]/50">
-                  {unresolved.slice(0, 5).map((span, idx) => (
-                    <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-amber-100 text-amber-900 border border-amber-300">
-                      "{span.text}" ({span.confidence}%)
-                    </span>
+          {isReviewOpen && (
+            <div className="p-3.5 space-y-3">
+              {/* Filter Tabs & Apply Button */}
+              <div className="flex items-center justify-between flex-wrap gap-2 border-b border-[#E1E7EE] pb-2.5">
+                <div className="flex items-center gap-1">
+                  {(['all', 'pending', 'corrected', 'verified', 'ignored'] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      type="button"
+                      onClick={() => setReviewFilter(filter)}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold capitalize transition cursor-pointer ${
+                        reviewFilter === filter
+                          ? 'bg-[#12233D] text-white shadow-2xs'
+                          : 'bg-[#F8FAFC] text-[#526176] hover:bg-slate-100 border border-[#E1E7EE]'
+                      }`}
+                    >
+                      {filter}
+                      {filter === 'all' && ` (${totalReviewItems})`}
+                      {filter === 'pending' && ` (${pendingCount})`}
+                      {filter === 'corrected' && ` (${correctedCount})`}
+                      {filter === 'verified' && ` (${verifiedCount})`}
+                      {filter === 'ignored' && ` (${ignoredCount})`}
+                    </button>
                   ))}
-                  {unresolved.length > 5 && (
-                    <span className="text-[10px] text-amber-700 self-center">+{unresolved.length - 5} more</span>
-                  )}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleApplyAllCorrections}
+                  disabled={isApplyingCorrections || correctedCount === 0}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-[#08785D] hover:bg-[#06664E] text-white transition disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
+                  title="Apply corrected text to canonical document"
+                >
+                  <Save className={`w-3.5 h-3.5 ${isApplyingCorrections ? 'animate-spin' : ''}`} />
+                  <span>{isApplyingCorrections ? 'Applying...' : 'Apply Corrections to Notice'}</span>
+                </button>
               </div>
-            )}
-            {repaired.length > 0 && (
-              <div className="p-2.5 rounded-lg bg-[#F0FDF4] border border-[#BBF7D0] text-xs text-[#166534] flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#16A34A] shrink-0" />
-                  <span>{repaired.length} OCR artifacts auto-repaired & verified</span>
+
+              {applySuccessMessage && (
+                <div className="p-2 rounded-lg bg-[#E8F7F0] border border-[#B7E7D2] text-xs font-semibold text-[#08785D] flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#08785D]" />
+                  <span>{applySuccessMessage}</span>
                 </div>
+              )}
+
+              {/* Items List */}
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {filteredItems.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-[#526176]">
+                    No items in this category.
+                  </div>
+                ) : (
+                  filteredItems.map((item) => {
+                    const draftVal = draftEdits[item.id] !== undefined ? draftEdits[item.id] : item.corrected_text || item.original_text;
+                    const isCorrected = item.status === 'corrected';
+                    const isVerified = item.status === 'verified';
+                    const isIgnored = item.status === 'ignored';
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={`p-2.5 rounded-lg border text-xs transition ${
+                          isVerified
+                            ? 'bg-emerald-50/60 border-emerald-200'
+                            : isCorrected
+                            ? 'bg-blue-50/60 border-blue-200'
+                            : isIgnored
+                            ? 'bg-slate-50 border-slate-200 opacity-60'
+                            : 'bg-[#FFFAEB]/80 border-[#FEDF89]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[10px] font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                              P.{item.page_number}
+                            </span>
+                            <span className="font-semibold text-[#12233D] font-mono text-xs">
+                              Original: "{item.original_text}"
+                            </span>
+                            {item.confidence != null && (
+                              <span className="text-[10px] text-amber-800 bg-amber-100 border border-amber-300 px-1 rounded">
+                                {item.confidence}%
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openReviewHighlight(
+                                  'human_review',
+                                  `Review: ${item.original_text}`,
+                                  {
+                                    box: item.box,
+                                    status: item.status,
+                                    page_number: item.page_number,
+                                    confidence: item.confidence,
+                                  },
+                                  item.corrected_text || item.original_text
+                                )
+                              }
+                              className="flex items-center gap-1 text-[11px] text-[#08785D] hover:underline font-semibold cursor-pointer"
+                              title="Inspect on document with synchronized underline"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              View in Document
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Correction Input & Action Buttons */}
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              value={draftVal}
+                              onChange={(e) => handleDraftChange(item.id, e.target.value)}
+                              placeholder="Type correct text..."
+                              className="w-full bg-white border border-[#CBD5E1] rounded px-2 py-1 text-xs text-[#12233D] focus:border-[#08785D] focus:outline-hidden font-medium"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSaveCorrection(item)}
+                            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white transition cursor-pointer"
+                            title="Save corrected text"
+                          >
+                            <Save className="w-3 h-3" />
+                            Save
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyItem(item)}
+                            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer"
+                            title="Mark as verified (original text is correct)"
+                          >
+                            <Check className="w-3 h-3" />
+                            Verify
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleIgnoreItem(item)}
+                            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 transition cursor-pointer"
+                            title="Ignore this token"
+                          >
+                            <XCircle className="w-3 h-3" />
+                            Ignore
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-            )}
-          </>
-        );
-      })()}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Error alert */}
       {ocrError && (

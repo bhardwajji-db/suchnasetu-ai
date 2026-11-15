@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AuthLayout } from './AuthLayout';
-import { requestPasswordReset } from '../../services/api';
+import { requestPasswordReset } from '../../services/apiClient';
 import type { AuthPageView } from '../../types/api';
 import { useTranslation } from '../../i18n';
 import { Mail, Send, Link2, KeyRound, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';

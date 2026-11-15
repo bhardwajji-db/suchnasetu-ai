@@ -64,7 +64,7 @@ DEFAULT_DB_PATH = Path(os.getenv("DATABASE_PATH", str(PROJECT_ROOT / "data" / "s
 
 DEFAULT_UPLOADS_DIR = Path(os.getenv("UPLOADS_DIR", str(PROJECT_ROOT / "data" / "uploads")))
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 
@@ -826,6 +826,34 @@ class DatabaseManager:
                         """
                     )
 
+                if 6 not in applied_versions:
+                    conn.executescript(
+                        """
+                        CREATE TABLE IF NOT EXISTS human_review_items (
+                            id TEXT PRIMARY KEY,
+                            document_id TEXT NOT NULL,
+                            page_number INTEGER NOT NULL DEFAULT 1,
+                            item_index INTEGER NOT NULL DEFAULT 0,
+                            original_text TEXT NOT NULL,
+                            corrected_text TEXT,
+                            confidence REAL NOT NULL,
+                            bounding_box TEXT,
+                            status TEXT NOT NULL DEFAULT 'pending',
+                            reason TEXT NOT NULL,
+                            field_name TEXT,
+                            created_at REAL NOT NULL,
+                            updated_at REAL NOT NULL,
+                            FOREIGN KEY(document_id) REFERENCES documents(id) ON DELETE CASCADE
+                        );
+
+                        CREATE INDEX IF NOT EXISTS idx_review_items_doc ON human_review_items(document_id);
+                        CREATE INDEX IF NOT EXISTS idx_review_items_status ON human_review_items(status);
+
+                        INSERT INTO schema_migrations (version, applied_at, description)
+                        VALUES (6, strftime('%s', 'now'), 'Add persistent human review items table for uncertain OCR text and corrections');
+                        """
+                    )
+
             # Seed demo library notices if available
 
             self.seed_demo_library()
@@ -1052,6 +1080,18 @@ class DatabaseManager:
                 )
 
             return record
+
+    def update_document_text(self, doc_id: str, raw_text: str) -> bool:
+        """Updates the raw_text and updated_at timestamp of an existing document."""
+        with self._lock:
+            conn = self.get_connection()
+            now = time.time()
+            with conn:
+                cur = conn.execute(
+                    "UPDATE documents SET raw_text = ?, updated_at = ? WHERE id = ?;",
+                    (raw_text, now, doc_id),
+                )
+                return cur.rowcount > 0
 
 
 
@@ -1382,6 +1422,18 @@ class DatabaseManager:
 
 
             return record
+
+    def update_document_text(self, doc_id: str, raw_text: str) -> bool:
+        """Updates the raw_text and updated_at timestamp of an existing document."""
+        with self._lock:
+            conn = self.get_connection()
+            now = time.time()
+            with conn:
+                cur = conn.execute(
+                    "UPDATE documents SET raw_text = ?, updated_at = ? WHERE id = ?;",
+                    (raw_text, now, doc_id),
+                )
+                return cur.rowcount > 0
 
 
 
@@ -1902,7 +1954,7 @@ class DatabaseManager:
         demos = []
 
         for r in cur.fetchall():
-
+            m_data = json.loads(r["manifest_data_json"]) if r["manifest_data_json"] else {}
             demos.append({
 
                 "id": r["id"],
@@ -1921,7 +1973,9 @@ class DatabaseManager:
 
                 "is_synthetic": bool(r["is_synthetic"]),
 
-                "manifest_data": json.loads(r["manifest_data_json"]),
+                "manifest_data": m_data,
+
+                "word_count": m_data.get("word_count", 0),
 
                 "created_at": r["created_at"],
 
@@ -2827,6 +2881,209 @@ class DatabaseManager:
                     (user_id, item_id, 1 if completed else 0, now),
                 )
             return True
+
+
+    # -------------------------------------------------------------------------
+    # Persistent Human Review System Methods
+    # -------------------------------------------------------------------------
+
+    def save_human_review_items(self, document_id: str, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Persists human review items for a document.
+        Upserts review items preserving existing user corrections and statuses.
+        """
+        with self._lock:
+            conn = self.get_connection()
+            now = time.time()
+            saved_items = []
+            with conn:
+                for idx, item in enumerate(items):
+                    item_id = item.get("id") or str(uuid.uuid4())
+                    page_num = item.get("page_number", 1)
+                    orig_text = item.get("original_text") or item.get("text", "")
+                    corrected = item.get("corrected_text") or item.get("suggested_text")
+                    conf = float(item.get("confidence", 0.0))
+                    box_json = json.dumps(item.get("box") or item.get("bounding_box") or [])
+                    status = item.get("status", "pending")
+                    if status in ("unresolved", "flagged_uncertain", "flagged"):
+                        status = "pending"
+                    reason = item.get("reason", "low_confidence")
+                    field_name = item.get("field_name")
+
+                    conn.execute(
+                        """
+                        INSERT INTO human_review_items (
+                            id, document_id, page_number, item_index,
+                            original_text, corrected_text, confidence,
+                            bounding_box, status, reason, field_name,
+                            created_at, updated_at
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(id) DO UPDATE SET
+                            corrected_text = COALESCE(excluded.corrected_text, human_review_items.corrected_text),
+                            status = excluded.status,
+                            updated_at = excluded.updated_at;
+                        """,
+                        (
+                            item_id, document_id, page_num, idx,
+                            orig_text, corrected, conf,
+                            box_json, status, reason, field_name,
+                            now, now
+                        ),
+                    )
+                    saved_items.append({
+                        "id": item_id,
+                        "document_id": document_id,
+                        "page_number": page_num,
+                        "item_index": idx,
+                        "original_text": orig_text,
+                        "corrected_text": corrected,
+                        "confidence": conf,
+                        "box": json.loads(box_json) if box_json else [],
+                        "status": status,
+                        "reason": reason,
+                        "field_name": field_name,
+                    })
+            return saved_items
+
+    def get_human_review_items(self, document_id: str, status: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Fetches all persistent human review items for a document with count metrics.
+        """
+        with self._lock:
+            conn = self.get_connection()
+            cur_counts = conn.execute(
+                """
+                SELECT status, COUNT(*) as cnt
+                FROM human_review_items
+                WHERE document_id = ?
+                GROUP BY status
+                """,
+                (document_id,),
+            )
+            counts = {row["status"]: row["cnt"] for row in cur_counts.fetchall()}
+            total = sum(counts.values())
+            pending = counts.get("pending", 0)
+            corrected = counts.get("corrected", 0)
+            verified = counts.get("verified", 0)
+            ignored = counts.get("ignored", 0)
+
+            query = "SELECT * FROM human_review_items WHERE document_id = ?"
+            params: list[Any] = [document_id]
+            if status:
+                query += " AND status = ?"
+                params.append(status)
+            query += " ORDER BY page_number ASC, item_index ASC, created_at ASC"
+
+            cur_items = conn.execute(query, tuple(params))
+            items = []
+            for row in cur_items.fetchall():
+                box = []
+                if row["bounding_box"]:
+                    try:
+                        box = json.loads(row["bounding_box"])
+                    except Exception:
+                        box = []
+                items.append({
+                    "id": row["id"],
+                    "document_id": row["document_id"],
+                    "page_number": row["page_number"],
+                    "item_index": row["item_index"],
+                    "original_text": row["original_text"],
+                    "corrected_text": row["corrected_text"],
+                    "confidence": row["confidence"],
+                    "box": box,
+                    "status": row["status"],
+                    "reason": row["reason"],
+                    "field_name": row["field_name"],
+                    "created_at": row["created_at"],
+                    "updated_at": row["updated_at"],
+                })
+
+            return {
+                "document_id": document_id,
+                "total": total,
+                "pending": pending,
+                "corrected": corrected,
+                "verified": verified,
+                "ignored": ignored,
+                "items": items,
+            }
+
+    def update_human_review_item(
+        self,
+        item_id: str,
+        status: str,
+        corrected_text: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Updates status and corrected text of a single review item.
+        """
+        with self._lock:
+            conn = self.get_connection()
+            now = time.time()
+            with conn:
+                cur = conn.execute("SELECT * FROM human_review_items WHERE id = ?", (item_id,))
+                row = cur.fetchone()
+                if not row:
+                    return None
+                corr = corrected_text if corrected_text is not None else row["corrected_text"]
+                if status == "verified" and not corr and row["suggested_text"]:
+                    corr = row["suggested_text"]
+                conn.execute(
+                    """
+                    UPDATE human_review_items
+                    SET status = ?, corrected_text = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (status, corr, now, item_id),
+                )
+            return self.get_human_review_items(row["document_id"])
+
+    def apply_review_corrections(self, document_id: str) -> Dict[str, Any]:
+        """
+        Applies all corrected and verified review items to the canonical document text,
+        preserving the raw original OCR text for auditability.
+        """
+        with self._lock:
+            conn = self.get_connection()
+            now = time.time()
+            with conn:
+                doc_cur = conn.execute("SELECT raw_text FROM documents WHERE id = ?", (document_id,))
+                doc_row = doc_cur.fetchone()
+                if not doc_row:
+                    return {"document_id": document_id, "applied_count": 0, "error": "Document not found"}
+
+                text = doc_row["raw_text"] or ""
+                items_cur = conn.execute(
+                    """
+                    SELECT * FROM human_review_items 
+                    WHERE document_id = ? 
+                      AND status IN ('corrected', 'verified')
+                      AND corrected_text IS NOT NULL
+                    """,
+                    (document_id,),
+                )
+                corrected_items = items_cur.fetchall()
+                applied_count = 0
+
+                for item in corrected_items:
+                    orig = item["original_text"]
+                    corr = item["corrected_text"]
+                    if orig and corr and orig != corr and orig in text:
+                        text = text.replace(orig, corr)
+                        applied_count += 1
+
+                conn.execute(
+                    "UPDATE documents SET raw_text = ?, updated_at = ? WHERE id = ?",
+                    (text, now, document_id),
+                )
+
+            return {
+                "document_id": document_id,
+                "applied_count": applied_count,
+                "raw_text": text,
+            }
 
 
     def backup_database(self, destination_path: Path) -> None:

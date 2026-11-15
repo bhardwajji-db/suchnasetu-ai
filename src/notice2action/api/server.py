@@ -50,7 +50,7 @@ from typing import List, Optional, Dict, Any
 
 
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Response, Depends, Body
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -638,6 +638,12 @@ class OCRResponse(BaseModel):
     uncertain_spans: Optional[List[Dict[str, Any]]] = None
     critical_fields: Optional[Dict[str, Any]] = None
     field_accuracy_score: Optional[float] = None
+    word_boxes: Optional[List[Dict[str, Any]]] = None
+    image_dimensions: Optional[List[int]] = None
+    document_id: Optional[str] = None
+    detected_language: Optional[str] = None
+    language_confidence: Optional[float] = None
+    is_mixed_language: Optional[bool] = None
 
 
 
@@ -1497,37 +1503,48 @@ async def ingest_upload_endpoint(file: UploadFile = File(...)):
         }
 
     else:
+        # Image upload: perform fast pre-OCR language detection
+        det = None
+        suggested_ocr = "eng"
+        try:
+            from notice2action.language_detection import detect_image_language, get_ocr_language_for_detection
+            if res.image:
+                det = detect_image_language(res.image)
+            else:
+                img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+                det = detect_image_language(img)
+            suggested_ocr = get_ocr_language_for_detection(det)
+        except Exception:
+            pass
+
+        doc_lang = det.detected_language if det else "en"
+        doc_conf = det.confidence if det else 1.0
+        doc_mixed = det.is_mixed if det else False
 
         db_doc = get_db().save_document(
-
             raw_text="",
-
             filename=res.filename or "uploaded_image",
-
             content_bytes=file_bytes,
-
             mime_type=file.content_type or "image/png",
-
-            source_language="en",
-
-            detected_language="en",
-
+            source_language=doc_lang,
+            detected_language=doc_lang,
+            language_confidence=doc_conf,
+            is_mixed_language=doc_mixed,
         )
 
         return {
-
             "document_id": db_doc.id,
-
             "source_type": "image",
-
             "filename": res.filename,
-
             "size_bytes": len(file_bytes),
-
             "content_type": file.content_type,
-
             "security_warning": None,
-
+            "detected_language": doc_lang,
+            "language_name": det.language_name if det else "English",
+            "native_name": det.native_name if det else "English",
+            "language_confidence": doc_conf,
+            "is_mixed_language": doc_mixed,
+            "suggested_ocr_lang": suggested_ocr,
         }
 
 
@@ -1535,167 +1552,202 @@ async def ingest_upload_endpoint(file: UploadFile = File(...)):
 
 
 @app.post("/api/ocr", response_model=OCRResponse)
-
 async def ocr_endpoint(
-
     file: UploadFile = File(...),
-
-    target_lang: str = Form("eng"),
-
+    target_lang: str = Form("auto"),
     enhance_contrast: bool = Form(True),
-
     engine: Optional[str] = Form(None),
-
+    document_id: Optional[str] = Form(None),
     current_user: Dict[str, Any] = Depends(get_current_user_or_guest),
-
 ):
-
-    """Executes OCR on an uploaded image with selected engine asynchronously."""
-
+    """Executes OCR on an uploaded image with automatic language detection and persistence."""
     client_ip = current_user.get("client_ip") or "unknown"
-
     is_authenticated = not bool(current_user.get("is_guest", True))
-
     allowed, remaining = auth_service.check_ocr_rate_limit(client_ip, is_authenticated=is_authenticated)
-
     if not allowed:
-
         raise HTTPException(
-
             status_code=429,
-
             detail="OCR request rate limit exceeded. Please wait a moment before extracting another document.",
-
         )
 
     max_bytes = config.max_upload_size_mb * 1024 * 1024
-
     if file.size and file.size > max_bytes:
-
         raise HTTPException(
-
             status_code=413,
-
-            detail=f"File size exceeds maximum allowed limit of {config.max_upload_size_mb} MB."
-
+            detail=f"File size exceeds maximum allowed limit of {config.max_upload_size_mb} MB.",
         )
 
     content = await file.read()
-
     if len(content) > max_bytes:
-
         raise HTTPException(
-
             status_code=413,
-
-            detail=f"File size exceeds maximum allowed limit of {config.max_upload_size_mb} MB."
-
+            detail=f"File size exceeds maximum allowed limit of {config.max_upload_size_mb} MB.",
         )
 
     if len(content) == 0:
-
         raise HTTPException(status_code=400, detail="The uploaded file is empty (0 bytes).")
 
-
-
     try:
-
         safe_name, file_type = validate_uploaded_file(file.filename or "image.png", content)
-
         if file_type != "image":
-
             raise HTTPException(
-
                 status_code=400,
-
-                detail=f"Uploaded file for OCR must be an image format (PNG, JPG, WEBP, TIFF). Detected: {file_type}"
-
+                detail=f"Uploaded file for OCR must be an image format (PNG, JPG, WEBP, TIFF). Detected: {file_type}",
             )
-
         img = Image.open(io.BytesIO(content)).convert("RGB")
-
     except HTTPException:
-
         raise
-
     except SecurityValidationError as e:
-
         raise HTTPException(status_code=400, detail=str(e))
-
     except Exception as e:
-
         raise HTTPException(status_code=400, detail=f"Invalid image file: {e}")
 
-
-
-    lang_code = "hin" if "hin" in target_lang and "+" not in target_lang else ("eng+hin" if "+" in target_lang else "eng")
-
-
+    # Resolve target language: automatic detection if 'auto' or manual override
+    clean_target = (target_lang or "auto").strip().lower()
+    if clean_target in ("auto", "detect", ""):
+        lang_code = "auto"
+    elif "hin" in clean_target and "+" not in clean_target:
+        lang_code = "hin"
+    elif "+" in clean_target:
+        lang_code = "eng+hin"
+    else:
+        lang_code = clean_target
 
     # Run blocking OCR extraction in threadpool
-
     ocr_res = await asyncio.to_thread(
-
         extract_text_from_image,
-
         img,
-
         target_lang=lang_code,
-
         apply_preprocessing=enhance_contrast,
-
         engine_name=engine,
-
     )
 
+    # Persist document or update existing document
+    if document_id:
+        resolved_doc_id = document_id
+        get_db().update_document_text(resolved_doc_id, ocr_res.extracted_text)
+    else:
+        db_doc = get_db().save_document(
+            raw_text=ocr_res.extracted_text,
+            filename=file.filename or "ocr_notice",
+            content_bytes=content,
+            mime_type=file.content_type or "image/png",
+            source_language=ocr_res.detected_language or "en",
+            detected_language=ocr_res.detected_language or "en",
+            language_confidence=ocr_res.language_confidence or 1.0,
+            is_mixed_language=ocr_res.is_mixed_language or False,
+        )
+        resolved_doc_id = db_doc.id
 
+    # Persist human review items into SQLite
+    if ocr_res.uncertain_spans:
+        try:
+            get_db().save_human_review_items(resolved_doc_id, ocr_res.uncertain_spans)
+        except Exception as e:
+            logger.warning(f"Failed to persist human review items: {e}")
 
     fp = hashlib.sha256(ocr_res.extracted_text.strip().encode("utf-8")).hexdigest() if ocr_res.extracted_text else ""
-
     if ocr_res.extracted_text:
-
         evidence_service.index_notice(ocr_res.extracted_text)
 
-
-
     return OCRResponse(
-
         extracted_text=ocr_res.extracted_text,
-
         confidence_score=ocr_res.confidence_score,
-
         languages_used=ocr_res.languages_used,
-
         line_count=ocr_res.line_count,
-
         char_count=ocr_res.char_count,
-
         is_preprocessed=ocr_res.is_preprocessed,
-
         engine_used=ocr_res.engine_used,
-
         is_uncertain=ocr_res.is_uncertain,
-
         uncertainty_reason=ocr_res.uncertainty_reason,
-
         warning=ocr_res.warning,
-
         error=ocr_res.error,
-
         fingerprint=fp,
-
         raw_ocr_text=ocr_res.raw_ocr_text,
-
         document_quality_score=ocr_res.document_quality_score,
-
         deskew_angle=ocr_res.deskew_angle,
-
         orientation_applied=ocr_res.orientation_applied,
-
         uncertain_spans=ocr_res.uncertain_spans,
         critical_fields=ocr_res.critical_fields,
         field_accuracy_score=ocr_res.field_accuracy_score,
+        word_boxes=ocr_res.word_boxes,
+        image_dimensions=ocr_res.image_dimensions,
+        document_id=resolved_doc_id,
+        detected_language=ocr_res.detected_language,
+        language_confidence=ocr_res.language_confidence,
+        is_mixed_language=ocr_res.is_mixed_language,
     )
+
+
+# ---------------------------------------------------------
+# Human Review System Endpoints
+# ---------------------------------------------------------
+
+@app.get("/api/documents/{document_id}/review-items")
+async def get_document_review_items_endpoint(
+    document_id: str,
+    status: Optional[str] = None,
+    current_user: Dict[str, Any] = Depends(get_current_user_or_guest),
+):
+    """Fetches persistent human review items and metrics for a document."""
+    res = get_db().get_human_review_items(document_id, status=status)
+    return res
+
+
+@app.post("/api/documents/{document_id}/review-items/{item_id}")
+async def update_document_review_item_endpoint(
+    document_id: str,
+    item_id: str,
+    payload: Dict[str, Any] = Body(...),
+    current_user: Dict[str, Any] = Depends(get_current_user_or_guest),
+):
+    """Updates status ('pending', 'corrected', 'verified', 'ignored') and corrected text."""
+    item_status = payload.get("status", "pending")
+    corrected_text = payload.get("corrected_text")
+    res = get_db().update_human_review_item(item_id, status=item_status, corrected_text=corrected_text)
+    if not res:
+        raise HTTPException(status_code=404, detail="Review item not found.")
+    return res
+
+
+@app.post("/api/documents/{document_id}/review-items/apply")
+async def apply_document_review_corrections_endpoint(
+    document_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user_or_guest),
+):
+    """Applies all corrected review items to canonical document text, keeping raw OCR text intact."""
+    res = get_db().apply_review_corrections(document_id)
+    if "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+    return res
+
+
+@app.post("/api/ocr/detect-language")
+async def ocr_detect_language_endpoint(
+    file: UploadFile = File(...),
+    current_user: Dict[str, Any] = Depends(get_current_user_or_guest),
+):
+    """Fast pre-OCR document language detection from uploaded image."""
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    try:
+        from notice2action.language_detection import detect_image_language, get_ocr_language_for_detection
+        img = Image.open(io.BytesIO(content)).convert("RGB")
+        det = detect_image_language(img)
+        suggested_ocr = get_ocr_language_for_detection(det)
+        return {
+            "detected_language": det.detected_language,
+            "language_name": det.language_name,
+            "native_name": det.native_name,
+            "confidence": det.confidence,
+            "is_mixed": det.is_mixed,
+            "script": det.script,
+            "script_distribution": det.script_distribution,
+            "suggested_ocr_lang": suggested_ocr,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Language detection failed: {e}")
 
 
 

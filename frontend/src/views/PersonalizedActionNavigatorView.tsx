@@ -57,7 +57,9 @@ export const PersonalizedActionNavigatorView: React.FC = () => {
 
   useEffect(() => {
     if (!actionPlan && rawNoticeText) {
-      fetchOrGeneratePlan();
+      queueMicrotask(() => {
+        fetchOrGeneratePlan();
+      });
     }
   }, [actionPlan, rawNoticeText, fetchOrGeneratePlan]);
 

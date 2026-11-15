@@ -52,7 +52,7 @@ def test_fresh_database_initialization():
 
         versions = [m["version"] for m in migrations]
 
-        assert versions == [1, 2, 3, 4, 5], f"Expected migrations [1, 2, 3, 4, 5], got {versions}"
+        assert versions == list(range(1, SCHEMA_VERSION + 1)), f"Expected migrations {list(range(1, SCHEMA_VERSION + 1))}, got {versions}"
 
         
 
@@ -168,7 +168,7 @@ def test_v1_database_upgrades_to_v2_safely():
 
         versions = [row["version"] for row in cur.fetchall()]
 
-        assert versions == [1, 2, 3, 4, 5]
+        assert versions == list(range(1, SCHEMA_VERSION + 1))
 
         
 
@@ -258,7 +258,7 @@ def test_idempotent_migration_no_duplicates():
 
         rows = cur.fetchall()
 
-        assert len(rows) == 5, f"Expected exactly 5 migration records, found {len(rows)}"
+        assert len(rows) == SCHEMA_VERSION, f"Expected exactly {SCHEMA_VERSION} migration records, found {len(rows)}"
 
         
 

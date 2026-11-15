@@ -130,7 +130,9 @@ export const DashboardView: React.FC = () => {
   }, [currentUser, setUnreadNotificationsCount]);
 
   useEffect(() => {
-    fetchDashboardData();
+    queueMicrotask(() => {
+      fetchDashboardData();
+    });
   }, [fetchDashboardData, savedNoticeIds.length]);
 
   // Handlers
@@ -743,9 +745,11 @@ export const DashboardView: React.FC = () => {
                             <span className="text-[10px] font-bold uppercase tracking-wider text-[#08785D]">
                               {task.notice_title || 'Official Circular'}
                             </span>
-                            <span className={`px-2 py-0.2 rounded text-[10px] font-bold border ${dayBadge.color}`}>
-                              {dayBadge.label}
-                            </span>
+                            {days !== undefined && (
+                              <span className={`px-2 py-0.2 rounded text-[10px] font-bold border ${dayBadge.color}`}>
+                                {dayBadge.label}
+                              </span>
+                            )}
                             {isAmbiguous ? (
                               <span className="px-2 py-0.2 rounded text-[10px] font-bold bg-[#FFF4D6] text-[#92500A] border border-[#FDE68A] flex items-center gap-1">
                                 <AlertTriangle className="w-2.5 h-2.5" />

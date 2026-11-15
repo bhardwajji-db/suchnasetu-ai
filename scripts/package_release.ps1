@@ -40,7 +40,7 @@ $ItemsToCopy = @(
     "requirements.txt",
     "README.md",
     "SETUP.md",
-    "run_app.bat",
+    "LOCAL_DEPLOY.bat",
     "ARCHITECTURE.md",
     "API.md",
     "CONTRIBUTING.md",

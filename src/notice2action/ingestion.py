@@ -64,6 +64,22 @@ def ingest_pasted_text(pasted_text: str) -> IngestionResult:
     )
 
 
+def _render_pdf_page_pypdfium2(file_bytes: bytes, page_idx: int, dpi: int = 300) -> Optional[Image.Image]:
+    """Renders a single PDF page at configurable DPI using pypdfium2 (pure Python wheel, no external binaries)."""
+    try:
+        import pypdfium2 as pdfium
+        pdf = pdfium.PdfDocument(file_bytes)
+        if 1 <= page_idx <= len(pdf):
+            page = pdf[page_idx - 1]
+            scale = dpi / 72.0
+            bitmap = page.render(scale=scale)
+            pil_image = bitmap.to_pil().convert("RGB")
+            return pil_image
+    except Exception:
+        pass
+    return None
+
+
 def _render_pdf_page_pdftoppm(file_bytes: bytes, page_idx: int, dpi: int = 300) -> Optional[Image.Image]:
     """Renders a single PDF page at configurable DPI using pdftoppm if installed."""
     import shutil
@@ -101,7 +117,19 @@ def _render_pdf_page_pdftoppm(file_bytes: bytes, page_idx: int, dpi: int = 300) 
     return None
 
 
-def extract_text_from_pdf(file_bytes: bytes, target_lang: str = "eng+hin") -> Tuple[str, bool, Optional[str]]:
+def _render_pdf_page_to_image(file_bytes: bytes, page_idx: int, dpi: int = 300) -> Optional[Image.Image]:
+    """
+    Renders a single PDF page to a PIL Image using a prioritized fallback chain:
+    1. Primary: pypdfium2 (pure precompiled wheel, cross-platform, zero system dependencies)
+    2. Secondary: pdftoppm (Poppler system binary if available)
+    """
+    img = _render_pdf_page_pypdfium2(file_bytes, page_idx, dpi=dpi)
+    if img is not None:
+        return img
+    return _render_pdf_page_pdftoppm(file_bytes, page_idx, dpi=dpi)
+
+
+def extract_text_from_pdf(file_bytes: bytes, target_lang: str = "auto") -> Tuple[str, bool, Optional[str]]:
     """
     Extracts text from PDF documents:
     1. First attempts high-fidelity digital text extraction via pypdf page by page.
@@ -134,23 +162,27 @@ def extract_text_from_pdf(file_bytes: bytes, target_lang: str = "eng+hin") -> Tu
 
         # If digital text is missing or sparse, inspect page scans for OCR fallback
         page_ocr_parts: List[str] = []
-        rendered_page = _render_pdf_page_pdftoppm(file_bytes, idx, dpi=getattr(config, "pdf_raster_dpi", 300))
-        if rendered_page:
-            try:
-                ocr_res = extract_text_from_image(rendered_page, target_lang=target_lang)
+
+        # Tier 1: Extract direct embedded full-page scans if available
+        try:
+            for img_idx, img_obj in enumerate(page.images):
+                pil_img = Image.open(BytesIO(img_obj.data)).convert("RGB")
+                ocr_res = extract_text_from_image(pil_img, target_lang=target_lang)
                 if ocr_res.extracted_text and ocr_res.extracted_text.strip():
                     page_ocr_parts.append(ocr_res.extracted_text.strip())
-            except Exception:
-                pass
-        else:
-            try:
-                for img_idx, img_obj in enumerate(page.images):
-                    pil_img = Image.open(BytesIO(img_obj.data)).convert("RGB")
-                    ocr_res = extract_text_from_image(pil_img, target_lang=target_lang)
+        except Exception:
+            pass
+
+        # Tier 2: If no direct embedded images were readable, render the page bitmap
+        if not page_ocr_parts:
+            rendered_page = _render_pdf_page_to_image(file_bytes, idx, dpi=getattr(config, "pdf_raster_dpi", 300))
+            if rendered_page:
+                try:
+                    ocr_res = extract_text_from_image(rendered_page, target_lang=target_lang)
                     if ocr_res.extracted_text and ocr_res.extracted_text.strip():
                         page_ocr_parts.append(ocr_res.extracted_text.strip())
-            except Exception:
-                pass
+                except Exception:
+                    pass
 
         if page_ocr_parts:
             scanned_pages_found += 1

@@ -4,7 +4,7 @@ import { DashboardView } from '../views/DashboardView';
 import { NoticeProvider } from '../context/NoticeContext';
 import { I18nProvider } from '../i18n';
 import { apiClient } from '../services/apiClient';
-import * as authService from '../services/api';
+import * as authService from '../services/apiClient';
 import React from 'react';
 
 const mockSavedNotices = [

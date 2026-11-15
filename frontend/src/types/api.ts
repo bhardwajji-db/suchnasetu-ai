@@ -137,6 +137,32 @@ export interface IngestTextResponse {
   document_id?: string | null;
 }
 
+export interface HumanReviewItem {
+  id: string;
+  document_id: string;
+  page_number: number;
+  item_index?: number;
+  original_text: string;
+  corrected_text?: string | null;
+  confidence: number;
+  box: [number, number, number, number] | number[];
+  status: 'pending' | 'corrected' | 'verified' | 'ignored';
+  reason?: string;
+  field_name?: string | null;
+  created_at?: number | string;
+  updated_at?: number | string;
+}
+
+export interface HumanReviewSummary {
+  document_id: string;
+  total: number;
+  pending: number;
+  corrected: number;
+  verified: number;
+  ignored: number;
+  items: HumanReviewItem[];
+}
+
 export interface OCRResponse {
   extracted_text: string;
   confidence_score: number;
@@ -154,9 +180,27 @@ export interface OCRResponse {
   document_quality_score?: number | null;
   deskew_angle?: number | null;
   orientation_applied?: number | null;
-  uncertain_spans?: Array<{ text: string; confidence: number; box: number[]; status?: string; is_critical?: boolean; field_name?: string }> | null;
+  uncertain_spans?: Array<{
+    id?: string;
+    text: string;
+    original_text?: string;
+    corrected_text?: string | null;
+    confidence: number;
+    box: number[];
+    status?: string;
+    reason?: string;
+    is_critical?: boolean;
+    field_name?: string;
+    page_number?: number;
+  }> | null;
   critical_fields?: Record<string, { value: string; confidence: number; status: string; source: string }> | null;
   field_accuracy_score?: number | null;
+  word_boxes?: Array<{ text: string; box: number[]; line_id?: number[]; confidence?: number }> | null;
+  image_dimensions?: [number, number] | null;
+  document_id?: string | null;
+  detected_language?: string | null;
+  language_confidence?: number | null;
+  is_mixed_language?: boolean | null;
 }
 
 export interface AnalyzeResponse {

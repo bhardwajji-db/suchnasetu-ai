@@ -105,6 +105,12 @@ export const IngestionView: React.FC = () => {
   const [highlightedSnippet, setHighlightedSnippet] = useState<string | null>(null);
   const [dismissedDeadlineNotice, setDismissedDeadlineNotice] = useState<string | null>(null);
 
+  const [startOfTodayMs] = useState<number>(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  });
+
   const sourceContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -434,7 +440,7 @@ export const IngestionView: React.FC = () => {
       {analysisError && (() => {
         const errLower = analysisError.toLowerCase();
         const isQuota = errLower.includes('quota') || errLower.includes('rate limit') || errLower.includes('429');
-        const isOffline = errLower.includes('connection') || errLower.includes('offline') || errLower.includes('cannot connect') || errLower.includes('failed to connect') || errLower.includes('is ollama running') || errLower.includes('ensure ollama is running');
+        const isOffline = errLower.includes('connection') || errLower.includes('offline') || errLower.includes('cannot connect') || errLower.includes('failed to connect') || errLower.includes('failed to fetch') || errLower.includes('unable to reach') || errLower.includes('network') || errLower.includes('tunnel') || errLower.includes('is ollama running') || errLower.includes('ensure ollama is running');
         const isModelMissing = !isOffline && (errLower.includes('not found in ollama') || errLower.includes('model not found') || errLower.includes('model_missing') || errLower.includes('llmmodelerror'));
         const isTimeout = errLower.includes('timed out') || errLower.includes('timeout') || errLower.includes('504');
         const isValidation = errLower.includes('empty') || errLower.includes('validation') || errLower.includes('422');
@@ -1130,9 +1136,7 @@ export const IngestionView: React.FC = () => {
                         if (match) {
                           const parsed = new Date(match[1]);
                           if (!isNaN(parsed.getTime())) {
-                            const now = new Date();
-                            now.setHours(0, 0, 0, 0);
-                            diffDays = Math.round((parsed.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                            diffDays = Math.round((parsed.getTime() - startOfTodayMs) / (1000 * 60 * 60 * 24));
                           }
                         }
 

@@ -36,7 +36,9 @@ export const CrossNoticeTimelineView: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchWorkspaceReport();
+    queueMicrotask(() => {
+      fetchWorkspaceReport();
+    });
   }, [fetchWorkspaceReport]);
 
   // Keyboard Escape dismissal for Add Notice Modal

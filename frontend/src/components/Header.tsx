@@ -50,7 +50,20 @@ export const Header: React.FC = () => {
 
   const { setLanguage, t } = useTranslation();
 
-  const [authInitialView, setAuthInitialView] = useState<AuthPageView>('login');
+  const [authInitialView] = useState<AuthPageView>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const path = (window.location.pathname || '').toLowerCase();
+        const search = window.location.search || '';
+        const params = new URLSearchParams(search);
+        if (path.includes('verify-email') || path.includes('verify_email') || params.has('token')) return 'verify_email';
+        if (path.includes('reset-password') || path.includes('reset_password')) return 'reset_password';
+        if (path.includes('signup')) return 'signup';
+        if (path.includes('forgot-password') || path.includes('forgot_password')) return 'forgot_password';
+      }
+    } catch {}
+    return 'login';
+  });
 
   useEffect(() => {
     try {
@@ -58,21 +71,20 @@ export const Header: React.FC = () => {
         const path = (window.location.pathname || '').toLowerCase();
         const search = window.location.search || '';
         const params = new URLSearchParams(search);
-        if (path.includes('verify-email') || path.includes('verify_email') || params.has('token')) {
-          setAuthInitialView('verify_email');
-          setIsAuthModalOpen(true);
-        } else if (path.includes('reset-password') || path.includes('reset_password')) {
-          setAuthInitialView('reset_password');
-          setIsAuthModalOpen(true);
-        } else if (path.includes('login')) {
-          setAuthInitialView('login');
-          setIsAuthModalOpen(true);
-        } else if (path.includes('signup')) {
-          setAuthInitialView('signup');
-          setIsAuthModalOpen(true);
-        } else if (path.includes('forgot-password') || path.includes('forgot_password')) {
-          setAuthInitialView('forgot_password');
-          setIsAuthModalOpen(true);
+        if (
+          path.includes('verify-email') ||
+          path.includes('verify_email') ||
+          path.includes('reset-password') ||
+          path.includes('reset_password') ||
+          path.includes('login') ||
+          path.includes('signup') ||
+          path.includes('forgot-password') ||
+          path.includes('forgot_password') ||
+          params.has('token')
+        ) {
+          queueMicrotask(() => {
+            setIsAuthModalOpen(true);
+          });
         }
       }
     } catch {}
@@ -208,57 +220,31 @@ export const Header: React.FC = () => {
 
 
         <button
-
           type="button"
-
           onClick={() => setActiveTab(0)}
-
-          className="flex items-center gap-2 sm:gap-2.5 text-left group cursor-pointer focus:outline-hidden min-w-0"
-
+          className="flex items-center gap-2 sm:gap-2.5 text-left group cursor-pointer focus:outline-hidden shrink-0"
           title="Return to Home"
-
         >
-
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-[#08785D] to-[#06664E] flex items-center justify-center shadow-xs shadow-[#08785D]/20 font-black text-white text-base sm:text-lg shrink-0">
-
             स
-
           </div>
-
-          <div className="flex flex-col min-w-0">
-
-            <div className="flex items-center gap-1.5 leading-none">
-
-              <span className="text-base sm:text-lg font-extrabold tracking-tight text-[#12233D] truncate">
-
+          <div className="flex flex-col shrink-0">
+            <div className="flex items-center gap-2 leading-none">
+              <span className="text-base sm:text-lg font-extrabold tracking-tight text-[#12233D] whitespace-nowrap">
                 Suchna<span className="text-[#08785D]">Setu</span> <span className="hidden xs:inline">AI</span>
-
               </span>
-
-              <span className="text-[9px] sm:text-[10px] font-mono uppercase bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2] px-1 py-0.2 sm:px-1.5 sm:py-0.5 rounded-md font-bold shrink-0">
-
+              <span className="text-[9px] sm:text-[10px] font-mono uppercase bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2] px-1.5 py-0.5 rounded-md font-bold shrink-0 whitespace-nowrap">
                 PS02
-
               </span>
-
             </div>
-
-            <span className="text-[11px] font-medium text-[#526176] mt-0.5 hidden md:inline truncate">
-
+            <span className="text-[11px] font-medium text-[#526176] mt-0.5 hidden lg:inline whitespace-nowrap">
               Understand the notice. Know your next step.
-
             </span>
-
           </div>
-
         </button>
 
-
-
-        <span className="hidden xl:inline-block text-xs text-[#68778B] border-l border-[#E1E7EE] pl-3 py-1">
-
+        <span className="hidden 2xl:inline-block text-xs text-[#68778B] border-l border-[#E1E7EE] pl-3 py-1 whitespace-nowrap shrink-0">
           Notice-to-Action Accessibility Assistant
-
         </span>
 
       </div>

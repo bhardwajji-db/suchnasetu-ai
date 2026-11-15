@@ -238,6 +238,22 @@ def kill_pid_tree(pid: Optional[int], expected_type: str = "any"):
             log(f"Warning: kill on PID {pid} failed: {e}")
 
 
+def release_bound_project_port(port: int, expected_type: str):
+    """If a port is still bound by an orphaned project process, cleanly terminate it."""
+    if not is_port_in_use(port):
+        return
+    if sys.platform == "win32":
+        try:
+            cmd = ["powershell", "-NoProfile", "-Command", f"(Get-NetTCPConnection -LocalPort {port} -State Listen -ErrorAction SilentlyContinue).OwningProcess"]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=3.0)
+            pids = set(int(p.strip()) for p in res.stdout.split() if p.strip().isdigit())
+            for port_pid in pids:
+                if is_project_process(port_pid, expected_type):
+                    subprocess.run(["taskkill", "/PID", str(port_pid), "/T", "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        except Exception:
+            pass
+
+
 def cleanup_launcher_processes():
     """Clean up only processes owned by this launcher."""
     if supervisor_state["cleaned_up"]:
@@ -276,6 +292,10 @@ def cleanup_launcher_processes():
     else:
         log("Preserving pre-existing Ollama service (untouched).")
 
+    # Ensure project ports are released
+    release_bound_project_port(8000, "backend")
+    release_bound_project_port(5173, "frontend")
+
     # Remove lockfile
     if PID_LOCKFILE.exists():
         try:
@@ -284,7 +304,7 @@ def cleanup_launcher_processes():
             pass
 
     # Verify port release
-    time.sleep(1.0)
+    time.sleep(0.5)
     p8000 = is_port_in_use(8000)
     p5173 = is_port_in_use(5173)
     if not p8000 and not p5173:
@@ -329,6 +349,10 @@ def save_pid_lockfile():
 
 def stop_saved_processes():
     """Read lockfile and terminate previously tracked processes with identity verification."""
+    # Ensure any project processes still bound to application ports are released
+    release_bound_project_port(8000, "backend")
+    release_bound_project_port(5173, "frontend")
+
     if not PID_LOCKFILE.exists():
         log("No active launcher lockfile found (.launcher_pids.json).")
         return
@@ -361,6 +385,10 @@ def stop_saved_processes():
     prev_sup_pid = data.get("supervisor_pid")
     if prev_sup_pid and prev_sup_pid != current_pid:
         kill_pid_tree(prev_sup_pid, "supervisor")
+
+    # Ensure project ports are released
+    release_bound_project_port(8000, "backend")
+    release_bound_project_port(5173, "frontend")
 
     if PID_LOCKFILE.exists():
         try:

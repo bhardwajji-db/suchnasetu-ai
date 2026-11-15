@@ -8,6 +8,7 @@ import type {
   SampleFixture,
   IngestTextResponse,
   OCRResponse,
+  HumanReviewSummary,
   AnalyzeResponse,
   FollowUpAnswer,
   StructuredNotice,
@@ -33,11 +34,14 @@ import type {
   UserActivity,
   TranslateNoticeRequest,
   TranslateNoticeResponse,
+  UserProfile,
+  GuestStatus,
 } from '../types/api';
 
-const getBaseUrl = (): string => {
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
+export const getBaseUrl = (): string => {
+  const envUrl = import.meta.env?.VITE_API_BASE_URL;
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+    return envUrl.trim().replace(/\/+$/, '');
   }
   if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') {
     return '';
@@ -45,12 +49,13 @@ const getBaseUrl = (): string => {
   return 'http://127.0.0.1:8000';
 };
 
-const BASE_URL = getBaseUrl();
+export const BASE_URL = getBaseUrl();
 
 export class APIError extends Error {
   status: number;
   data: any;
   errorType?: string;
+  isNetworkError?: boolean;
 
   constructor(message: string, status: number, data?: any) {
     super(message);
@@ -58,33 +63,90 @@ export class APIError extends Error {
     this.status = status;
     this.data = data;
     this.errorType = data?.error_type;
+    this.isNetworkError = data?.isNetworkError;
   }
 }
 
-async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+export async function apiFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  timeoutMs: number = 60000
+): Promise<Response> {
   const defaultInit: RequestInit = {
     credentials: 'include',
   };
-  return fetch(input, { ...defaultInit, ...init });
+
+  let timeoutId: any = null;
+  let signal = init?.signal;
+  if (!signal && timeoutMs > 0 && typeof AbortController !== 'undefined') {
+    const controller = new AbortController();
+    signal = controller.signal;
+    timeoutId = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+  }
+
+  try {
+    const res = await fetch(input, { ...defaultInit, ...init, signal });
+    return res;
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new APIError(
+        'Request timed out. The server or AI inference engine is taking longer than expected. Please retry or check server status.',
+        504,
+        { isTimeout: true }
+      );
+    }
+    if (error instanceof APIError) {
+      throw error;
+    }
+    const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    const msg = isOffline
+      ? 'You appear to be offline. Please verify your internet connection and retry.'
+      : 'Network Connection Error: Unable to reach SuchnaSetu AI server. Check your connection or verify that the server/tunnel is active.';
+    throw new APIError(msg, 0, { originalError: error?.message || 'NetworkError', isNetworkError: true });
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
-async function handleResponse<T>(res: Response): Promise<T> {
+export async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    let errMessage = `HTTP ${res.status}: ${res.statusText}`;
+    let errMessage = `HTTP ${res.status}: ${res.statusText || 'Error'}`;
     let errData = null;
     try {
       errData = await res.json();
       if (errData && errData.detail) {
         errMessage = typeof errData.detail === 'string' ? errData.detail : JSON.stringify(errData.detail);
+      } else if (errData && errData.message) {
+        errMessage = typeof errData.message === 'string' ? errData.message : JSON.stringify(errData.message);
       }
     } catch {
-      // not JSON (e.g. HTML proxy response from Cloudflare or reverse proxy)
-      if (res.status === 502) {
-        errMessage = 'Bad Gateway (502): The model inference gateway or Ollama server did not respond. Verify that Ollama is running and reachable.';
+      // Non-JSON response (e.g. HTML error from Cloudflare or reverse proxy)
+      if (res.status === 530) {
+        errMessage = 'Cloudflare Tunnel Error (1033): The tunnel connector is currently offline or unreachable. Please ensure the tunnel launcher is running on the host.';
+      } else if (res.status === 502) {
+        errMessage = 'Bad Gateway (502): The local LLM engine (Ollama/Gemma 4) or inference gateway did not respond. Verify that Ollama is running and reachable.';
       } else if (res.status === 504) {
         errMessage = 'Gateway Timeout (504): The notice analysis took longer than the gateway timeout window. Check system resources or retry with a shorter notice.';
       } else if (res.status === 503) {
-        errMessage = 'Service Unavailable (503): The local LLM engine is temporarily unavailable or restarting.';
+        errMessage = 'Service Unavailable (503): The local backend engine is temporarily unavailable or restarting.';
+      } else if (res.status === 520) {
+        errMessage = 'Cloudflare Error 520: Web server returned an unknown error.';
+      } else if (res.status === 521) {
+        errMessage = 'Cloudflare Error 521: Web server is down. Ensure the FastAPI backend is running on port 8000.';
+      } else if (res.status === 522) {
+        errMessage = 'Cloudflare Error 522: Connection timed out to origin server.';
+      } else if (res.status === 524) {
+        errMessage = 'Cloudflare Error 524: Cloudflare gateway timed out waiting for the origin server.';
+      } else if (res.status === 403) {
+        errMessage = 'Access Forbidden (403): Request blocked by security policy, CSRF, or untrusted origin.';
+      } else if (res.status === 413) {
+        errMessage = 'Payload Too Large (413): The uploaded document exceeds the 10MB limit.';
+      } else if (res.status === 404) {
+        errMessage = 'Not Found (404): The requested API route could not be found.';
       }
     }
     throw new APIError(errMessage, res.status, errData);
@@ -179,9 +241,10 @@ export const apiClient = {
   async runOCR(
     file: File | Blob,
     filename: string = 'notice_image.png',
-    targetLang: string = 'eng',
+    targetLang: string = 'auto',
     enhanceContrast: boolean = true,
-    engine?: string
+    engine?: string,
+    documentId?: string
   ): Promise<OCRResponse> {
     const formData = new FormData();
     formData.append('file', file, filename);
@@ -190,12 +253,77 @@ export const apiClient = {
     if (engine) {
       formData.append('engine', engine);
     }
+    if (documentId) {
+      formData.append('document_id', documentId);
+    }
 
     const res = await apiFetch(`${BASE_URL}/api/ocr`, {
       method: 'POST',
       body: formData,
     });
     return handleResponse<OCRResponse>(res);
+  },
+
+  /**
+   * Fast pre-OCR document language detection from image
+   */
+  async detectImageLanguage(file: File | Blob): Promise<{
+    detected_language: string;
+    language_name: string;
+    native_name: string;
+    confidence: number;
+    is_mixed: boolean;
+    script: string;
+    script_distribution: Record<string, number>;
+    suggested_ocr_lang: string;
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiFetch(`${BASE_URL}/api/ocr/detect-language`, {
+      method: 'POST',
+      body: formData,
+    });
+    return handleResponse(res);
+  },
+
+  /**
+   * Fetches persistent human review items for a document
+   */
+  async getReviewItems(documentId: string, status?: string): Promise<HumanReviewSummary> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    const res = await apiFetch(`${BASE_URL}/api/documents/${documentId}/review-items${query}`, {
+      method: 'GET',
+    });
+    return handleResponse<HumanReviewSummary>(res);
+  },
+
+  /**
+   * Updates status and correction text of a human review item
+   */
+  async updateReviewItem(
+    documentId: string,
+    itemId: string,
+    status: 'pending' | 'corrected' | 'verified' | 'ignored',
+    correctedText?: string
+  ): Promise<HumanReviewSummary> {
+    const res = await apiFetch(`${BASE_URL}/api/documents/${documentId}/review-items/${itemId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, corrected_text: correctedText }),
+    });
+    return handleResponse<HumanReviewSummary>(res);
+  },
+
+  /**
+   * Applies all corrected review items to canonical notice document text
+   */
+  async applyReviewCorrections(
+    documentId: string
+  ): Promise<{ document_id: string; applied_count: number; raw_text: string }> {
+    const res = await apiFetch(`${BASE_URL}/api/documents/${documentId}/review-items/apply`, {
+      method: 'POST',
+    });
+    return handleResponse(res);
   },
 
   /**
@@ -859,4 +987,180 @@ export const apiClient = {
     });
     return handleResponse<any>(res);
   },
+
+  /**
+   * Unified Authentication API methods
+   */
+  auth: {
+    login: loginAccount,
+    register: registerAccount,
+    verifyEmail: verifyEmailAddress,
+    resendVerification: resendEmailVerification,
+    getMe: fetchAuthMe,
+    logout: logoutAccount,
+    requestPasswordReset,
+    completePasswordReset,
+    getGuestStatus: fetchGuestStatus,
+  },
 };
+
+const AUTH_BASE = `${BASE_URL}/api/auth`;
+
+export async function loginAccount(params: {
+  email: string;
+  password: string;
+  rememberMe?: boolean;
+}): Promise<{ status: string; message: string; user?: UserProfile }> {
+  const resp = await apiFetch(`${AUTH_BASE}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: params.email,
+      password: params.password,
+      remember_me: !!params.rememberMe,
+    }),
+  });
+
+  return handleResponse<{ status: string; message: string; user?: UserProfile }>(resp);
+}
+
+export async function registerAccount(params: {
+  username?: string;
+  name?: string;
+  email: string;
+  password: string;
+  confirmPassword?: string;
+}): Promise<{
+  status: string;
+  message: string;
+  user?: UserProfile;
+  email_delivered?: boolean;
+  already_verified?: boolean;
+}> {
+  const resp = await apiFetch(`${AUTH_BASE}/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: params.username || params.name,
+      name: params.name || params.username,
+      email: params.email,
+      password: params.password,
+      confirm_password: params.confirmPassword,
+    }),
+  });
+
+  return handleResponse<{
+    status: string;
+    message: string;
+    user?: UserProfile;
+    email_delivered?: boolean;
+    already_verified?: boolean;
+  }>(resp);
+}
+
+export async function verifyEmailAddress(params: {
+  token?: string;
+  email?: string;
+  code?: string;
+}): Promise<{ status: string; message: string }> {
+  const resp = await apiFetch(`${AUTH_BASE}/verify-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      token: params.token || undefined,
+      email: params.email || undefined,
+      code: params.code || undefined,
+    }),
+  });
+
+  return handleResponse<{ status: string; message: string }>(resp);
+}
+
+export async function resendEmailVerification(email: string): Promise<{
+  status: string;
+  message: string;
+  email_delivered?: boolean;
+  already_verified?: boolean;
+}> {
+  const resp = await apiFetch(`${AUTH_BASE}/resend-verification`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  return handleResponse<{
+    status: string;
+    message: string;
+    email_delivered?: boolean;
+    already_verified?: boolean;
+  }>(resp);
+}
+
+export async function fetchAuthMe(): Promise<UserProfile | null> {
+  try {
+    const resp = await apiFetch(`${AUTH_BASE}/me`, {
+      method: 'GET',
+    });
+    if (resp.status === 401 || !resp.ok) {
+      return null;
+    }
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function logoutAccount(): Promise<void> {
+  try {
+    await apiFetch(`${AUTH_BASE}/logout`, {
+      method: 'POST',
+    });
+  } catch (err) {
+    console.warn('Logout network error:', err);
+  }
+}
+
+export async function requestPasswordReset(params: {
+  email: string;
+  method?: 'link' | 'code';
+}): Promise<{ status: string; message: string }> {
+  const resp = await apiFetch(`${AUTH_BASE}/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: params.email,
+      method: params.method || 'link',
+    }),
+  });
+
+  return handleResponse<{ status: string; message: string }>(resp);
+}
+
+export async function completePasswordReset(params: {
+  newPassword: string;
+  confirmPassword?: string;
+  token?: string;
+  email?: string;
+  code?: string;
+}): Promise<{ status: string; message: string }> {
+  const resp = await apiFetch(`${AUTH_BASE}/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      new_password: params.newPassword,
+      confirm_password: params.confirmPassword,
+      token: params.token || undefined,
+      email: params.email || undefined,
+      code: params.code || undefined,
+    }),
+  });
+
+  return handleResponse<{ status: string; message: string }>(resp);
+}
+
+export async function fetchGuestStatus(): Promise<GuestStatus> {
+  const resp = await apiFetch(`${AUTH_BASE}/guest-status`, {
+    method: 'GET',
+  });
+  return handleResponse<GuestStatus>(resp);
+}

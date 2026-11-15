@@ -1,0 +1,82 @@
+{
+  "doc_id": "DOC-09",
+  "filename": "DOC-09_multipage_icar_notice.pdf",
+  "category": "Multi-page notice",
+  "hash_sha256": "8202addce89f4c99664300956b941d81ff9cd6039caafde7c2327ed678872694",
+  "file_size_bytes": 124753,
+  "ocr_metrics": {
+    "cer": 1.0,
+    "wer": 1.0,
+    "duration_seconds": 2.3883700370788574,
+    "confidence": 85.0,
+    "critical_preserved": 5,
+    "critical_total": 5
+  },
+  "ai_metrics": {
+    "duration_seconds": 57.02329111099243,
+    "error": null
+  },
+  "field_evaluations": [
+    {
+      "field": "issuing_authority",
+      "expected_value": "INDIAN COUNCIL OF AGRICULTURAL RESEARCH",
+      "expected_status": "PRESENT",
+      "source_quote": "INDIAN COUNCIL OF AGRICULTURAL RESEARCH (Page 1)",
+      "ocr_preserved": true,
+      "ai_value": "INDIAN COUNCIL OF AGRICULTURAL RESEARCH",
+      "ai_status": "stated",
+      "ai_quote": "INDIAN COUNCIL OF AGRICULTURAL RESEARCH",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "final_deadline",
+      "expected_value": "05 May 2026",
+      "expected_status": "PRESENT",
+      "source_quote": "Final Application Deadline: 05 May 2026 (Page 2)",
+      "ocr_preserved": true,
+      "ai_value": "05 May 2026, 17:00 Hours",
+      "ai_status": "stated",
+      "ai_quote": "Final Application Deadline: 05 May 2026, 17:00 Hours.",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "application_fee",
+      "expected_value": "Rs. 450",
+      "expected_status": "PRESENT",
+      "source_quote": "Application Processing Fee: Rs. 450 (Page 2)",
+      "ocr_preserved": true,
+      "ai_value": "Rs. 450 (Non-refundable)",
+      "ai_status": "stated",
+      "ai_quote": "Application Processing Fee: Rs. 450 (Non-refundable).",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "eligibility_percentage",
+      "expected_value": "60.0%",
+      "expected_status": "PRESENT",
+      "source_quote": "60.0% marks in graduation (Page 1)",
+      "ocr_preserved": true,
+      "ai_value": "Bachelor's Degree in Agriculture or Allied Sciences; Minimum aggregate percentage of 60.0% marks in graduation; Age must not exceed 28 years on 01 January 2026.",
+      "ai_status": "stated",
+      "ai_quote": "Candidate must possess a Bachelor's Degree in Agriculture or Allied Sciences.",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "official_portal_url",
+      "expected_value": "https://icar.org.in/sta2026",
+      "expected_status": "PRESENT",
+      "source_quote": "https://icar.org.in/sta2026 (Page 2)",
+      "ocr_preserved": true,
+      "ai_value": "Submit application online at https://icar.org.in/sta2026 and upload required documents.",
+      "ai_status": "uncertain",
+      "ai_quote": "All applications must be submitted online at https://icar.org.in/sta2026\nUpload Degree Certificate and Photo ID.",
+      "verdict": "PASS",
+      "root_cause": null
+    }
+  ],
+  "downstream_evaluations": {}
+}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNotice } from '../context/NoticeContext';
 import { useTranslation } from '../i18n';
 import { apiClient } from '../services/apiClient';
+import { CitizenActionSlip } from './CitizenActionSlip';
 import {
   CheckSquare,
   Square,
@@ -10,6 +11,7 @@ import {
   Quote,
   CheckCircle2,
   Info,
+  Printer,
 } from 'lucide-react';
 
 export const ActionChecklistTable: React.FC = () => {
@@ -24,9 +26,11 @@ export const ActionChecklistTable: React.FC = () => {
     summaryEn,
     summaryHi,
     localizedSummary,
+    documentId,
   } = useNotice();
   const { t } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
+  const [showSlipModal, setShowSlipModal] = useState(false);
 
   const activeLang = (selectedLang || outputLang || 'en').toLowerCase().trim();
 
@@ -225,6 +229,17 @@ export const ActionChecklistTable: React.FC = () => {
         </span>
 
         <div className="flex items-center gap-2.5">
+          {structuredNotice && (
+            <button
+              type="button"
+              onClick={() => setShowSlipModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-[#12233D] bg-white hover:bg-[#F8FAFC] border border-[#CBD5E1] transition cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5 text-[#08785D]" />
+              Print Action Slip
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleDownloadMarkdown}
@@ -246,6 +261,17 @@ export const ActionChecklistTable: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {showSlipModal && structuredNotice && (
+        <CitizenActionSlip
+          notice={structuredNotice}
+          summary={summary}
+          checklist={checklist}
+          documentId={documentId}
+          currentLanguage={activeLang}
+          onClose={() => setShowSlipModal(false)}
+        />
+      )}
     </div>
   );
 };

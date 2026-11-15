@@ -1,0 +1,70 @@
+{
+  "doc_id": "DOC-10",
+  "filename": "DOC-10_tabular_eligibility_notice.png",
+  "category": "Table containing eligibility criteria",
+  "hash_sha256": "aa0fe8a0751a1bfb10631df1e6d5377b3c7d9beeb8aa2a8942f6176209b35aad",
+  "file_size_bytes": 40904,
+  "ocr_metrics": {
+    "cer": 1.0,
+    "wer": 1.0,
+    "duration_seconds": 0.6840150356292725,
+    "confidence": 91.3,
+    "critical_preserved": 3,
+    "critical_total": 3
+  },
+  "ai_metrics": {
+    "duration_seconds": 31.992156744003296,
+    "error": null
+  },
+  "field_evaluations": [
+    {
+      "field": "issuing_authority",
+      "expected_value": "DELHI SUBORDINATE SERVICES SELECTION BOARD",
+      "expected_status": "PRESENT",
+      "source_quote": "DELHI SUBORDINATE SERVICES SELECTION BOARD",
+      "ocr_preserved": true,
+      "ai_value": "DELHI SUBORDINATE SERVICES SELECTION BOARD",
+      "ai_status": "stated",
+      "ai_quote": "DELHI SUBORDINATE SERVICES SELECTION BOARD",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "final_deadline",
+      "expected_value": "12 June 2026",
+      "expected_status": "PRESENT",
+      "source_quote": "Closing Date for Applications: 12 June 2026",
+      "ocr_preserved": true,
+      "ai_value": "12 June 2026",
+      "ai_status": "stated",
+      "ai_quote": "Closing Date for Applications: 12 June 2026",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "application_fee",
+      "expected_value": "Rs. 100",
+      "expected_status": "PRESENT",
+      "source_quote": "Application Fee: Rs. 100",
+      "ocr_preserved": true,
+      "ai_value": "Rs. 100",
+      "ai_status": "stated",
+      "ai_quote": "Rs. 100 for all posts.",
+      "verdict": "PASS",
+      "root_cause": null
+    },
+    {
+      "field": "official_portal_url",
+      "expected_value": "https://dsssbonline.nic.in",
+      "expected_status": "PRESENT",
+      "source_quote": "https://dsssbonline.nic.in",
+      "ocr_preserved": true,
+      "ai_value": "Apply online via the provided portal.",
+      "ai_status": "stated",
+      "ai_quote": "Portal: https://dsssbonline.nic.in",
+      "verdict": "PASS",
+      "root_cause": null
+    }
+  ],
+  "downstream_evaluations": {}
+}

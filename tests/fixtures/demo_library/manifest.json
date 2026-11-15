@@ -28,7 +28,8 @@
       "standard_deadline",
       "zero_fee"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 175
   },
   {
     "id": "DEMO-02",
@@ -59,7 +60,8 @@
       "exam_instructions",
       "strict_deadline"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 112
   },
   {
     "id": "DEMO-03",
@@ -90,7 +92,8 @@
       "docx_format",
       "recruitment"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 104
   },
   {
     "id": "DEMO-32",
@@ -121,7 +124,8 @@
       "prompt_injection",
       "security_evaluation"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 104
   },
   {
     "id": "DEMO-04",
@@ -152,7 +156,8 @@
       "native_hindi",
       "tiered_fees"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 113
   },
   {
     "id": "DEMO-05",
@@ -183,7 +188,8 @@
       "native_hindi",
       "pdf_format"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 112
   },
   {
     "id": "DEMO-06",
@@ -215,7 +221,8 @@
       "png_format",
       "subsidy_scheme"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 120
   },
   {
     "id": "DEMO-07",
@@ -246,7 +253,8 @@
       "native_bengali",
       "docx_format"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 112
   },
   {
     "id": "DEMO-08",
@@ -277,7 +285,8 @@
       "native_bengali",
       "scholarship_scheme"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 123
   },
   {
     "id": "DEMO-09",
@@ -308,7 +317,8 @@
       "pdf_format",
       "tax_waiver"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 104
   },
   {
     "id": "DEMO-10",
@@ -338,7 +348,8 @@
       "native_tamil",
       "png_format"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 88
   },
   {
     "id": "DEMO-11",
@@ -369,7 +380,8 @@
       "native_tamil",
       "counseling_verification"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 124
   },
   {
     "id": "DEMO-12",
@@ -400,7 +412,8 @@
       "jpg_format",
       "free_training"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 120
   },
   {
     "id": "DEMO-13",
@@ -430,7 +443,8 @@
       "native_telugu",
       "pdf_format"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 120
   },
   {
     "id": "DEMO-14",
@@ -460,7 +474,8 @@
       "native_telugu",
       "dbt_scheme"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 120
   },
   {
     "id": "DEMO-15",
@@ -491,7 +506,8 @@
       "webp_format",
       "fee_extension"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 112
   },
   {
     "id": "DEMO-16",
@@ -521,7 +537,8 @@
       "native_marathi",
       "agricultural_scheme"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 108
   },
   {
     "id": "DEMO-17",
@@ -551,7 +568,8 @@
       "native_marathi",
       "docx_format"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 104
   },
   {
     "id": "DEMO-18",
@@ -582,7 +600,8 @@
       "pdf_format",
       "tender_corrigendum"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 96
   },
   {
     "id": "DEMO-19",
@@ -612,7 +631,8 @@
       "native_gujarati",
       "webp_format"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 112
   },
   {
     "id": "DEMO-20",
@@ -643,7 +663,8 @@
       "native_gujarati",
       "merit_scholarship"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 132
   },
   {
     "id": "DEMO-21",
@@ -674,7 +695,8 @@
       "png_format",
       "tax_amnesty"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 104
   },
   {
     "id": "DEMO-22",
@@ -705,7 +727,8 @@
       "native_punjabi",
       "stipend_fellowship"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 116
   },
   {
     "id": "DEMO-23",
@@ -736,7 +759,8 @@
       "pdf_format",
       "bill_waiver"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 112
   },
   {
     "id": "DEMO-24",
@@ -766,7 +790,8 @@
       "native_punjabi",
       "jpg_format"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 120
   },
   {
     "id": "DEMO-25",
@@ -798,7 +823,8 @@
       "jpg_format",
       "dbt_scholarship"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 120
   },
   {
     "id": "DEMO-26",
@@ -828,7 +854,8 @@
       "native_kannada",
       "docx_format"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 120
   },
   {
     "id": "DEMO-27",
@@ -858,7 +885,8 @@
       "native_kannada",
       "unemployment_allowance"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 135
   },
   {
     "id": "DEMO-28",
@@ -889,7 +917,8 @@
       "rtl_direction",
       "zero_fee"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 143
   },
   {
     "id": "DEMO-29",
@@ -920,7 +949,8 @@
       "pdf_format",
       "distance_admissions"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 120
   },
   {
     "id": "DEMO-30",
@@ -952,7 +982,8 @@
       "tif_format",
       "self_employment"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 104
   },
   {
     "id": "DEMO-31",
@@ -983,6 +1014,7 @@
       "tif_format",
       "public_hearing"
     ],
-    "limitations": null
+    "limitations": null,
+    "word_count": 96
   }
 ]

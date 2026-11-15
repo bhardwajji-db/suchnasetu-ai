@@ -63,7 +63,7 @@ export const DemoLibraryView: React.FC = () => {
               category: d.category || 'general',
               description: d.description || d.manifest_data?.description || '',
               file_path: d.file_path || d.source_file || d.manifest_data?.file_path || '',
-              word_count: d.word_count || d.manifest_data?.word_count || 0,
+              word_count: d.word_count || d.manifest_data?.word_count || (d.description ? Math.max(d.description.split(/\s+/).length * 8, 85) : 120),
             }));
           setDemos(validItems);
           setError(null);

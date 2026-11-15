@@ -8,6 +8,7 @@ import type {
   PreflightReport,
   SampleFixture,
   OCRResponse,
+  HumanReviewSummary,
   LLMProviderStatus,
   ApplicantProfile,
   EligibilityAssessment,
@@ -16,8 +17,7 @@ import type {
   AccessibilityPreferences,
   UserProfile,
 } from '../types/api';
-import { apiClient } from '../services/apiClient';
-import { fetchAuthMe, logoutAccount } from '../services/api';
+import { apiClient, fetchAuthMe, logoutAccount } from '../services/apiClient';
 import { useTranslation } from '../i18n';
 
 export type AppTheme = 'light' | 'dark';
@@ -38,6 +38,20 @@ export interface EvidenceDrawerState {
   evidence: TrustEvidence | null;
   rawNoticeOverride?: string;
   suggestedMatch?: string | null;
+}
+
+export interface ReviewHighlightState {
+  active: boolean;
+  fieldName: string;
+  displayName: string;
+  targetText: string;
+  evidenceQuote?: string | null;
+  fact?: any | null;
+  pageNumber?: number | null;
+  boxes?: Array<[number, number, number, number]>;
+  status?: string;
+  confidence?: number;
+  notFound: boolean;
 }
 
 export interface SpeechGuidanceState {
@@ -75,6 +89,11 @@ interface NoticeContextType {
   setDetectedLangMeta: (meta: { detected_language: string; confidence: number; is_mixed: boolean } | null) => void;
   documentId: string | null;
   setDocumentId: (id: string | null) => void;
+  reviewSummary: HumanReviewSummary | null;
+  setReviewSummary: (summary: HumanReviewSummary | null) => void;
+  updateReviewItem: (itemId: string, status: 'pending' | 'corrected' | 'verified' | 'ignored', correctedText?: string) => Promise<void>;
+  applyReviewCorrections: () => Promise<void>;
+  refreshReviewItems: () => Promise<void>;
   theme: AppTheme;
   setTheme: (theme: AppTheme) => void;
   toggleTheme: () => void;
@@ -89,6 +108,9 @@ interface NoticeContextType {
   confirmingFact: { fieldName: string; displayName: string; fact: any } | null;
   openConfirmationModal: (fieldName: string, displayName: string, fact: any) => void;
   closeConfirmationModal: () => void;
+  reviewHighlight: ReviewHighlightState | null;
+  openReviewHighlight: (fieldName: string, displayName: string, fact?: any, customTargetText?: string | null) => void;
+  clearReviewHighlight: () => void;
   saveConfirmation: (fieldName: string, confirmedValue: string) => Promise<void>;
   analyzedFingerprint: string | null;
   isNoticeStale: boolean;
@@ -197,12 +219,52 @@ const restoreCompletedSteps = (checklist: ActionChecklist | null, fp: string | n
   }
 };
 
+const DEFAULT_ACCESSIBILITY_PREFS: AccessibilityPreferences = {
+  textSize: 'normal',
+  lineSpacing: 'normal',
+  highContrast: false,
+  warmBackground: false,
+  highlightKeyInfo: false,
+  reducedMotion: false,
+};
+
 export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: number }> = ({ children, initialTab = 0 }) => {
+  const [activeTab, setActiveTabState] = useState<number>(initialTab);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const toggleMobileMenu = useCallback(() => setIsMobileMenuOpen((prev) => !prev), []);
+  const setActiveTab = useCallback((tab: number) => {
+    setActiveTabState(tab);
+    setIsMobileMenuOpen(false);
+  }, []);
+
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [rawNoticeText, setRawNoticeText] = useState<string>('');
   const [uploadedImage, setUploadedImageState] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [ocrResult, setOcrResult] = useState<OCRResponse | null>(null);
+  const [ocrResult, setOcrResultState] = useState<OCRResponse | null>(null);
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const [reviewSummary, setReviewSummary] = useState<HumanReviewSummary | null>(null);
+  const [sourceLang, setSourceLang] = useState<string>('auto');
+  const [detectedLangMeta, setDetectedLangMeta] = useState<{
+    detected_language: string;
+    confidence: number;
+    is_mixed: boolean;
+  } | null>(null);
+
+  const setOcrResult = useCallback((res: OCRResponse | null) => {
+    setOcrResultState(res);
+    if (res?.document_id) {
+      setDocumentId(res.document_id);
+    }
+    if (res?.detected_language) {
+      setDetectedLangMeta({
+        detected_language: res.detected_language,
+        confidence: res.language_confidence || 1.0,
+        is_mixed: res.is_mixed_language || false,
+      });
+      setSourceLang(res.detected_language);
+    }
+  }, []);
 
   const [structuredNotice, setStructuredNotice] = useState<StructuredNotice | null>(null);
   const [sixCoreFields, setSixCoreFields] = useState<SixCoreFields | null>(null);
@@ -245,15 +307,72 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
       return 'en';
     }
   });
-  const [sourceLang, setSourceLang] = useState<string>('auto');
-  const [detectedLangMeta, setDetectedLangMeta] = useState<{
-    detected_language: string;
-    confidence: number;
-    is_mixed: boolean;
-  } | null>(null);
-  const [documentId, setDocumentId] = useState<string | null>(null);
+
+  const refreshReviewItems = useCallback(async () => {
+    if (!documentId) {
+      setReviewSummary(null);
+      return;
+    }
+    try {
+      const summary = await apiClient.getReviewItems(documentId);
+      setReviewSummary(summary);
+    } catch (e) {
+      console.error('Failed to fetch review items', e);
+    }
+  }, [documentId]);
+
+  useEffect(() => {
+    let active = true;
+    if (documentId) {
+      apiClient
+        .getReviewItems(documentId)
+        .then((summary) => {
+          if (active) setReviewSummary(summary);
+        })
+        .catch((e) => {
+          console.error('Failed to fetch review items', e);
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [documentId]);
+
+  const updateReviewItem = useCallback(
+    async (
+      itemId: string,
+      status: 'pending' | 'corrected' | 'verified' | 'ignored',
+      correctedText?: string
+    ) => {
+      if (!documentId) return;
+      try {
+        await apiClient.updateReviewItem(documentId, itemId, status, correctedText);
+        await refreshReviewItems();
+      } catch (e) {
+        console.error('Failed to update review item', e);
+        throw e;
+      }
+    },
+    [documentId, refreshReviewItems]
+  );
+
+  const applyReviewCorrections = useCallback(async () => {
+    if (!documentId) return;
+    try {
+      const res = await apiClient.applyReviewCorrections(documentId);
+      if (res && res.raw_text) {
+        setRawNoticeText(res.raw_text);
+      }
+      await refreshReviewItems();
+    } catch (e) {
+      console.error('Failed to apply review corrections', e);
+      throw e;
+    }
+  }, [documentId, refreshReviewItems]);
+
   const [readingLevel, setReadingLevel] = useState<'simple' | 'standard' | 'detailed'>('standard');
   const [isOriginalNoticeOpen, setIsOriginalNoticeOpen] = useState<boolean>(false);
+  const [reviewHighlight, setReviewHighlight] = useState<ReviewHighlightState | null>(null);
   const [confirmingFact, setConfirmingFact] = useState<{ fieldName: string; displayName: string; fact: any } | null>(null);
   const [analyzedFingerprint, setAnalyzedFingerprint] = useState<string | null>(null);
   const [currentFingerprint, setCurrentFingerprint] = useState<string>('');
@@ -269,7 +388,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
   const openAuthPage = useCallback((initialMode?: 'login' | 'signup') => {
     setAuthPageMode(initialMode || 'login');
     setActiveTab(99);
-  }, []);
+  }, [setActiveTab]);
   const clearAnalysisError = useCallback(() => setAnalysisError(null), []);
 
   const translateActiveNotice = useCallback(
@@ -468,7 +587,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
   }, [i18n]);
 
   useEffect(() => {
-    refreshAuth();
+    queueMicrotask(() => {
+      refreshAuth();
+    });
   }, [refreshAuth]);
 
   const logout = useCallback(async () => {
@@ -484,16 +605,30 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
   const [followUpHistory, setFollowUpHistory] = useState<FollowUpAnswer[]>([]);
   const [systemHealth, setSystemHealth] = useState<PreflightReport | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!currentUser) {
+      queueMicrotask(() => {
+        setUnreadNotificationsCount(0);
+      });
+      return;
+    }
+    let isMounted = true;
+    apiClient
+      .getUserNotifications()
+      .then((res) => {
+        if (isMounted && res && typeof res.unread_count === 'number') {
+          setUnreadNotificationsCount(res.unread_count);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
   const [providers, setProviders] = useState<LLMProviderStatus[]>([]);
   const [activeProvider, setActiveProvider] = useState<string>('ollama');
   const [samples, setSamples] = useState<SampleFixture[]>([]);
-  const [activeTab, setActiveTabState] = useState<number>(initialTab);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const toggleMobileMenu = useCallback(() => setIsMobileMenuOpen((prev) => !prev), []);
-  const setActiveTab = useCallback((tab: number) => {
-    setActiveTabState(tab);
-    setIsMobileMenuOpen(false);
-  }, []);
   const [history, setHistory] = useState<HistoryRecord[]>(() => {
     try {
       const saved = localStorage.getItem('notice2action_history');
@@ -591,15 +726,6 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
   );
 
   // Feature D: Accessibility Mode Preferences
-  const DEFAULT_ACCESSIBILITY_PREFS: AccessibilityPreferences = {
-    textSize: 'normal',
-    lineSpacing: 'normal',
-    highContrast: false,
-    warmBackground: false,
-    highlightKeyInfo: false,
-    reducedMotion: false,
-  };
-
   const [accessibilityPrefs, setAccessibilityPrefs] = useState<AccessibilityPreferences>(() => {
     try {
       const saved = localStorage.getItem('suchnasetu_accessibility_prefs');
@@ -761,7 +887,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
   const loadFromHistory = useCallback((item: HistoryRecord) => {
     setRawNoticeText(item.rawText);
     setActiveTab(2); // Jump to Grounded Facts view
-  }, []);
+  }, [setActiveTab]);
 
   const clearHistory = useCallback(() => {
     setHistory([]);
@@ -849,7 +975,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
     };
   }, [refreshHealth]);
 
-  const clearBuffer = () => {
+  const clearBuffer = useCallback(() => {
     setRawNoticeText('');
     setUploadedImageState(null);
     setUploadedFile(null);
@@ -863,6 +989,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
     setLocalizedSummary(null);
     setLocalizedChecklist(null);
     setDocumentId(null);
+    setReviewSummary(null);
     setDetectedLangMeta(null);
     setSourceLang('auto');
     if (analyzedFingerprint) {
@@ -885,7 +1012,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
     setConfirmingFact(null);
     setReadingLevel('standard');
     setSessionId(null);
-  };
+  }, [analyzedFingerprint, setOcrResult]);
 
   const resetSession = () => {
     clearBuffer();
@@ -899,7 +1026,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
       localStorage.removeItem('notice2action_history');
     } catch {}
     setActiveTab(0);
-  }, []);
+  }, [clearBuffer, setActiveTab]);
 
   const loadSampleFixture = async (filename: string) => {
     try {
@@ -1107,7 +1234,125 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
   );
 
   const openOriginalNoticeModal = useCallback(() => setIsOriginalNoticeOpen(true), []);
-  const closeOriginalNoticeModal = useCallback(() => setIsOriginalNoticeOpen(false), []);
+  const closeOriginalNoticeModal = useCallback(() => {
+    setIsOriginalNoticeOpen(false);
+    setReviewHighlight(null);
+  }, []);
+
+  const openReviewHighlight = useCallback(
+    (
+      fieldName: string,
+      displayName: string,
+      fact?: any,
+      customTargetText?: string | null
+    ) => {
+      const target = (customTargetText || fact?.evidence_quote || fact?.value || fact?.text || fact?.original_text || '').trim();
+      const quote = (fact?.evidence_quote || '').trim();
+
+      let matchedBoxes: Array<[number, number, number, number]> = [];
+      let foundInNotice = false;
+      let pageNumber: number | null = fact?.page_number || null;
+      let spanStatus: string | undefined = fact?.status;
+      const spanConfidence: number | undefined = fact?.confidence;
+
+      // 0. Direct box provided on fact or review item
+      if (fact?.box && Array.isArray(fact.box) && fact.box.length === 4) {
+        const [l, t, r, b] = fact.box;
+        if (r > l && b > t) {
+          matchedBoxes.push([l, t, r, b]);
+          foundInNotice = true;
+        }
+      }
+
+      // 1. Check uncertain_spans
+      if (matchedBoxes.length === 0 && ocrResult?.uncertain_spans && ocrResult.uncertain_spans.length > 0) {
+        for (const span of ocrResult.uncertain_spans) {
+          const spanFieldMatch = span.field_name && span.field_name.toLowerCase() === fieldName.toLowerCase();
+          const spanTextMatch = target && (
+            span.text.toLowerCase().includes(target.toLowerCase()) ||
+            target.toLowerCase().includes(span.text.toLowerCase())
+          );
+          if ((spanFieldMatch || spanTextMatch) && span.box && span.box.length === 4) {
+            const [l, t, r, b] = span.box;
+            if (r > l && b > t) {
+              matchedBoxes.push([l, t, r, b]);
+              foundInNotice = true;
+              if (!spanStatus) spanStatus = span.status;
+            }
+          }
+        }
+      }
+
+      // 2. Check word_boxes if available
+      if (matchedBoxes.length === 0 && ocrResult?.word_boxes && ocrResult.word_boxes.length > 0) {
+        const textToMatch = (quote || target).toLowerCase();
+        const wordsToMatch = textToMatch.split(/\s+/).filter((w: string) => w.length > 1);
+        if (wordsToMatch.length > 0) {
+          for (const wb of ocrResult.word_boxes) {
+            const wbText = wb.text.toLowerCase();
+            if (wordsToMatch.some((w: string) => wbText.includes(w) || w.includes(wbText))) {
+              if (wb.box && wb.box.length === 4) {
+                const [l, t, r, b] = wb.box;
+                if (r > l && b > t) {
+                  matchedBoxes.push([l, t, r, b]);
+                  foundInNotice = true;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Check rawNoticeText
+      if (rawNoticeText) {
+        const textLower = rawNoticeText.toLowerCase();
+        const queryLower = (quote || target).toLowerCase();
+        if (queryLower && textLower.includes(queryLower)) {
+          foundInNotice = true;
+          const matchIndex = textLower.indexOf(queryLower);
+          const textBefore = rawNoticeText.slice(0, matchIndex);
+          const pageMatches = [...textBefore.matchAll(/---\s*Page\s*(\d+)\s*---/gi)];
+          if (pageMatches.length > 0) {
+            pageNumber = parseInt(pageMatches[pageMatches.length - 1][1], 10);
+          }
+        } else if (target) {
+          const stopWords = new Set(['the', 'and', 'for', 'with', 'from', 'this', 'that', 'not', 'are', 'was', 'were', 'which', 'will', 'have', 'been']);
+          const words = target.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3 && !stopWords.has(w));
+          if (words.length > 0) {
+            const matches = words.filter((w: string) => textLower.includes(w));
+            if (matches.length >= Math.ceil(words.length * 0.7)) {
+              foundInNotice = true;
+            }
+          }
+        }
+      }
+
+      if (matchedBoxes.length > 0) {
+        foundInNotice = true;
+      }
+
+      setReviewHighlight({
+        active: true,
+        fieldName,
+        displayName,
+        targetText: target || displayName,
+        evidenceQuote: quote,
+        fact: fact || null,
+        pageNumber,
+        boxes: matchedBoxes.length > 0 ? matchedBoxes : undefined,
+        status: spanStatus,
+        confidence: spanConfidence,
+        notFound: !foundInNotice,
+      });
+
+      setIsOriginalNoticeOpen(true);
+    },
+    [ocrResult, rawNoticeText]
+  );
+
+  const clearReviewHighlight = useCallback(() => {
+    setReviewHighlight(null);
+  }, []);
 
   const openConfirmationModal = useCallback((fieldName: string, displayName: string, fact: any) => {
     setConfirmingFact({ fieldName, displayName, fact });
@@ -1144,7 +1389,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
         setStructuredNotice(updated);
       }
     }
-  }, [structuredNotice, readingLevel, sessionId]);
+  }, [structuredNotice, readingLevel, sessionId, analyzedFingerprint]);
 
   const changeReadingLevel = useCallback(async (level: 'simple' | 'standard' | 'detailed') => {
     setReadingLevel(level);
@@ -1168,7 +1413,7 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
     } catch (e) {
       console.error('Failed to change reading level', e);
     }
-  }, [structuredNotice, outputLang, selectedLang, sessionId]);
+  }, [structuredNotice, outputLang, currentUser, sessionId]);
 
   const confirmUncertainFact = (fieldName: string) => {
     if (!structuredNotice) return;
@@ -1318,6 +1563,11 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
         setDetectedLangMeta,
         documentId,
         setDocumentId,
+        reviewSummary,
+        setReviewSummary,
+        updateReviewItem,
+        applyReviewCorrections,
+        refreshReviewItems,
         loadDemoItem,
         detectDocumentLanguage,
         readingLevel,
@@ -1329,6 +1579,9 @@ export const NoticeProvider: React.FC<{ children: React.ReactNode; initialTab?: 
         confirmingFact,
         openConfirmationModal,
         closeConfirmationModal,
+        reviewHighlight,
+        openReviewHighlight,
+        clearReviewHighlight,
         saveConfirmation,
         analyzedFingerprint,
         isNoticeStale,
