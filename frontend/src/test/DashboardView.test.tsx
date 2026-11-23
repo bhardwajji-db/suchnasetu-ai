@@ -196,6 +196,7 @@ describe('DashboardView Upgraded Redesign Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Action Plan & Checklist/i)).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: /Mark task/i }).length).toBeGreaterThan(0);
     });
 
     const checkboxes = screen.getAllByRole('button', { name: /Mark task/i });

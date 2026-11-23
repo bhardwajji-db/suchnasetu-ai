@@ -99,6 +99,7 @@ def test_https_cookie_detection():
     class MockPlainRequest:
         scheme = "http"
         headers = {}
+        client = None
         @property
         def url(self):
             class URL: scheme = "http"

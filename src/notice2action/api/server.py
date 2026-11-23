@@ -45,8 +45,8 @@ import threading
 import logging
 
 from pathlib import Path
-
 from typing import List, Optional, Dict, Any
+from contextlib import asynccontextmanager
 
 
 
@@ -213,6 +213,23 @@ from notice2action.auth.auth_service import auth_service
 logger = logging.getLogger("notice2action.api")
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager: handles startup maintenance and clean shutdown."""
+    try:
+        from notice2action.storage.db import get_db
+        db_inst = get_db()
+        cleanup_stats = db_inst.cleanup_stale_records()
+        logger.info(f"Startup maintenance completed: {cleanup_stats}")
+    except Exception as e:
+        logger.warning(f"Startup maintenance warning: {e}")
+    yield
+    try:
+        from notice2action.storage.db import get_db
+        get_db().close()
+    except Exception:
+        pass
+
 
 app = FastAPI(
 
@@ -224,6 +241,7 @@ app = FastAPI(
     docs_url="/docs" if getattr(config, "enable_api_docs", True) else None,
     redoc_url="/redoc" if getattr(config, "enable_api_docs", True) else None,
     openapi_url="/openapi.json" if getattr(config, "enable_api_docs", True) else None,
+    lifespan=lifespan,
 
 )
 
@@ -415,6 +433,8 @@ async def verify_csrf_and_origin(request: Request, call_next):
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+    if getattr(config, "auth_cookie_secure", False) or request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 

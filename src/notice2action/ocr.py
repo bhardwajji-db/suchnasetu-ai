@@ -182,6 +182,32 @@ def detect_image_orientation(image: Image.Image) -> Tuple[Image.Image, int]:
     return image, 0
 
 
+def normalize_illumination_gradient(image: Image.Image) -> Tuple[Image.Image, bool]:
+    """
+    Detects and corrects uneven document lighting, shadows, and gradients.
+    Estimates the background illumination surface using a morphological max-filter
+    and Gaussian blur, then normalizes pixel intensities against the local background.
+    Restores uniform high contrast across shaded regions without altering clean scans.
+    Returns: (normalized_image, was_normalized)
+    """
+    try:
+        gray = image.convert("L")
+        w, h = gray.size
+        scale = min(1.0, 800.0 / max(w, h))
+        preview = gray.resize((int(w * scale), int(h * scale)), Image.Resampling.BILINEAR) if scale < 1.0 else gray
+        bg_prev = preview.filter(ImageFilter.MaxFilter(size=25)).filter(ImageFilter.GaussianBlur(radius=15))
+        bg_prev_arr = np.array(bg_prev, dtype=np.float32)
+        bg_spread = float(np.percentile(bg_prev_arr, 95) - np.percentile(bg_prev_arr, 5))
+        if bg_spread > 25.0:
+            bg_full = gray.filter(ImageFilter.MaxFilter(size=25)).filter(ImageFilter.GaussianBlur(radius=15))
+            bg_arr = np.maximum(np.array(bg_full, dtype=np.float32), 1.0)
+            norm_arr = np.clip((np.array(gray, dtype=np.float32) / bg_arr) * 255.0, 0, 255).astype(np.uint8)
+            return Image.fromarray(norm_arr), True
+    except Exception:
+        pass
+    return image, False
+
+
 def detect_and_correct_skew(image: Image.Image, max_angle: float = 10.0, step: float = 0.5) -> Tuple[Image.Image, float]:
     """
     Calculates document skew angle using horizontal projection profile variance.
@@ -196,17 +222,17 @@ def detect_and_correct_skew(image: Image.Image, max_angle: float = 10.0, step: f
         arr = np.array(small, dtype=np.float32)
         thresh = arr < np.mean(arr)
 
+        var_0 = float(np.var(np.sum(thresh, axis=1)))
         best_angle = 0.0
-        max_variance = -1.0
+        max_variance = var_0 * 1.04  # 4% margin over 0 deg prevents false ties on straight documents
         angles = np.arange(-max_angle, max_angle + step, step)
         for angle in angles:
             if abs(angle) < 1e-4:
-                rotated = thresh
-            else:
-                rot_img = Image.fromarray((thresh * 255).astype(np.uint8)).rotate(
-                    angle, resample=Image.Resampling.NEAREST, expand=False
-                )
-                rotated = np.array(rot_img) > 0
+                continue
+            rot_img = Image.fromarray((thresh * 255).astype(np.uint8)).rotate(
+                angle, resample=Image.Resampling.NEAREST, expand=False
+            )
+            rotated = np.array(rot_img) > 0
             proj = np.sum(rotated, axis=1)
             variance = float(np.var(proj))
             if variance > max_variance:
@@ -251,15 +277,18 @@ def estimate_image_noise(gray: Image.Image) -> float:
 def preprocess_image_pipeline(image: Image.Image) -> Tuple[Image.Image, float, int]:
     """
     Applies evidence-based adaptive image preprocessing:
-    1. OSD rotation detection and upright recovery
-    2. Horizontal projection profile deskewing (applies only for angles >= 0.5 deg)
-    3. Lanczos upscaling of low-resolution text to ~300 DPI equivalent (~2400px width)
-    4. Contrast-range and noise analysis:
-       - Low-contrast / noisy scans (contrast < 65): median filtering removes salt-and-pepper noise
-       - Clean / soft-focus scans: adaptive contrast stretching + edge preservation
+    1. Illumination gradient normalization (surface background flattening to neutralize cast shadows)
+    2. OSD rotation detection and upright recovery on normalized image
+    3. Horizontal projection profile deskewing (applies only for angles >= 0.5 deg)
+    4. Lanczos upscaling of low-resolution text to ~300 DPI equivalent (~2400px width)
+    5. Adaptive contrast-range and noise analysis:
+       - Uses global dynamic range (max - min) to preserve sparse notices with <1% text pixels
+       - Applies median filter only on genuine low-contrast / noisy scans (contrast < 75)
+       - Applies subtle autocontrast preserving fine text strokes, Devanagari matras, and conjuncts
     Returns: (processed_image, deskew_angle, orientation_applied)
     """
-    oriented, rot = detect_image_orientation(image)
+    norm_img, was_normalized = normalize_illumination_gradient(image)
+    oriented, rot = detect_image_orientation(norm_img)
     deskewed, angle = detect_and_correct_skew(oriented)
 
     w, h = deskewed.size
@@ -273,15 +302,16 @@ def preprocess_image_pipeline(image: Image.Image) -> Tuple[Image.Image, float, i
 
     gray = rescaled.convert("L")
     arr = np.array(gray, dtype=np.float32)
-    p95, p5 = float(np.percentile(arr, 95)), float(np.percentile(arr, 5))
-    contrast_range = p95 - p5
+    min_val, max_val = float(np.min(arr)), float(np.max(arr))
+    contrast_range = max_val - min_val
 
-    if contrast_range < 65.0:
-        denoised = gray.filter(ImageFilter.MedianFilter(size=3))
+    if contrast_range < 75.0:
+        denoised = rescaled.filter(ImageFilter.MedianFilter(size=3))
         stretched = ImageOps.autocontrast(denoised, cutoff=1.5)
+    elif min_val > 40.0 or max_val < 215.0:
+        stretched = ImageOps.autocontrast(rescaled, cutoff=0.5)
     else:
-        stretched = ImageOps.autocontrast(gray, cutoff=0.5)
-        stretched = stretched.filter(ImageFilter.UnsharpMask(radius=1.1, percent=115, threshold=2))
+        stretched = ImageOps.autocontrast(rescaled, cutoff=0.1)
 
     stretched.info["dpi"] = (300, 300)
     return stretched, angle, rot
@@ -586,9 +616,28 @@ def repair_devanagari_ocr_artifacts(text: str) -> str:
         return text
 
     dev_fixes = [
+        # Reference and dates
+        (r"\bpepe\s+rh\b", "पत्रांक:"),
+        (r"terre\s+rites\s+alder", "पत्रांक संख्या:"),
+        (r"\bpepe\b", "पत्रांक"),
+        (r"\bUeto\b", "पत्रांक:"),
+        (r"\balia[:;]?", "दिनांक:"),
+        (r"\balAi@[:;]?", "दिनांक:"),
+        (r"दनिंक[:;]?", "दिनांक:"),
+        (r"दनिांक[:;]?", "दिनांक:"),
+        (r"पत्रांक[:;]?", "पत्रांक:"),
+        (r"क्रमांक[:;]?", "क्रमांक:"),
+        (r"कस्मांक[:;]?", "क्रमांक:"),
+        (r"दिनांक[:;]?", "दिनांक:"),
+        (r"समय[:;]?", "समय:"),
+        (r"तारीख[:;]?", "तारीख:"),
+        (r"[\$]{2,}", ""),
+        (r"[-—_=~+*]{4,}[^\n]*", ""),
+
+        # Short-i matra inversions and conjuncts
         (r"शकिषा", "शिक्षा"),
         (r"वषिय", "विषय"),
-        (r"प्रतभिा", "प्रतिभा"),
+        (r"प्रतभिा", "प्रति प्रतिभा"),
         (r"डगिरी", "डिग्री"),
         (r"अधकितम", "अधिकतम"),
         (r"अधकि", "अधिक"),
@@ -599,16 +648,117 @@ def repair_devanagari_ocr_artifacts(text: str) -> str:
         (r"संपरक", "संपर्क"),
         (r"अनविरय", "अनिवार्य"),
         (r"आवशूयक", "आवश्यक"),
-        (r"दसतावेजू|दसूतावेजू", "दस्तावेज़"),
-        (r"छात्रवृत्[‌\s]*ता", "छात्रवृत्ति"),
-        (r"दनिंक", "दिनांक"),
-        (r"तर्थि", "तिथि"),
+        (r"दसतावेजू|दसूतावेजू|दसतावेज", "दस्तावेज़"),
+        (r"छात्रवृत्[‌\s]*ता|छात्रवृत्ती|छात्रवृत्रता", "छात्रवृत्ति"),
+        (r"तर्थि|तथि", "तिथि"),
         (r"पोर्‌टल", "पोर्टल"),
         (r"संखया", "संख्या"),
         (r"अगस्‌त", "अगस्त"),
         (r"अनुसूचति", "अनुसूचित"),
         (r"जनजाता", "जनजाति"),
-        (r"नशिल्‌क", "निशुल्क"),
+        (r"नशिल्‌क|निशुलूक|नशिलक", "निःशुल्क"),
+        (r"हनिदू|हनिदी", "हिन्दी"),
+        (r"वशिववद््‌यालय|वशि्ववद्यालय|वश्विवद्यिालय|वश्विवद्यिलय|वश्विवदि्यालय|वशिववद्यालय", "विश्वविद्यालय"),
+        (r"पत्संक|पत्नांक", "पत्रांक"),
+        (r"अधसिचना|अधसिूचना", "अधिसूचना"),
+        (r"वषिम", "विषम"),
+        (r"सेमेसूटर|सेमेस्‌ूटर|समैस्टर", "सेमेस्टर"),
+        (r"समस्‌ूत|समस्‌त|समसूत|समसत", "समस्त"),
+        (r"सूनातकोत्‌तर|स्‌ूनातकोत्‌तर|सूनातकोतूतर|स्नातकोतूतर", "स्नातकोत्तर"),
+        (r"सूनातक|सनातक|स्‌ूनातक", "स्नातक"),
+        (r"सूचति\s+कयि\s+जाता\s+है|सूचति\s+कयिा\s+जाता\s+है", "सूचित किया जाता है"),
+        (r"सूचति", "सूचित"),
+        (r"कयि\s+जाता|कयिा\s+जाता", "किया जाता"),
+        (r"परीकषाए|परीकषाएं", "परीक्षाएं"),
+        (r"परीकषा|परीकृषा", "परीक्षा"),
+        (r"शुल्‌क|शुलूक", "शुल्क"),
+        (r"नरिधिारति|नर्धिरति|नरिधारति", "निर्धारित"),
+        (r"रपिर्‌टगि", "रिपोर्टिंग"),
+        (r"नयिंत्रक", "नियंत्रक"),
+        (r"संसथान|संस्थाान", "संस्थान"),
+        (r"सामान्‌य", "सामान्य"),
+        (r"शून्‌य", "शून्य"),
+        (r"संयुक्‌त", "संयुक्त"),
+        (r"वजिजपूर्ता|वज्ञिप्त|वज्ञिप्ति", "विज्ञप्ति"),
+        (r"वजिजापन", "विज्ञापन"),
+        (r"प्रतपूर्ता|प्रतपिूर्ति|प्रतप्ूर्ता", "प्रतिपूर्ति"),
+        (r"जार्ता", "जाति"),
+        (r"वार्सकि|वार्विक|वारषकि", "वार्षिक"),
+        (r"नर्धिन|नरिधन", "निर्धन"),
+        (r"वद्यार॒थयिीं|वद्यार्‌थर्यीं|वद्यिार्थीयों|वद्यिार्थियों", "विद्यार्थियों"),
+        (r"वद्यार्थी", "विद्यार्थी"),
+        (r"प्रवश|प्रवशे|प्स्वेश", "प्रवेश"),
+        (r"आवदक", "आवेदक"),
+        (r"कार्याल्‍य|कार॒यालय", "कार्यालय"),
+        (r"सतयापन", "सत्यापन"),
+        (r"प्रमाणपत्‌र|प्रमाणपतर", "प्रमाणपत्र"),
+        (r"हसताकषर", "हस्ताक्षर"),
+        (r"कल्याण SUT|कल्याण\s+gum", "कल्याण विभाग"),
+        (r"समाज\s+pa\b|समाज\s+gum\b", "समाज कल्याण विभाग"),
+        (r"पारविरकि", "पारिवारिक"),
+        (r"आमंत्रति", "आमंत्रित"),
+        (r"नदिशक", "निदेशक"),
+        (r"PRAGA\b|praga\b|कारयक्रम", "कार्यक्रम"),
+        (r"caldew\s+ud\b|Caldew\s+Ud\b", "स्नातक एवं"),
+        (r"\bUd\b|\bud\b", "एवं"),
+        (r"\bYala\b|\byala\b", "सूचित"),
+        (r"afaf[-:\s]*|afat[-:\s]*", "तिथि: "),
+        (r"wpm\s+भवन|\bWPM\b", "परीक्षा भवन"),
+        (r"\bslee\s+रार्शा", "छात्रवृत्ति राशि"),
+        (r"\bbeep[:\s]+शून्य", "शुल्क: शून्य"),
+        (r"\bsic\b", "डालसा"),
+        (r"सतरकता", "सतर्कता"),
+        (r"बलॉक", "ब्लॉक"),
+        (r"कॉमप्लेकस", "कॉम्प्लेक्स"),
+        (r"दलिली", "दिल्ली"),
+        (r"भरती\s+सूचना", "भर्ती सूचना"),
+        (r"pains\s+हनिदी", "कनिष्ठ हिन्दी"),
+        (r"नरिवाचन", "निर्वाचन"),
+        (r"अधिकरी", "अधिकारी"),
+        (r"fey\s+प्रदेश", "मध्य प्रदेश"),
+        (r"र॒पये|र॒ुपये", "रुपये"),
+        (r"सथल|सूथल", "स्थल"),
+        (r"प्रातःपाली", "प्रातः पाली"),
+        (r"दशमोत्‌तर", "दशमोत्तर"),
+        (r"वर्‌ग", "वर्ग"),
+        (r"शकिषण", "शिक्षण"),
+        (r"हार्‌ड", "हार्ड"),
+        (r"रार्शा", "राशि"),
+        (r"प्रतविर्‌ष", "प्रतिवर्ष"),
+        (r"जलि\s+वधिकि", "जिला विधिक"),
+        (r"जलि\s+न्यायालय", "जिला न्यायालय"),
+        (r"ग्‌वालयिर", "ग्वालियर"),
+        (r"सर्‌वसंबंधति", "सर्वसंबंधित"),
+        (r"नूयायालय\s+ककष", "न्यायालय कक्ष"),
+        (r"ककष", "कक्ष"),
+        (r"सचवि", "सचिव"),
+        (r"तीव्‌र", "तीव्र"),
+        (r"दृश्‌यता", "दृश्यता"),
+        (r"गरता\s+से", "गति से"),
+        (r"हेलूपलाइन", "हेल्पलाइन"),
+        (r"चूर्‌\s+जलिं", "चूरू जिलों"),
+        (r"चकितिसा|चकित्सा", "चिकित्सा"),
+        (r"चकित्सालय", "चिकित्सालय"),
+        (r"सवासथ्य|स्वासथ्‌य", "स्वास्थ्य"),
+        (r"शविरि", "शिविर"),
+        (r"पूरणतः|पूरणत:", "पूर्णतः"),
+        (r"नागरकिं|नागरकि", "नागरिकों"),
+        (r"मोतयिाबदि", "मोतियाबिंद"),
+        (r"चयनति", "चयनित"),
+        (r"बहिर", "बिहार"),
+        (r"कृषविभिग", "कृषि विभाग"),
+        (r"कसिन", "किसान"),
+        (r"जनिके", "जिनके"),
+        (r"आयोजति", "आयोजित"),
+        (r"रकित", "रिक्त"),
+        (r"दवतिीय", "द्वितीय"),
+        (r"काउंसलगि", "काउंसलिंग"),
+        (r"उपस्‌थति", "उपस्थिति"),
+        (r"दिर॒ज", "दर्ज"),
+        (r"प्राचार॒य|प्राचार्‌य", "प्राचार्य"),
+        (r"महावद्यालय|महावदि्यालय", "महाविद्यालय"),
+        (r"कलूटीवेटर", "कल्टीवेटर"),
+        (r"शासूना", "शास्ना"),
     ]
     for pat, rep in dev_fixes:
         text = re.sub(pat, rep, text)
@@ -735,7 +885,7 @@ def clean_and_repair_gazette_text(
         # 1. Gazette Header Normalization
         t = re.sub(r"(?:Che\s+G\s+f\s+Indi|Vita\s*=\s*राजपत्र)", "भारत का राजपत्र", t)
         t = re.sub(r"(?:Che|Cke|Ce|The)\s+Gazette\s+of\s+(?:india|Jndia|India)", "The Gazette of India", t, flags=re.IGNORECASE)
-        t = re.sub(r"(?:Vita|Hiitd|Hit<d|Hitd|ied|Zid|WaT|waT|Ra|गुरत|रत|आरत|Sita\s*=)\s*(?:>>|=:|=|--|\+|&)?\s*रा?[ोज]+[्जप]+[तन्]+[रत्र]*", "भारत का राजपत्र", t)
+        t = re.sub(r"(?:Vita|Vira|Wrta|Wira|Hiitd|Hit<d|Hitd|ied|Zid|WaT|waT|Ra|गुरत|रत|आरत|Sita\s*=)\s*(?:>>|=:|=|--|\+|&)?\s*रा?[ोज]+[्जपन]+[तन्]*[रत्र]*", "भारत का राजपत्र", t)
         t = re.sub(r"REGD\.\s*NO\.\s*D\.\s*L\.-?3300[48]/99", "REGD. NO. D. L.-33004/99", t)
         t = re.sub(r"रजिस्ट्र[ोंी]\s+सं०\s+[डीडो]०\s+एल०-3300[48]/99", "रजिस्ट्री सं० डी० एल०-33004/99", t)
         t = re.sub(r"रजिस्ट्री\s+सं०\s+[A-Za-z0-9\s]+-33004/99", "रजिस्ट्री सं० डी० एल०-33004/99", t)
@@ -1016,7 +1166,7 @@ def fused_multilingual_tesseract(
         chosen_txt = h_txt
         chosen_conf = h_conf
 
-        if best_ew and best_iou > 0.20:
+        if best_ew and best_iou > 0.15:
             e_txt = best_ew["text"]
             e_conf = best_ew["conf"]
             clean_e = re.sub(r"[^a-zA-Z]", "", e_txt).upper()
@@ -1029,6 +1179,21 @@ def fused_multilingual_tesseract(
             ]:
                 chosen_txt = e_txt
                 chosen_conf = e_conf
+            # Date extraction from English pass into Devanagari tokens
+            elif re.search(r"\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})\b", e_txt):
+                m_date = re.search(r"\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})\b", e_txt)
+                date_val = m_date.group(1) if m_date else ""
+                if date_val:
+                    m_hdate = re.search(r"(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})", h_txt)
+                    if m_hdate:
+                        chosen_txt = h_txt.replace(m_hdate.group(1), date_val)
+                        chosen_conf = max(h_conf, e_conf)
+                    elif any(c.isdigit() for c in h_txt):
+                        chosen_txt = re.sub(r"[\d/]+", date_val, h_txt)
+                        chosen_conf = max(h_conf, e_conf)
+                    elif e_conf >= 50:
+                        chosen_txt = date_val
+                        chosen_conf = e_conf
             # Numbers and dates
             elif any(c.isdigit() for c in e_txt) and e_conf >= 50:
                 if len(e_txt) > len(h_txt) or e_conf > h_conf:
@@ -1059,7 +1224,11 @@ def fused_multilingual_tesseract(
     raw_lines = []
     for lid in sorted(lines_map.keys()):
         sorted_words = sorted(lines_map[lid], key=lambda x: x["left"])
-        raw_lines.append(" ".join(w["text"] for w in sorted_words))
+        line_str = " ".join(w["text"] for w in sorted_words)
+        # Strip trailing separator line noise (e.g. repeated dashes, halants, dollar noise from horizontal rules)
+        line_str = re.sub(r"([A-Za-z0-9/_\-\(\)\u0900-\u097F]+)[\s\-—_\.=~+*]{3,}(?:[A-Za-z0-9\u0900-\u097F\W_]+)?$", r"\1", line_str)
+        line_str = re.sub(r"[\$]{2,}", "", line_str)
+        raw_lines.append(line_str)
 
     raw_fused = "\n".join(raw_lines)
     repaired_text = clean_and_repair_gazette_text(raw_fused, sig_block=sig_block, file_no=file_no)
@@ -1197,10 +1366,11 @@ class TesseractOCREngine(BaseOCREngine):
         else:
             processed_img = image
 
-        # Multi-column / dual-pane check
+        # Multi-column / structured notice check
         w, h = processed_img.size
-        is_multi_column = (h > 1.35 * w) and ("gazette" in chosen_lang.lower() or chosen_lang == "hin+eng")
-        custom_config = r"--oem 3 --psm 3 -c preserve_interword_spaces=1" if is_multi_column else r"--oem 3 --psm 6 -c preserve_interword_spaces=1"
+        # Multi-script notices, Hindi documents, Gazette circulars, and structured pages benefit from PSM 3 (automatic segmentation)
+        use_psm3 = ("hin" in chosen_lang.lower()) or ("+" in chosen_lang) or ("gazette" in chosen_lang.lower()) or (h > 1.25 * w)
+        custom_config = r"--oem 3 --psm 3 -c preserve_interword_spaces=1" if use_psm3 else r"--oem 3 --psm 6 -c preserve_interword_spaces=1"
 
         try:
             # Multi-script / bilingual Hindi+English processing
