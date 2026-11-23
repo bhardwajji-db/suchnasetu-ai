@@ -155,7 +155,7 @@ class NoticeAnalyzer:
 
         # Subject heuristic (bilingual)
         subj_match = re.search(
-            r'(?:Subject|Sub|Employment\s+Notification|Notification|Circular|विषय|अधिसूचना|विज्ञप्ति)\s*[:\-]?\s*([^\n\r]+)',
+            r'(?:Subject|Sub|NOTICE|Notice|Employment\s+Notification|Notification|Circular|विषय|अधिसूचना|विज्ञप्ति)\s*[:\-]?\s*([^\n\r]+)',
             text,
             re.IGNORECASE,
         )
@@ -173,7 +173,21 @@ class NoticeAnalyzer:
         )
         contact = contact_match.group(1).strip() if contact_match else not_stated_val
 
-        # Deadline heuristic (bilingual) - prioritize specific submission deadline lines over generic section headers
+        # Contradiction and conflict detection
+        conflicts: List[str] = []
+
+        # Corrigendum / Extension detection
+        ext_match = re.search(
+            r'(?:extended(?:\s+the\s+last\s+date[^\n\r]*?)?\s+to|विस्तार[^\n\r]*?तिथि)\s*[:\-]?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+            text,
+            re.IGNORECASE,
+        )
+        was_match = re.search(
+            r'(?:was|थी)\s*[:\-]?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+            text,
+            re.IGNORECASE,
+        )
+
         dl_match = re.search(
             r'(?:Final\s+submission\s+deadline|Submission\s+deadline|Last\s+date\s+for\s+submission|Final\s+deadline|आवेदन\s+की\s+अंतिम\s+तिथि)\s*[:\-]?\s*([^\n\r,]+)',
             text,
@@ -185,36 +199,95 @@ class NoticeAnalyzer:
                 text,
                 re.IGNORECASE,
             )
-        deadline_val = dl_match.group(1).strip() if dl_match else not_stated_val
 
-        # Fee heuristic (bilingual)
+        if ext_match and was_match:
+            new_dl = ext_match.group(1).strip()
+            old_dl = was_match.group(1).strip()
+            deadline_val = f"{new_dl} (Extended from {old_dl})"
+            conflicts.append(f"original deadline: {old_dl}; official amended deadline: {new_dl}")
+            dl_quote = ext_match.group(0)
+        else:
+            # Check for multiple distinct deadline dates in submission contexts
+            dl_dates: List[str] = []
+            for line in lines:
+                if any(w in line.lower() for w in ("close", "submission", "submit", "deadline", "last date", "due date", "अंतिम")):
+                    found_dates = re.findall(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', line)
+                    for d in found_dates:
+                        if d not in dl_dates:
+                            dl_dates.append(d)
+            if len(dl_dates) >= 2:
+                deadline_val = f"Conflicting dates: {dl_dates[0]} and {dl_dates[1]}"
+                conflicts.append(f"application_deadline: {dl_dates[0]} vs {dl_dates[1]}")
+                dl_quote = f"{dl_dates[0]} vs {dl_dates[1]}"
+            else:
+                deadline_val = dl_match.group(1).strip() if dl_match else (dl_dates[0] if dl_dates else not_stated_val)
+                dl_quote = dl_match.group(0) if dl_match else (dl_dates[0] if dl_dates else None)
+
+        # Fee heuristic (bilingual) and conflict check
+        fee_amounts: List[str] = []
+        for line in lines:
+            if any(w in line.lower() for w in ("fee", "fees", "cost", "शुल्क", "फीस", "pay", "payment")):
+                m_amounts = re.findall(r'(?:Rs\.?|INR|₹)\s*([\d,]+)', line, re.IGNORECASE)
+                for amt in m_amounts:
+                    clean_amt = amt.replace(",", "")
+                    if clean_amt not in [a.replace(",", "") for a in fee_amounts]:
+                        fee_amounts.append(amt)
+
         fee_match = re.search(
-            r'(?:Application\s+Fee|Fee|Cost|शुल्क|आवेदन\s+शुल्क|फीस)\s*[:\-]?\s*([^\n\r,]+)',
+            r'(?:Application\s+Fee|Registration\s+Fee|examination\s+fee|Fee|Cost|शुल्क|आवेदन\s+शुल्क|फीस)\s*(?:is|:|-)?\s*([^\n\r,]+)',
             text,
             re.IGNORECASE,
         )
-        fee_val = fee_match.group(1).strip() if fee_match else not_stated_val
+        if len(fee_amounts) >= 2:
+            fee_val = f"Conflicting fees: Rs {fee_amounts[0]} vs Rs {fee_amounts[1]}"
+            conflicts.append(f"fees: Rs {fee_amounts[0]} vs Rs {fee_amounts[1]}")
+            fee_quote = f"Rs {fee_amounts[0]} vs Rs {fee_amounts[1]}"
+        elif fee_match:
+            fee_val = fee_match.group(1).strip()
+            fee_quote = fee_match.group(0)
+        elif fee_amounts:
+            fee_val = f"Rs {fee_amounts[0]}"
+            fee_quote = f"Rs {fee_amounts[0]}"
+        else:
+            fee_val = not_stated_val
+            fee_quote = None
 
-        # Eligibility heuristic (bilingual)
+        # Eligibility heuristic (bilingual) - Zero Hallucination
         elig_match = re.search(
             r'(?:Eligibility|Qualification|पात्रता|शैक्षणिक\s+योग्यता)\s*[:\-]?\s*([^\n\r]+)',
             text,
             re.IGNORECASE,
         )
+        if not elig_match:
+            elig_match = re.search(
+                r'(?:notified\s+to\s+all|open\s+to)\s+([a-zA-Z\s]+?\s+(?:students|candidates|citizens|applicants|employees))',
+                text,
+                re.IGNORECASE,
+            )
         if elig_match:
             elig_val = elig_match.group(1).strip()
+            elig_status = "stated"
+            elig_quote = elig_match.group(0)
         else:
-            elig_val = (
-                "सूचना में उल्लिखित पात्रता शर्तों व न्यूनतम योग्यताओं की जांच करें।"
-                if is_hi_target
-                else "Review criteria and minimum qualifications stated in the notice body."
-            )
+            elig_val = not_stated_val
+            elig_status = "not_stated"
+            elig_quote = None
 
-        purpose_val = (
-            f"प्रशासनिक निर्देश: {subject}"
-            if is_hi_target
-            else f"Administrative directive concerning: {subject}"
+        purpose_match = re.search(
+            r'(?:(?:\d+\.)?\s*)?(?:PURPOSE|OBJECTIVE|AIM|उद्देश्य|लक्ष्य)\s*[:\-]?\s*([^\n\r]+)',
+            text,
+            re.IGNORECASE,
         )
+        if purpose_match and len(purpose_match.group(1).strip()) > 3:
+            purpose_val = purpose_match.group(1).strip()
+            purpose_quote = purpose_match.group(0)
+        else:
+            purpose_val = (
+                f"प्रशासनिक निर्देश: {subject}"
+                if is_hi_target
+                else f"Administrative directive concerning: {subject}"
+            )
+            purpose_quote = subj_match.group(0) if subj_match else None
         action_dl_val = (
             "पात्रता शर्तों की जांच करें और अंतिम तिथि से पहले आवेदन जमा करें।"
             if is_hi_target
@@ -240,11 +313,19 @@ class NoticeAnalyzer:
             if is_hi_target
             else "Citizens / Intended Applicants"
         )
-        missing_info = (
-            ["आवेदन की अंतिम तिथि", "आवेदन शुल्क तालिका"]
-            if is_hi_target
-            else ["Official application deadline", "Application fee schedule"]
-        )
+
+        # Dynamic missing information list based on actual unstated fields
+        missing_info = []
+        if deadline_val == not_stated_val:
+            missing_info.append("आवेदन की अंतिम तिथि" if is_hi_target else "Official application deadline")
+        if fee_val == not_stated_val:
+            missing_info.append("आवेदन शुल्क तालिका" if is_hi_target else "Application fee schedule")
+        if elig_status == "not_stated":
+            missing_info.append("पात्रता मानदंड" if is_hi_target else "Eligibility criteria")
+        if contact == not_stated_val:
+            missing_info.append("संपर्क विवरण" if is_hi_target else "Contact details / helpdesk")
+        if ref_no == not_stated_val:
+            missing_info.append("संदर्भ संख्या" if is_hi_target else "Official reference number")
 
         return {
             "issuing_authority": {"value": authority, "status": "stated", "evidence_quote": authority},
@@ -253,16 +334,16 @@ class NoticeAnalyzer:
             "recipient": {"value": recipient_val, "status": "stated", "evidence_quote": None},
             "main_subject": {"value": subject, "status": "stated", "evidence_quote": subj_match.group(0) if subj_match else None},
             "required_action_and_deadline": {"value": action_dl_val, "status": "stated", "evidence_quote": None},
-            "purpose": {"value": purpose_val, "status": "stated", "evidence_quote": subj_match.group(0) if subj_match else None},
-            "eligibility": {"value": elig_val, "status": "stated", "evidence_quote": elig_match.group(0) if elig_match else None},
-            "deadline": {"value": deadline_val, "status": "stated" if deadline_val != not_stated_val else "not_stated", "evidence_quote": dl_match.group(0) if dl_match else None},
-            "fee_or_cost": {"value": fee_val, "status": "stated" if fee_val != not_stated_val else "not_stated", "evidence_quote": fee_match.group(0) if fee_match else None},
+            "purpose": {"value": purpose_val, "status": "stated", "evidence_quote": purpose_quote},
+            "eligibility": {"value": elig_val, "status": elig_status, "evidence_quote": elig_quote},
+            "deadline": {"value": deadline_val, "status": "stated" if deadline_val != not_stated_val else "not_stated", "evidence_quote": dl_quote},
+            "fee_or_cost": {"value": fee_val, "status": "stated" if fee_val != not_stated_val else "not_stated", "evidence_quote": fee_quote},
             "required_documents": {"value": docs_val, "status": "stated", "evidence_quote": None},
             "contact_details": {"value": contact, "status": "stated" if contact != not_stated_val else "not_stated", "evidence_quote": contact_match.group(0) if contact_match else None},
             "required_actions": {"value": actions_val, "status": "stated", "evidence_quote": None},
             "important_conditions": {"value": conditions_val, "status": "stated", "evidence_quote": None},
             "missing_information": missing_info,
-            "uncertain_or_conflicting_details": [],
+            "uncertain_or_conflicting_details": conflicts,
         }
 
     def analyze_notice(

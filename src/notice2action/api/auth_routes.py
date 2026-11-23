@@ -212,10 +212,9 @@ def _is_request_https(request: Request) -> bool:
 
     headers = getattr(request, "headers", {})
     proto = (headers.get("X-Forwarded-Proto") or headers.get("x-forwarded-proto")) if hasattr(headers, "get") else None
-    if proto and str(proto).lower() == "https":
-        return True
 
-    client_host = request.client.host if request.client else "127.0.0.1"
+    client = getattr(request, "client", None)
+    client_host = client.host if client and hasattr(client, "host") else "127.0.0.1"
     trusted_proxies = set(getattr(config, "trusted_proxies", ["127.0.0.1", "::1", "localhost", "testclient"]))
 
     if client_host in trusted_proxies:

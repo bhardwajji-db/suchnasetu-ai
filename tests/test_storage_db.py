@@ -109,14 +109,16 @@ def test_schema_initialization(temp_db):
     assert "user notifications" in row_v4["description"]
 
     cur_v5 = conn.execute("SELECT version, description FROM schema_migrations WHERE version = 5;")
-
     row_v5 = cur_v5.fetchone()
-
     assert row_v5 is not None
-
-    assert row_v5["version"] == SCHEMA_VERSION
-
+    assert row_v5["version"] == 5
     assert "user preferences" in row_v5["description"]
+
+    cur_v6 = conn.execute("SELECT version, description FROM schema_migrations WHERE version = 6;")
+    row_v6 = cur_v6.fetchone()
+    assert row_v6 is not None
+    assert row_v6["version"] == SCHEMA_VERSION
+    assert "human review" in row_v6["description"]
 
 
 
@@ -565,4 +567,60 @@ def test_demo_registry_persistence(temp_db):
     empty_res = temp_db.list_demos(search_query="NonExistentKeyword")
 
     assert len(empty_res) == 0
+
+
+def test_cleanup_stale_records(temp_db):
+    """Verifies that cleanup_stale_records purges expired sessions, tokens, and rate limits."""
+    conn = temp_db.get_connection()
+    with conn:
+        # Insert a test user
+        conn.execute(
+            "INSERT INTO users (id, email, name, password_hash, is_verified, created_at, updated_at) "
+            "VALUES ('u-clean', 'clean@test.com', 'Cleaner', 'hash', 1, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');"
+        )
+        # Expired session (in the past)
+        conn.execute(
+            "INSERT INTO sessions (id, user_id, session_token_hash, expires_at, created_at) "
+            "VALUES ('s-exp', 'u-clean', 'token-exp', '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z');"
+        )
+        # Active session (in the future)
+        conn.execute(
+            "INSERT INTO sessions (id, user_id, session_token_hash, expires_at, created_at) "
+            "VALUES ('s-act', 'u-clean', 'token-act', '2099-01-01T00:00:00Z', '2026-01-01T00:00:00Z');"
+        )
+        # Expired auth token
+        conn.execute(
+            "INSERT INTO auth_tokens (id, user_id, token_type, token_hash, expires_at, created_at) "
+            "VALUES ('t-exp', 'u-clean', 'verify', 'tok-exp', '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z');"
+        )
+        # Used auth token
+        conn.execute(
+            "INSERT INTO auth_tokens (id, user_id, token_type, token_hash, expires_at, used_at, created_at) "
+            "VALUES ('t-used', 'u-clean', 'verify', 'tok-used', '2099-01-01T00:00:00Z', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');"
+        )
+        # Stale rate limit (timestamp from 2 hours ago)
+        old_time = time.time() - 7200.0
+        conn.execute(
+            "INSERT INTO rate_limits (key, count, window_start) VALUES ('stale-key', 5, ?);",
+            (old_time,)
+        )
+        # Active rate limit (timestamp from 5 seconds ago)
+        fresh_time = time.time() - 5.0
+        conn.execute(
+            "INSERT INTO rate_limits (key, count, window_start) VALUES ('fresh-key', 1, ?);",
+            (fresh_time,)
+        )
+
+    stats = temp_db.cleanup_stale_records()
+    assert stats["expired_sessions"] == 1
+    assert stats["expired_tokens"] == 2
+    assert stats["stale_rate_limits"] == 1
+
+    # Verify active records remain
+    cur = conn.execute("SELECT id FROM sessions WHERE id = 's-act';")
+    assert cur.fetchone() is not None
+
+    cur = conn.execute("SELECT key FROM rate_limits WHERE key = 'fresh-key';")
+    assert cur.fetchone() is not None
+
 

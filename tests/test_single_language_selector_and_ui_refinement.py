@@ -21,7 +21,18 @@ CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 FRONTEND_URL = "http://localhost:5173"
 
 
+def _probe_url(url: str, timeout: float = 1.0) -> bool:
+    import urllib.request
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as resp:
+            return resp.status in (200, 304, 404)
+    except Exception:
+        return False
+
+
 def _goto_app(page):
+    if not _probe_url(FRONTEND_URL):
+        pytest.skip(f"Frontend server not reachable at {FRONTEND_URL} (Start frontend with npm run dev)")
     page.goto(FRONTEND_URL, wait_until="networkidle")
     guest_btn = page.locator("button[aria-label='Continue to application as guest'], button:has-text('Continue as Guest')").first
     if guest_btn.is_visible():

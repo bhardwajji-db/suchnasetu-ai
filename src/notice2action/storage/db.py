@@ -309,6 +309,11 @@ class DatabaseManager:
 
             with conn:
 
+                try:
+                    conn.execute("PRAGMA journal_mode=WAL;")
+                except Exception:
+                    pass
+
                 conn.execute(
 
                     """
@@ -3101,6 +3106,36 @@ class DatabaseManager:
                 conn.backup(dest_conn)
 
             dest_conn.close()
+
+    def cleanup_stale_records(self) -> Dict[str, int]:
+        """
+        Purges expired sessions, expired/used auth tokens, and stale rate limit records.
+        Returns a dictionary of deleted row counts for maintenance logging.
+        """
+        stats = {"expired_sessions": 0, "expired_tokens": 0, "stale_rate_limits": 0}
+        try:
+            now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            now_ts = time.time()
+            with self._lock:
+                conn = self.get_connection()
+                with conn:
+                    # 1. Expired sessions
+                    cur = conn.execute("DELETE FROM sessions WHERE expires_at < ?;", (now_iso,))
+                    stats["expired_sessions"] = cur.rowcount
+
+                    # 2. Expired or used auth tokens
+                    cur = conn.execute(
+                        "DELETE FROM auth_tokens WHERE (used_at IS NOT NULL) OR (expires_at < ?);",
+                        (now_iso,),
+                    )
+                    stats["expired_tokens"] = cur.rowcount
+
+                    # 3. Stale rate limit windows older than 1 hour (3600 seconds)
+                    cur = conn.execute("DELETE FROM rate_limits WHERE window_start < ?;", (now_ts - 3600.0,))
+                    stats["stale_rate_limits"] = cur.rowcount
+        except Exception:
+            pass
+        return stats
 
 
 

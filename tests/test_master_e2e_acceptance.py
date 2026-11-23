@@ -18,6 +18,9 @@ Verifies all 15 requirements specified in Phase 10:
 15. Full UI interaction, sidebar 5 groups, and header layout.
 """
 
+import sys
+import subprocess
+import urllib.request
 import time
 import uuid
 from pathlib import Path
@@ -30,8 +33,65 @@ from notice2action.storage.db import get_db
 
 CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 FRONTEND_URL = "http://127.0.0.1:5173"
+BACKEND_URL = "http://127.0.0.1:8000"
 SCREENSHOT_DIR = Path("assets/screenshots")
 SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _probe_url(url: str, timeout: float = 1.0) -> bool:
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as resp:
+            return resp.status in [200, 404]
+    except Exception:
+        return False
+
+
+@pytest.fixture(scope="module", autouse=True)
+def ensure_servers_running():
+    spawned = []
+    backend_up = _probe_url(f"{BACKEND_URL}/api/health")
+    frontend_up = _probe_url(FRONTEND_URL)
+
+    if not backend_up:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "notice2action.api.server:app", "--port", "8000", "--host", "127.0.0.1"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        spawned.append(proc)
+
+    if not frontend_up:
+        proc = subprocess.Popen(
+            ["npm", "run", "dev", "--", "--host", "127.0.0.1", "--port", "5173"],
+            cwd="frontend",
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        spawned.append(proc)
+
+    deadline = time.time() + 25
+    ready = False
+    while time.time() < deadline:
+        if _probe_url(f"{BACKEND_URL}/api/health") and _probe_url(FRONTEND_URL):
+            ready = True
+            break
+        time.sleep(1)
+
+    try:
+        if not ready:
+            pytest.skip(f"Servers at {BACKEND_URL} or {FRONTEND_URL} could not be initialized.")
+        yield
+    finally:
+        for p in spawned:
+            try:
+                p.terminate()
+                p.wait(timeout=3)
+            except Exception:
+                try:
+                    p.kill()
+                except Exception:
+                    pass
 
 
 # -----------------------------------------------------------------------------
@@ -40,8 +100,8 @@ SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
 def test_master_auth_and_user_isolation():
     db = get_db()
-    client1 = TestClient(app)
-    client2 = TestClient(app)
+    client1 = TestClient(app, base_url="http://127.0.0.1:8000", headers={"Origin": "http://127.0.0.1:8000"})
+    client2 = TestClient(app, base_url="http://127.0.0.1:8000", headers={"Origin": "http://127.0.0.1:8000"})
 
     email_user1 = f"citizen1_{uuid.uuid4().hex[:6]}@example.gov.in"
     email_user2 = f"citizen2_{uuid.uuid4().hex[:6]}@example.gov.in"

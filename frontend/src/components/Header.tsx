@@ -124,67 +124,39 @@ export const Header: React.FC = () => {
   };
 
   const getStatusBadge = () => {
-
     if (!systemHealth) {
-
       return (
-
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-
+        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200 pointer-events-none select-none">
           <span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse" />
-
           {t('loading') || 'Checking System...'}
-
         </span>
-
       );
-
     }
 
     if (systemHealth.overall_status === 'ok') {
-
       return (
-
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2]">
-
+        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#E8F7F0] text-[#08785D] border border-[#B7E7D2] pointer-events-none select-none">
           <CheckCircle2 className="w-3.5 h-3.5 text-[#08785D]" />
-
           <span>{t('healthReady') || 'System Online'} • {systemHealth.model_name || 'Ready'}</span>
-
         </span>
-
       );
-
     }
 
     if (systemHealth.overall_status === 'warning') {
-
       return (
-
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FFF4D6] text-[#92500A] border border-[#FDE68A]">
-
+        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FFF4D6] text-[#92500A] border border-[#FDE68A] pointer-events-none select-none">
           <AlertTriangle className="w-3.5 h-3.5 text-[#92500A]" />
-
           <span>{t('warning') || 'Preflight Warning'}</span>
-
         </span>
-
       );
-
     }
 
     return (
-
-      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FEE8E7] text-[#B42318] border border-[#FCA5A5]">
-
+      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FEE8E7] text-[#B42318] border border-[#FCA5A5] pointer-events-none select-none">
         <XCircle className="w-3.5 h-3.5 text-[#B42318]" />
-
         <span>{t('healthError') || 'Provider Offline'}</span>
-
       </span>
-
     );
-
   };
 
 
@@ -195,7 +167,7 @@ export const Header: React.FC = () => {
 
       {/* Brand Identity & Navigation Toggle */}
 
-      <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-4 min-w-0 relative z-10">
 
         {/* Mobile Hamburger Drawer Toggle */}
 
@@ -225,10 +197,10 @@ export const Header: React.FC = () => {
           className="flex items-center gap-2 sm:gap-2.5 text-left group cursor-pointer focus:outline-hidden shrink-0"
           title="Return to Home"
         >
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-[#08785D] to-[#06664E] flex items-center justify-center shadow-xs shadow-[#08785D]/20 font-black text-white text-base sm:text-lg shrink-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-[#08785D] to-[#06664E] flex items-center justify-center shadow-xs shadow-[#08785D]/20 font-black text-white text-base sm:text-lg shrink-0 pointer-events-none">
             स
           </div>
-          <div className="flex flex-col shrink-0">
+          <div className="flex flex-col shrink-0 pointer-events-none">
             <div className="flex items-center gap-2 leading-none">
               <span className="text-base sm:text-lg font-extrabold tracking-tight text-[#12233D] whitespace-nowrap">
                 Suchna<span className="text-[#08785D]">Setu</span> <span className="hidden xs:inline">AI</span>
@@ -257,7 +229,7 @@ export const Header: React.FC = () => {
 
         {/* System Health Badge */}
 
-        <div className="hidden md:flex">{getStatusBadge()}</div>
+        <div className="hidden md:flex pointer-events-none">{getStatusBadge()}</div>
 
 
 
@@ -293,7 +265,7 @@ export const Header: React.FC = () => {
 
         {/* Local Privacy & Model Badge */}
 
-        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#526176] bg-[#F8FAFC] border border-[#E1E7EE]">
+        <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#526176] bg-[#F8FAFC] border border-[#E1E7EE]">
 
           <Cpu className="w-3.5 h-3.5 text-[#08785D]" />
 
