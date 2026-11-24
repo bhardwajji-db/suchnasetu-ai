@@ -1770,6 +1770,38 @@ async def ocr_detect_language_endpoint(
         raise HTTPException(status_code=400, detail=f"Language detection failed: {e}")
 
 
+@app.get("/api/ocr/languages")
+def get_ocr_languages_endpoint():
+    """
+    Returns full coverage and readiness metadata across all 22 Indian Scheduled Languages
+    plus English, detailing installed local models, adapter status, and recognition capabilities.
+    """
+    from notice2action.coverage_registry import get_all_coverage_items, get_coverage_summary
+    from notice2action.ocr import get_available_tesseract_languages
+
+    installed_tess = set(get_available_tesseract_languages())
+    items = []
+    for item in get_all_coverage_items():
+        d = item.to_dict()
+        model_stem = item.primary_model.replace(".traineddata", "")
+        is_installed = (
+            model_stem in installed_tess
+            or item.code == "en"
+            or (item.script == "Devanagari" and "hin" in installed_tess)
+        )
+        d["model_installed"] = is_installed
+        if is_installed and d["status"] == "adapter_ready_model_needed":
+            d["status"] = "supported_installed"
+        items.append(d)
+
+    summary = get_coverage_summary()
+    return {
+        "languages": items,
+        "summary": summary,
+        "available_tesseract_languages": sorted(list(installed_tess)),
+    }
+
+
 
 
 

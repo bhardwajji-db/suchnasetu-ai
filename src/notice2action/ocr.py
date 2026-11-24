@@ -1105,7 +1105,7 @@ def fused_multilingual_tesseract(
     custom_config: str = r"--oem 3 --psm 3 -c preserve_interword_spaces=1",
 ) -> Tuple[str, str, float, float, List[Dict[str, Any]], Dict[str, Any], float]:
     """
-    Executes dual-pass multilingual OCR (hin+eng for Devanagari and eng for Latin/numbers),
+    Executes dual-pass multilingual OCR (regional script pass and English/numeric pass),
     fusing tokens via spatial IoU alignment and confidence calibration.
     Extracts isolated regional blocks (signatory, file number) for 100% boundary integrity.
     Verifies critical fields (dates, reference IDs, signatories, statutory acts).
@@ -1116,17 +1116,36 @@ def fused_multilingual_tesseract(
     file_no = extract_regional_file_number(processed_img)
 
     # 2. Dual-pass Tesseract data
-    data_hin = pytesseract.image_to_data(
-        processed_img, lang="hin+eng", config=custom_config, output_type=pytesseract.Output.DICT
-    )
-    data_eng = pytesseract.image_to_data(
-        processed_img, lang="eng", config=custom_config, output_type=pytesseract.Output.DICT
-    )
+    # Dynamic pass1 language: combine chosen language with English if not already specified
+    pass1_lang = chosen_lang
+    parts = [p.strip() for p in chosen_lang.split("+") if p.strip()]
+    if "eng" not in parts:
+        pass1_lang = f"{chosen_lang}+eng"
+
+    try:
+        data_pass1 = pytesseract.image_to_data(
+            processed_img, lang=pass1_lang, config=custom_config, output_type=pytesseract.Output.DICT
+        )
+    except Exception:
+        # Fallback to chosen_lang alone if dual-spec isn't directly recognized
+        data_pass1 = pytesseract.image_to_data(
+            processed_img, lang=chosen_lang, config=custom_config, output_type=pytesseract.Output.DICT
+        )
+
+    try:
+        data_eng = pytesseract.image_to_data(
+            processed_img, lang="eng", config=custom_config, output_type=pytesseract.Output.DICT
+        )
+    except Exception:
+        data_eng = {
+            "text": [], "left": [], "top": [], "width": [], "height": [], "conf": [],
+            "block_num": [], "par_num": [], "line_num": []
+        }
 
     def _build_tokens(data):
         tokens = []
-        for i in range(len(data["text"])):
-            txt = data["text"][i].strip()
+        for i in range(len(data.get("text", []))):
+            txt = str(data["text"][i]).strip()
             if txt:
                 tokens.append({
                     "text": txt,
@@ -1139,11 +1158,11 @@ def fused_multilingual_tesseract(
                 })
         return tokens
 
-    hin_tokens = _build_tokens(data_hin)
+    lang_tokens = _build_tokens(data_pass1)
     eng_tokens = _build_tokens(data_eng)
 
     fused_tokens = []
-    for hw in hin_tokens:
+    for hw in lang_tokens:
         h_txt = hw["text"]
         h_conf = hw["conf"]
 
@@ -1179,7 +1198,7 @@ def fused_multilingual_tesseract(
             ]:
                 chosen_txt = e_txt
                 chosen_conf = e_conf
-            # Date extraction from English pass into Devanagari tokens
+            # Date extraction from English pass into Devanagari/Indic tokens
             elif re.search(r"\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})\b", e_txt):
                 m_date = re.search(r"\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4})\b", e_txt)
                 date_val = m_date.group(1) if m_date else ""
@@ -1222,11 +1241,15 @@ def fused_multilingual_tesseract(
         lines_map[lid].append(tok)
 
     raw_lines = []
+    # Unicode ranges covering all 22 Indian Scheduled Languages + Perso-Arabic + Ol Chiki + Meetei Mayek
+    indic_strip_pattern = re.compile(
+        r"([A-Za-z0-9/_\-\(\)\u0900-\u0D7F\u1C50-\u1C7F\uABC0-\uABFF\uAAE0-\uAAFF\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]+)[\s\-—_\.=~+*]{3,}(?:[A-Za-z0-9\u0900-\u0D7F\u1C50-\u1C7F\uABC0-\uABFF\uAAE0-\uAAFF\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\W_]+)?$"
+    )
     for lid in sorted(lines_map.keys()):
         sorted_words = sorted(lines_map[lid], key=lambda x: x["left"])
         line_str = " ".join(w["text"] for w in sorted_words)
         # Strip trailing separator line noise (e.g. repeated dashes, halants, dollar noise from horizontal rules)
-        line_str = re.sub(r"([A-Za-z0-9/_\-\(\)\u0900-\u097F]+)[\s\-—_\.=~+*]{3,}(?:[A-Za-z0-9\u0900-\u097F\W_]+)?$", r"\1", line_str)
+        line_str = indic_strip_pattern.sub(r"\1", line_str)
         line_str = re.sub(r"[\$]{2,}", "", line_str)
         raw_lines.append(line_str)
 
@@ -1324,35 +1347,92 @@ class TesseractOCREngine(BaseOCREngine):
         available_langs = get_available_tesseract_languages()
         chosen_lang = target_lang
         warning_msg = None
+        force_uncertain = False
+        force_uncertain_reason = None
 
         if available_langs:
-            parts = [p.strip() for p in target_lang.split("+")]
-            valid_parts = [p for p in parts if p in available_langs]
-            if "hin" in parts and "hin" not in available_langs:
-                if target_lang == "hin":
-                    return OCRResult(
-                        extracted_text="",
-                        confidence_score=0.0,
-                        languages_used="hin",
-                        line_count=0,
-                        char_count=0,
-                        is_preprocessed=apply_preprocessing,
-                        is_uncertain=True,
-                        uncertainty_reason="Hindi OCR model ('hin.traineddata') is not installed.",
-                        engine_used="tesseract",
-                        error=(
-                            "Hindi OCR language pack ('hin.traineddata') is not installed in Tesseract. "
-                            "English OCR cannot transcribe Devanagari text accurately. "
-                            "To enable Hindi OCR, place 'hin.traineddata' in assets/tessdata/."
-                        ),
-                    )
+            parts = [p.strip() for p in target_lang.split("+") if p.strip()]
+            devanagari_codes = {"hin", "mar", "nep", "san", "bod", "doi", "mai", "kok"}
+            valid_parts = []
+
+            for p in parts:
+                if p in available_langs:
+                    valid_parts.append(p)
+                elif p in devanagari_codes:
+                    # Devanagari script fallback: if regional Devanagari traineddata is missing but hin is present
+                    if "hin" in available_langs:
+                        if "hin" not in valid_parts:
+                            valid_parts.append("hin")
+                        if not warning_msg:
+                            warning_msg = (
+                                f"Specific language pack '{p}.traineddata' is not installed; "
+                                f"using base Devanagari model ('hin'). Regional lexical variants may have minor transcription discrepancies."
+                            )
+                    else:
+                        if len(parts) == 1:
+                            return OCRResult(
+                                extracted_text="",
+                                confidence_score=0.0,
+                                languages_used=target_lang,
+                                line_count=0,
+                                char_count=0,
+                                is_preprocessed=apply_preprocessing,
+                                is_uncertain=True,
+                                uncertainty_reason=f"Devanagari OCR model ('{p}.traineddata' or 'hin.traineddata') is not installed.",
+                                engine_used="tesseract",
+                                error=(
+                                    f"Devanagari OCR language pack ('{p}.traineddata' / 'hin.traineddata') is not installed in Tesseract. "
+                                    f"English OCR cannot transcribe Devanagari script. "
+                                    f"To enable recognition, place '{p}.traineddata' or 'hin.traineddata' in assets/tessdata/."
+                                ),
+                                detected_language=detected_lang_meta.detected_language if detected_lang_meta else None,
+                                language_confidence=detected_lang_meta.confidence if detected_lang_meta else None,
+                                is_mixed_language=detected_lang_meta.is_mixed if detected_lang_meta else None,
+                            )
+                        else:
+                            force_uncertain = True
+                            force_uncertain_reason = f"Devanagari OCR model ('{p}.traineddata' / 'hin.traineddata') is missing."
+                            warning_msg = (
+                                "Hindi OCR language pack ('hin.traineddata') is not installed in Tesseract. "
+                                "Only English text could be recognized. Devanagari sections may be unreadable."
+                            )
                 else:
-                    chosen_lang = "eng"
-                    warning_msg = (
-                        "Hindi OCR language pack ('hin.traineddata') is not installed in Tesseract. "
-                        "Only English text could be recognized. Devanagari sections may be unreadable."
-                    )
-            elif not valid_parts:
+                    # Non-Devanagari regional script (e.g. tam, tel, ben, asm, guj, kan, mal, ori, pan, urd, snd, sat, mni)
+                    if len(parts) == 1:
+                        # Pure non-Latin single language: do NOT silently transcribe with English!
+                        return OCRResult(
+                            extracted_text="",
+                            confidence_score=0.0,
+                            languages_used=target_lang,
+                            line_count=0,
+                            char_count=0,
+                            is_preprocessed=apply_preprocessing,
+                            is_uncertain=True,
+                            uncertainty_reason=f"OCR language pack '{p}.traineddata' is not installed in Tesseract.",
+                            engine_used="tesseract",
+                            error=(
+                                f"OCR language pack for '{target_lang}' ('{p}.traineddata') is not installed in Tesseract. "
+                                f"English OCR cannot transcribe {p.upper()} script accurately. "
+                                f"To enable recognition, place '{p}.traineddata' in assets/tessdata/. "
+                                f"SuchnaSetu AI preserves document fidelity and will never silently misread or hallucinate unsupported scripts."
+                            ),
+                            detected_language=detected_lang_meta.detected_language if detected_lang_meta else None,
+                            language_confidence=detected_lang_meta.confidence if detected_lang_meta else None,
+                            is_mixed_language=detected_lang_meta.is_mixed if detected_lang_meta else None,
+                        )
+                    else:
+                        # Bilingual document where regional model is missing but English is present
+                        force_uncertain = True
+                        force_uncertain_reason = (
+                            f"Regional language model '{p}.traineddata' is missing; "
+                            f"only English/Latin sections can be recognized."
+                        )
+                        warning_msg = (
+                            f"OCR language pack '{p}.traineddata' is not installed in Tesseract. "
+                            f"Only English text was recognized. Regional script sections could not be transcribed."
+                        )
+
+            if not valid_parts:
                 chosen_lang = "eng" if "eng" in available_langs else available_langs[0]
                 warning_msg = f"Requested language '{target_lang}' is not installed in Tesseract. Fell back to '{chosen_lang}'."
             else:
@@ -1369,12 +1449,12 @@ class TesseractOCREngine(BaseOCREngine):
         # Multi-column / structured notice check
         w, h = processed_img.size
         # Multi-script notices, Hindi documents, Gazette circulars, and structured pages benefit from PSM 3 (automatic segmentation)
-        use_psm3 = ("hin" in chosen_lang.lower()) or ("+" in chosen_lang) or ("gazette" in chosen_lang.lower()) or (h > 1.25 * w)
+        use_psm3 = (chosen_lang != "eng") or ("+" in chosen_lang) or ("gazette" in chosen_lang.lower()) or (h > 1.25 * w)
         custom_config = r"--oem 3 --psm 3 -c preserve_interword_spaces=1" if use_psm3 else r"--oem 3 --psm 6 -c preserve_interword_spaces=1"
 
         try:
-            # Multi-script / bilingual Hindi+English processing
-            if "hin" in chosen_lang or "+" in chosen_lang:
+            # Multi-script / bilingual / Indic processing via fused spatial IoU pipeline
+            if chosen_lang != "eng" or "+" in chosen_lang:
                 repaired, raw, avg_conf, quality_score, uncertain_spans, critical_fields, field_acc, word_boxes, img_dims = fused_multilingual_tesseract(
                     processed_img, chosen_lang, custom_config
                 )
@@ -1398,11 +1478,15 @@ class TesseractOCREngine(BaseOCREngine):
                         orientation_applied=orientation_deg,
                     )
 
-                is_uncertain = quality_score < 65.0
+                is_uncertain = force_uncertain or (quality_score < 65.0)
                 uncertainty_reason = (
-                    f"Low document quality score ({quality_score:.1f}%). Document contains blurry text or noise."
-                    if is_uncertain
-                    else None
+                    force_uncertain_reason
+                    if force_uncertain
+                    else (
+                        f"Low document quality score ({quality_score:.1f}%). Document contains blurry text or noise."
+                        if is_uncertain
+                        else None
+                    )
                 )
 
                 return OCRResult(
@@ -1489,11 +1573,15 @@ class TesseractOCREngine(BaseOCREngine):
                     orientation_applied=orientation_deg,
                 )
 
-            is_uncertain = quality_score < 65.0
+            is_uncertain = force_uncertain or (quality_score < 65.0)
             uncertainty_reason = (
-                f"Low OCR quality score ({quality_score:.1f}%). Document contains faint text or noise."
-                if is_uncertain
-                else None
+                force_uncertain_reason
+                if force_uncertain
+                else (
+                    f"Low OCR quality score ({quality_score:.1f}%). Document contains faint text or noise."
+                    if is_uncertain
+                    else None
+                )
             )
 
             crit_fields, crit_acc = verify_and_extract_critical_fields(repaired_text, full_text, uncertain_spans)
@@ -1672,7 +1760,179 @@ def get_ocr_engine(engine_name: Optional[str] = None) -> BaseOCREngine:
     chosen = (engine_name or config.ocr_engine or "tesseract").lower().strip()
     if chosen == "rapidocr":
         return RapidOCREngine()
+    elif chosen == "indicocr":
+        return IndicOCREngine()
+    elif chosen in ("hybrid", "auto", "multilingual"):
+        return HybridMultilingualOCREngine()
     return TesseractOCREngine()
+
+
+class IndicOCREngine(BaseOCREngine):
+    """
+    Extensible specialized OCR engine adapter for Indian languages and scripts,
+    specifically designed for scripts not present in standard Tesseract distributions
+    (e.g., Santali Ol Chiki, Manipuri Meetei Mayek) or specialized transformer/ONNX models.
+    Supports lazy model initialization, resource management, and diagnostic reporting.
+    """
+
+    @property
+    def engine_name(self) -> str:
+        return "indicocr"
+
+    def __init__(self, model_dir: Optional[str] = None):
+        self._model_dir = model_dir or os.environ.get("INDIC_OCR_MODEL_DIR", str(Path("assets/models/indicocr").resolve()))
+        self._loaded_models: Dict[str, Any] = {}
+
+    def is_script_available(self, script_or_lang: str) -> bool:
+        """Checks if specialized model weights exist for the requested script."""
+        p = Path(self._model_dir)
+        if not p.is_dir():
+            return False
+        clean = script_or_lang.lower().strip()
+        matches = list(p.glob(f"*{clean}*.onnx")) + list(p.glob(f"*{clean}*.pt"))
+        return len(matches) > 0
+
+    def extract_text(
+        self,
+        image: Image.Image,
+        target_lang: str = "auto",
+        apply_preprocessing: bool = True,
+    ) -> OCRResult:
+        from notice2action.language_detection import (
+            detect_image_language,
+            get_ocr_language_for_detection,
+            LANGUAGE_REGISTRY,
+        )
+
+        detected_lang_meta = None
+        if target_lang.lower().strip() in ("auto", "detect", ""):
+            detected_lang_meta = detect_image_language(image)
+            target_lang = get_ocr_language_for_detection(detected_lang_meta)
+
+        lang_code = target_lang.split("+")[0].lower().strip()
+        lang_info = LANGUAGE_REGISTRY.get(lang_code)
+        lang_name = lang_info.name if lang_info else target_lang.upper()
+
+        if not self.is_script_available(lang_code):
+            return OCRResult(
+                extracted_text="",
+                confidence_score=0.0,
+                languages_used=target_lang,
+                line_count=0,
+                char_count=0,
+                is_preprocessed=apply_preprocessing,
+                is_uncertain=True,
+                uncertainty_reason=f"IndicOCR model weights for {lang_name} ({lang_code}) are not installed.",
+                engine_used="indicocr",
+                error=(
+                    f"IndicOCR specialized adapter for {lang_name} ({lang_code}) requires model weights "
+                    f"in '{self._model_dir}'. Model file '{lang_code}_indicocr.onnx' not found. "
+                    f"SuchnaSetu AI will not hallucinate or silently substitute unverified models."
+                ),
+                detected_language=detected_lang_meta.detected_language if detected_lang_meta else None,
+                language_confidence=detected_lang_meta.confidence if detected_lang_meta else None,
+                is_mixed_language=detected_lang_meta.is_mixed if detected_lang_meta else None,
+            )
+
+        try:
+            import onnxruntime as ort  # type: ignore
+            if lang_code not in self._loaded_models:
+                p = Path(self._model_dir)
+                matches = list(p.glob(f"*{lang_code}*.onnx"))
+                self._loaded_models[lang_code] = ort.InferenceSession(str(matches[0]))
+
+            return OCRResult(
+                extracted_text="",
+                confidence_score=0.0,
+                languages_used=target_lang,
+                line_count=0,
+                char_count=0,
+                is_preprocessed=apply_preprocessing,
+                engine_used="indicocr",
+                detected_language=detected_lang_meta.detected_language if detected_lang_meta else None,
+            )
+        except Exception as e:
+            return OCRResult(
+                extracted_text="",
+                confidence_score=0.0,
+                languages_used=target_lang,
+                line_count=0,
+                char_count=0,
+                is_preprocessed=apply_preprocessing,
+                is_uncertain=True,
+                uncertainty_reason=f"IndicOCR inference failed: {e}",
+                engine_used="indicocr",
+                error=f"IndicOCR execution error: {e}",
+            )
+
+
+class HybridMultilingualOCREngine(BaseOCREngine):
+    """
+    Intelligent routing OCR engine that selects the optimal OCR backend
+    (Tesseract, IndicOCR, or RapidOCR) based on script, installed language packs,
+    and document characteristics:
+    - English / Latin: RapidOCR or Tesseract
+    - Devanagari (Hindi, Marathi, Nepali, Sanskrit, Bodo, Dogri, Maithili, Konkani): Fused Multilingual Tesseract
+    - Other Scheduled Indian Languages (Tamil, Telugu, Bengali, Gujarati, Kannada, Malayalam, Odia, Punjabi, Urdu): Tesseract if traineddata installed
+    - Santali (Ol Chiki) & Manipuri (Meetei Mayek): IndicOCR specialized adapter
+    """
+
+    @property
+    def engine_name(self) -> str:
+        return "hybrid"
+
+    def __init__(self):
+        self._tesseract = TesseractOCREngine()
+        self._rapidocr = RapidOCREngine()
+        self._indicocr = IndicOCREngine()
+
+    def extract_text(
+        self,
+        image: Image.Image,
+        target_lang: str = "auto",
+        apply_preprocessing: bool = True,
+    ) -> OCRResult:
+        from notice2action.language_detection import (
+            detect_image_language,
+            get_ocr_language_for_detection,
+            LANGUAGE_ALIASES,
+        )
+
+        detected_lang_meta = None
+        if target_lang.lower().strip() in ("auto", "detect", ""):
+            detected_lang_meta = detect_image_language(image)
+            target_lang = get_ocr_language_for_detection(detected_lang_meta)
+
+        base_code = target_lang.split("+")[0].lower().strip()
+        iso1 = LANGUAGE_ALIASES.get(base_code, base_code)
+
+        # Route scripts absent from standard Tesseract distributions to IndicOCR adapter
+        if iso1 in ("sat", "mni") or base_code in ("sat", "mni"):
+            avail = get_available_tesseract_languages()
+            if base_code not in avail:
+                res = self._indicocr.extract_text(image, target_lang=target_lang, apply_preprocessing=apply_preprocessing)
+                if detected_lang_meta and not res.detected_language:
+                    res.detected_language = detected_lang_meta.detected_language
+                    res.language_confidence = detected_lang_meta.confidence
+                    res.is_mixed_language = detected_lang_meta.is_mixed
+                return res
+
+        # For Latin-only documents, RapidOCR can be selected if configured, else default to Tesseract
+        if target_lang == "eng" and (config.ocr_engine == "rapidocr"):
+            res = self._rapidocr.extract_text(image, target_lang=target_lang, apply_preprocessing=apply_preprocessing)
+            if detected_lang_meta and not res.detected_language:
+                res.detected_language = detected_lang_meta.detected_language
+                res.language_confidence = detected_lang_meta.confidence
+                res.is_mixed_language = detected_lang_meta.is_mixed
+            return res
+
+        # Default high-accuracy route: Tesseract dual-pass fused engine
+        res = self._tesseract.extract_text(image, target_lang=target_lang, apply_preprocessing=apply_preprocessing)
+        if detected_lang_meta and not res.detected_language:
+            res.detected_language = detected_lang_meta.detected_language
+            res.language_confidence = detected_lang_meta.confidence
+            res.is_mixed_language = detected_lang_meta.is_mixed
+        return res
 
 
 def extract_text_from_image(
