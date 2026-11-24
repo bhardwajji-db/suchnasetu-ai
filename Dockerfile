@@ -37,10 +37,24 @@ ENV PYTHONUNBUFFERED=1 \
     OLLAMA_BASE_URL="http://ollama:11434" \
     OLLAMA_MODEL="gemma4:latest"
 
-# Install system dependencies (Tesseract OCR with Hindi and OSD models, Poppler, and curl)
+# Install system dependencies (Tesseract OCR with multilingual Indian language models, Poppler, and curl)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     tesseract-ocr-hin \
+    tesseract-ocr-asm \
+    tesseract-ocr-ben \
+    tesseract-ocr-guj \
+    tesseract-ocr-kan \
+    tesseract-ocr-mal \
+    tesseract-ocr-mar \
+    tesseract-ocr-nep \
+    tesseract-ocr-ori \
+    tesseract-ocr-pan \
+    tesseract-ocr-san \
+    tesseract-ocr-snd \
+    tesseract-ocr-tam \
+    tesseract-ocr-tel \
+    tesseract-ocr-urd \
     tesseract-ocr-osd \
     poppler-utils \
     curl \
