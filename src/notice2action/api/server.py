@@ -1626,10 +1626,6 @@ async def ocr_endpoint(
     clean_target = (target_lang or "auto").strip().lower()
     if clean_target in ("auto", "detect", ""):
         lang_code = "auto"
-    elif "hin" in clean_target and "+" not in clean_target:
-        lang_code = "hin"
-    elif "+" in clean_target:
-        lang_code = "eng+hin"
     else:
         lang_code = clean_target
 

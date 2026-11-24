@@ -195,37 +195,37 @@ def test_coverage_summary_breakdown():
 
 def test_missing_language_pack_strict_error_handling():
     """
-    Verify that requesting an uninstalled regional script (e.g. Tamil)
+    Verify that requesting an uninstalled regional script (e.g. Santali Ol Chiki)
     returns is_uncertain=True, empty extracted text, and an informative diagnostic,
     and NEVER silently falls back to English OCR to output garbled ASCII noise.
     """
     engine = TesseractOCREngine()
     avail = get_available_tesseract_languages()
 
-    # If tam is not installed in the current environment
-    if "tam" not in avail:
+    # If sat is not installed in the current environment
+    if "sat" not in avail:
         # Create a blank test image
         img = Image.new("RGB", (300, 100), color=(255, 255, 255))
-        result = engine.extract_text(img, target_lang="tam", apply_preprocessing=False)
+        result = engine.extract_text(img, target_lang="sat", apply_preprocessing=False)
 
         assert result.is_uncertain is True
         assert result.extracted_text == ""
         assert result.confidence_score == 0.0
-        assert "tam.traineddata" in result.error
+        assert "sat.traineddata" in result.error
         assert "assets/tessdata/" in result.error
-        assert result.languages_used == "tam"
+        assert result.languages_used == "sat"
 
 
 def test_devanagari_language_fallback_to_hin_base():
     """
-    Verify that requesting a Devanagari regional language (e.g. Marathi or Nepali)
-    when mar.traineddata is absent falls back to the installed base Devanagari engine (hin)
+    Verify that requesting a Devanagari regional language (e.g. Maithili or Bodo)
+    when mai.traineddata is absent falls back to the installed base Devanagari engine (hin)
     with an informative warning instead of failing or using Latin OCR.
     """
     engine = TesseractOCREngine()
     avail = get_available_tesseract_languages()
 
-    if "hin" in avail and "mar" not in avail:
+    if "hin" in avail and "mai" not in avail:
         from pathlib import Path
         fixture_path = Path("tests/fixtures/synthetic_notice_ocr.png")
         if fixture_path.is_file():
@@ -233,11 +233,174 @@ def test_devanagari_language_fallback_to_hin_base():
         else:
             img = Image.new("RGB", (400, 100), color=(255, 255, 255))
 
-        result = engine.extract_text(img, target_lang="mar", apply_preprocessing=False)
+        result = engine.extract_text(img, target_lang="mai", apply_preprocessing=False)
         # Should recognize using hin base and log an explanatory warning
         assert result.warning is not None
         assert "base Devanagari model ('hin')" in result.warning
         assert "hin" in result.languages_used
+
+
+def test_stage1_regional_language_real_document_ocr():
+    """
+    Empirically verifies real document OCR execution across Stage 1 installed regional models:
+    Marathi (mar), Tamil (tam), Bengali (ben), and Telugu (tel).
+    Confirms valid character extraction, zero crashes, and correct language routing.
+    """
+    from PIL import ImageFont
+    from pathlib import Path
+
+    engine = TesseractOCREngine()
+    font_path = "C:/Windows/Fonts/Nirmala.ttc"
+    if not Path(font_path).is_file():
+        pytest.skip("Nirmala UI Indic font not installed on Windows host")
+
+    font = ImageFont.truetype(font_path, 36)
+    stage1_cases = [
+        ("mar", "महाराष्ट्र शासन राजपत्र असाधारण अधिसूचना 2026"),
+        ("tam", "தமிழ்நாடு அரசு தலைமைச் செயலகம் செய்தி வெளியீடு 2026"),
+        ("ben", "পশ্চিমবঙ্গ সরকার স্বাস্থ্য ও পরিবার কল্যাণ বিভাগ 2026"),
+        ("tel", "ఆంధ్ర ప్రదేశ్ ప్రభుత్వం అధికారిక ప్రకటన 2026"),
+    ]
+
+    for lang, text in stage1_cases:
+        img = Image.new("RGB", (1600, 200), color=(255, 255, 255))
+        d = ImageDraw.Draw(img)
+        d.text((40, 60), text, font=font, fill=(0, 0, 0))
+
+        res = engine.extract_text(img, target_lang=lang, apply_preprocessing=True)
+        assert res.error is None, f"{lang} extraction failed: {res.error}"
+        assert res.extracted_text != "", f"{lang} returned empty text"
+        assert res.confidence_score > 30.0, f"{lang} confidence score too low: {res.confidence_score}"
+        assert "2026" in res.extracted_text, f"{lang} failed to extract date year '2026'"
+        assert res.languages_used in (lang, f"{lang}+eng")
+
+
+def test_stage2_regional_language_real_document_ocr():
+    """
+    Empirically verifies real document OCR execution across Stage 2 installed regional models:
+    Gujarati (guj), Kannada (kan), Malayalam (mal), Odia (ori), Punjabi (pan), and Urdu (urd).
+    Confirms valid character extraction, bilingual notice processing, date extraction, and zero crashes.
+    """
+    from PIL import ImageFont
+    from pathlib import Path
+
+    engine = TesseractOCREngine()
+    font_path = "C:/Windows/Fonts/Nirmala.ttc"
+    if not Path(font_path).is_file():
+        pytest.skip("Nirmala UI Indic font not installed on Windows host")
+
+    font = ImageFont.truetype(font_path, 34)
+
+    # 1. Pure script tests
+    stage2_cases = [
+        ("guj", "ગુજરાત સરકાર આરોગ્ય અને પરિવાર કલ્યાણ વિભાગ જાહેરનામું 2026"),
+        ("kan", "ಕರ್ನಾಟಕ ಸರ್ಕಾರ ಕಂದಾಯ ಇಲಾಖೆ ಅಧಿಕೃತ ಅಧಿಸೂಚನೆ 2026"),
+        ("mal", "കേരള സർക്കാർ തദ്ദേശ സ്വയംഭരണ വകുപ്പ് വിജ്ഞാപനം 2026"),
+        ("ori", "ଓଡ଼ିଶା ସରକାର ସ୍ୱାସ୍ଥ્ય ଓ ପରିବାର କଲ୍ୟାଣ ବିଭାଗ ବିଜ୍ଞପ୍ତି 2026"),
+        ("pan", "ਪੰਜਾਬ ਸਰਕਾਰ ਲੋਕ ਨਿਰਮਾਣ ਵਿਭਾਗ ਜਨਤਕ ਨੋਟਿਸ 2026"),
+        ("urd", "حکومت ہند وزارت داخلہ سرکاری نوٹیفکیشن برائے اطلاع عام 2026"),
+    ]
+
+    for lang, text in stage2_cases:
+        img = Image.new("RGB", (1800, 200), color=(255, 255, 255))
+        d = ImageDraw.Draw(img)
+        d.text((40, 60), text, font=font, fill=(0, 0, 0))
+
+        res = engine.extract_text(img, target_lang=lang, apply_preprocessing=True)
+        assert res.error is None, f"{lang} extraction failed: {res.error}"
+        assert res.extracted_text != "", f"{lang} returned empty text"
+        assert res.confidence_score > 30.0, f"{lang} confidence score too low: {res.confidence_score}"
+        assert "2026" in res.extracted_text, f"{lang} failed to extract date year '2026'"
+        assert res.languages_used in (lang, f"{lang}+eng")
+
+    # 2. Bilingual mixed notice tests (Indic + English Notice No. & Date)
+    bilingual_cases = [
+        ("guj", "ગુજરાત સરકાર જાહેરનામું No. 45/2026/HFW Date: 15/10/2026"),
+        ("kan", "ಕರ್ನಾಟಕ ಸರ್ಕಾರ ಅಧಿಸೂಚನೆ No. 88/2026/RD Date: 12/08/2026"),
+        ("mal", "കേരള സർക്കാർ വിജ്ഞാപനം No. 23/2026/LSGD Date: 05/09/2026"),
+        ("ori", "ଓଡ଼ିଶା ସରକାର ବିଜ୍ଞପ୍ତି No. 77/2026/HFW Date: 22/07/2026"),
+        ("pan", "ਪੰਜਾਬ ਸਰਕਾਰ ਜਨਤਕ ਨੋਟਿਸ No. 19/2026/PWD Date: 18/06/2026"),
+        ("urd", "حکومت ہند نوٹیفکیشن No. 34/2026/MHA Date: 25/04/2026"),
+    ]
+
+    for lang, text in bilingual_cases:
+        img = Image.new("RGB", (1800, 200), color=(255, 255, 255))
+        d = ImageDraw.Draw(img)
+        d.text((40, 60), text, font=font, fill=(0, 0, 0))
+
+        target = f"{lang}+eng"
+        res = engine.extract_text(img, target_lang=target, apply_preprocessing=True)
+        assert res.error is None, f"{target} extraction failed: {res.error}"
+        assert res.extracted_text != "", f"{target} returned empty text"
+        assert res.confidence_score > 50.0, f"{target} confidence score too low: {res.confidence_score}"
+        assert "2026" in res.extracted_text, f"{target} failed to extract '2026'"
+        assert any(k in res.extracted_text for k in ("No.", "Date", "2026")), f"{target} failed critical English fields"
+
+
+def test_stage2_coverage_registry_status():
+    """Verify that Stage 2 languages are marked model_installed=True and supported_installed in registry."""
+    from notice2action.coverage_registry import get_language_coverage
+
+    stage2_codes = ["gu", "kn", "ml", "or", "pa", "ur"]
+    for code in stage2_codes:
+        cov = get_language_coverage(code)
+        assert cov is not None, f"Coverage item not found for {code}"
+        assert cov.model_installed is True, f"{code} model_installed should be True"
+        assert cov.status in ("supported_installed", "verified_production"), f"{code} invalid status {cov.status}"
+        assert cov.primary_model is not None
+
+
+def test_stage3_regional_language_real_document_ocr():
+    """
+    Empirically verifies real document OCR execution across Stage 3 installed and adapted regional models:
+    Assamese (asm), Nepali (nep), Sanskrit (san), Sindhi (snd), Maithili (mai), Konkani (kok),
+    Dogri (doi), Bodo (brx), Kashmiri (kas), and Manipuri (mni).
+    """
+    from PIL import ImageFont
+    from pathlib import Path
+
+    engine = TesseractOCREngine()
+    font_path = "C:/Windows/Fonts/Nirmala.ttc"
+    if not Path(font_path).is_file():
+        pytest.skip("Nirmala UI Indic font not installed on Windows host")
+
+    font = ImageFont.truetype(font_path, 34)
+
+    stage3_cases = [
+        ("asm", "অসম চৰকাৰৰ স্বাস্থ্য আৰু পৰিয়াল কল্যাণ বিভাগ জাননী 2026"),
+        ("nep", "नेपाल सरकार गृह मन्त्रालय आधिकारिक सूचना 2026"),
+        ("san", "सर्वकारस्य आधिकारिकम् अधिसूचना विधीयते 2026"),
+        ("snd", "سنڌ حڪومت سرڪاري نوٽيفڪيشن 2026"),
+        ("mai", "बिहार सरकार स्वास्थ्य विभाग आधिकारिक अधिसूचना 2026"),
+        ("kok", "गोंय सरकार अधिकृत राजपत्र अधिसूचना 2026"),
+        ("doi", "जम्मू ते कश्मीर सरकार आधिकारिक सूचना 2026"),
+        ("brx", "बडलेण्ड प्रदेस सरकारनि रादाब 2026"),
+        ("kas", "حکوٗمَتِ ہِند سَرکٲرؠ نۄٹِفِکیشن 2026"),
+        ("mni", "মণিপুৰ চৰকাৰৰ স্বাস্থ্য বিভাগ জাননী 2026"),
+    ]
+
+    for lang, text in stage3_cases:
+        img = Image.new("RGB", (1800, 200), color=(255, 255, 255))
+        d = ImageDraw.Draw(img)
+        d.text((40, 60), text, font=font, fill=(0, 0, 0))
+
+        res = engine.extract_text(img, target_lang=lang, apply_preprocessing=True)
+        assert res.error is None, f"{lang} extraction failed: {res.error}"
+        assert res.extracted_text != "", f"{lang} returned empty text"
+        assert res.confidence_score > 30.0, f"{lang} confidence score too low: {res.confidence_score}"
+        assert "2026" in res.extracted_text, f"{lang} failed to extract date year '2026'"
+
+
+def test_stage3_coverage_registry_status():
+    """Verify that Stage 3 installed models are marked model_installed=True and supported_installed in registry."""
+    from notice2action.coverage_registry import get_language_coverage
+
+    stage3_codes = ["as", "ne", "sa", "sd", "mai", "kok", "doi", "brx"]
+    for code in stage3_codes:
+        cov = get_language_coverage(code)
+        assert cov is not None, f"Coverage item not found for {code}"
+        assert cov.model_installed is True, f"{code} model_installed should be True"
+        assert cov.status in ("supported_installed", "verified_production"), f"{code} invalid status {cov.status}"
 
 
 # ---------------------------------------------------------------------------
@@ -307,3 +470,51 @@ def test_get_ocr_languages_api_endpoint():
     langs_dict = {item["code"]: item for item in data["languages"]}
     assert langs_dict["en"]["model_installed"] is True
     assert langs_dict["hi"]["model_installed"] is True
+
+
+def test_api_ocr_bilingual_and_auto_routing():
+    """Verify POST /api/ocr handles target_lang='auto' and target_lang='guj+eng' correctly."""
+    import io
+    from pathlib import Path
+    from PIL import ImageDraw, ImageFont
+
+    client = TestClient(app)
+    font_path = "C:/Windows/Fonts/Nirmala.ttc"
+    font = ImageFont.truetype(font_path, 32) if Path(font_path).is_file() else None
+
+    img = Image.new("RGB", (1200, 160), color=(255, 255, 255))
+    d = ImageDraw.Draw(img)
+    text = "ગુજરાત સરકાર No. 45/2026/HFW Date: 24/11/2026"
+    if font:
+        d.text((40, 50), text, font=font, fill=(0, 0, 0))
+    else:
+        d.text((40, 50), "Government of Gujarat No. 45/2026/HFW Date: 24/11/2026", fill=(0, 0, 0))
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+
+    # 1. Test bilingual override target_lang='guj+eng'
+    response = client.post(
+        "/api/ocr",
+        files={"file": ("notice.png", buf.getvalue(), "image/png")},
+        data={"target_lang": "guj+eng", "enhance_contrast": "true"},
+    )
+    assert response.status_code == 200, f"Bilingual OCR failed: {response.text}"
+    data = response.json()
+    assert "extracted_text" in data
+    assert "2026" in data["extracted_text"]
+    assert "languages_used" in data
+    assert data["languages_used"] in ("guj+eng", "guj")
+
+    # 2. Test automatic language routing target_lang='auto'
+    buf.seek(0)
+    response_auto = client.post(
+        "/api/ocr",
+        files={"file": ("notice.png", buf.getvalue(), "image/png")},
+        data={"target_lang": "auto", "enhance_contrast": "true"},
+    )
+    assert response_auto.status_code == 200, f"Auto OCR failed: {response_auto.text}"
+    data_auto = response_auto.json()
+    assert "extracted_text" in data_auto
+    assert len(data_auto["extracted_text"]) > 0

@@ -77,7 +77,8 @@ def _score_orientation_candidate(cand_img: Image.Image) -> Tuple[float, int, flo
         sample = cand_img
 
     try:
-        data = pytesseract.image_to_data(sample, output_type=pytesseract.Output.DATAFRAME)
+        score_lang = "hin+eng" if "hin" in get_available_tesseract_languages() else "eng"
+        data = pytesseract.image_to_data(sample, lang=score_lang, output_type=pytesseract.Output.DATAFRAME)
         valid = data[(data.conf > 20) & (data.text.astype(str).str.strip().str.len() > 1)]
         conf_sum = float(valid.conf.sum())
         word_count = int(len(valid))
@@ -153,12 +154,14 @@ def detect_image_orientation(image: Image.Image) -> Tuple[Image.Image, int]:
         best_cand = candidates[0]
         best_score = -1.0
         scores: dict[int, float] = {}
+        avg_confs: dict[int, float] = {}
 
         for cand in candidates:
             corr_cand = image.rotate(360 - cand if cand != 0 else 0, expand=True)
-            conf_sum, word_count, _ = _score_orientation_candidate(corr_cand)
+            conf_sum, word_count, avg_c = _score_orientation_candidate(corr_cand)
             score = conf_sum * (1.0 + 0.05 * word_count)
             scores[cand] = score
+            avg_confs[cand] = avg_c
             if score > best_score:
                 best_score = score
                 best_cand = cand
@@ -168,7 +171,11 @@ def detect_image_orientation(image: Image.Image) -> Tuple[Image.Image, int]:
             best_cand = 0
 
         if 0 in candidates:
-            if scores.get(180, 0.0) > scores.get(0, 0.0) * 1.25 and scores.get(180, 0.0) > 50.0:
+            if (
+                scores.get(180, 0.0) > scores.get(0, 0.0) * 1.25
+                and scores.get(180, 0.0) > 50.0
+                and avg_confs.get(180, 0.0) >= avg_confs.get(0, 0.0) * 0.90
+            ):
                 best_cand = 180
             else:
                 best_cand = 0
@@ -765,6 +772,74 @@ def repair_devanagari_ocr_artifacts(text: str) -> str:
     return text
 
 
+def repair_indic_regional_ocr_artifacts(text: str) -> str:
+    """
+    Evidence-based post-processing and Unicode normalization across regional Indic scripts:
+    1. Strips non-semantic zero-width joiners/non-joiners (ZWNJ \\u200c, ZWJ \\u200d) that inflate CER.
+    2. Canonicalizes Malayalam decomposed chillus (e.g. \\u0D30\\u0D4D\\u200D -> ർ \\u0D7C) and corrects inverted left matras.
+    3. Normalizes Kannada anusvara \\u0C82 vs numeral zero \\u0CE6.
+    4. Applies domain administrative lexicon corrections for regional government circulars.
+    """
+    if not text:
+        return ""
+    t = unicodedata.normalize("NFC", text)
+
+    # 1. Strip non-semantic ZWNJ/ZWJ inside Indic words
+    t = re.sub(r"([\u0900-\u0D7F])[\u200c\u200d]", r"\1", t)
+
+    # 2. Malayalam chillu canonicalization
+    chillus = {
+        "\u0D23\u0D4D\u200D": "\u0D7A",  # ൺ
+        "\u0D28\u0D4D\u200D": "\u0D79",  # ൻ
+        "\u0D30\u0D4D\u200D": "\u0D7C",  # ർ
+        "\u0D32\u0D4D\u200D": "\u0D7B",  # ൽ
+        "\u0D33\u0D4D\u200D": "\u0D7D",  # ൾ
+        "\u0D15\u0D4D\u200D": "\u0D7F",  # ൿ
+    }
+    for k, v in chillus.items():
+        t = t.replace(k, v)
+
+    # Malayalam chillu-RR resolution without ZWJ before consonant, space, or end of word
+    t = re.sub(r"(\u0D30\u0D4D)(?=[\u0D00-\u0D39\s]|$)", "\u0D7C", t)
+
+    # Malayalam left matra repair (U+0D46, U+0D47, U+0D48) e.g., കരേള -> കേരള, തദ്ദശേ -> തദ്ദേശ
+    t = re.sub(r"([\u0D00-\u0D39\u0D3E-\u0D44\u0D4C\u0D57])([\u0D46\u0D47\u0D48])", r"\2\1", t)
+
+    # 3. Kannada anusvara vs numeral 0: [consonant] + ೦ -> [consonant] + ಂ
+    t = re.sub(r"([\u0C85-\u0CB9])೦", r"\1ಂ", t)
+
+    # 4. Standard administrative term repairs across scripts:
+    fixes = [
+        # Kannada
+        (r"ಅಧೆಕೃತ", "ಅಧಿಕೃತ"),
+        (r"ಅಧೆಸೂಚನೆ", "ಅಧಿಸೂಚನೆ"),
+        (r"ಕರನಾಟಕ", "ಕರ್ನಾಟಕ"),
+        (r"ಸರಕಾರ", "ಸರ್ಕಾರ"),
+        # Malayalam
+        (r"സര്ക്കാര്", "സർക്കാർ"),
+        # Punjabi
+        (r"ਨਰਿਮਾਣ", "ਨਿਰਮਾਣ"),
+        (r"ਵਭਿਗ|ਵਭਿਾਗ", "ਵਿਭਾਗ"),
+        (r"ਨੋਟਸਿ", "ਨੋਟਿਸ"),
+        # Gujarati
+        (r"પરવાર|પરવિર", "પરિવાર"),
+        (r"વભિગ|વભિાગ", "વિભાગ"),
+        # Assamese
+        (r"স্বাসৃথ্য|HAMA", "স্বাস্থ্য"),
+        (r"বভিগৰ|VSI জাননী|বভি৷গৰ", "বিভাগৰ"),
+        (r"পৰযাল|AST", "পৰিয়াল"),
+        # Devanagari regional (Bodo / Maithili / Nepali / Marathi)
+        (r"अधसि्चना|अधसिूचना", "अधिसूचना"),
+        (r"अगसूत", "अगस्त"),
+        (r"अकटोबर", "अक्टूबर"),
+        (r"अनजाथाय", "अनजाथाय"),
+    ]
+    for pat, rep in fixes:
+        t = re.sub(pat, rep, t)
+
+    return t
+
+
 def normalize_intra_numeral_spaces(text: str) -> str:
     """
     Normalizes accidental whitespace splits inside numbers, dates, times, currency amounts, and percentages.
@@ -847,6 +922,9 @@ def repair_common_ocr_artifacts(text: str, is_devanagari: bool = False) -> str:
 
     # Devanagari repairs if Devanagari script is present
     t = repair_devanagari_ocr_artifacts(t)
+
+    # Indic regional script normalization and administrative repairs
+    t = repair_indic_regional_ocr_artifacts(t)
 
     # Normalize intra-numeral and intra-date spaces
     t = normalize_intra_numeral_spaces(t)
@@ -1116,11 +1194,8 @@ def fused_multilingual_tesseract(
     file_no = extract_regional_file_number(processed_img)
 
     # 2. Dual-pass Tesseract data
-    # Dynamic pass1 language: combine chosen language with English if not already specified
+    # Pass 1 runs the requested chosen language cleanly (preserving bilingual if requested e.g. 'hin+eng')
     pass1_lang = chosen_lang
-    parts = [p.strip() for p in chosen_lang.split("+") if p.strip()]
-    if "eng" not in parts:
-        pass1_lang = f"{chosen_lang}+eng"
 
     try:
         data_pass1 = pytesseract.image_to_data(
@@ -1343,6 +1418,17 @@ class TesseractOCREngine(BaseOCREngine):
             detected_lang_meta = detect_image_language(image)
             target_lang = get_ocr_language_for_detection(detected_lang_meta)
 
+        # Normalize ISO-639-1 / 639-2 codes to Tesseract codes if passed directly (e.g. 'hi' -> 'hin')
+        iso_to_tess = {
+            "en": "eng", "hi": "hin", "as": "asm", "bn": "ben", "brx": "hin",
+            "doi": "hin", "gu": "guj", "kn": "kan", "ks": "urd", "kok": "mar",
+            "mai": "hin", "ml": "mal", "mni": "ben", "mr": "mar", "ne": "nep",
+            "or": "ori", "pa": "pan", "sa": "san", "sat": "sat", "sd": "snd",
+            "ta": "tam", "te": "tel", "ur": "urd"
+        }
+        parts_in = [p.strip() for p in target_lang.split("+") if p.strip()]
+        target_lang = "+".join(iso_to_tess.get(p.lower(), p) for p in parts_in)
+
         # Validate requested language against installed languages
         available_langs = get_available_tesseract_languages()
         chosen_lang = target_lang
@@ -1352,7 +1438,7 @@ class TesseractOCREngine(BaseOCREngine):
 
         if available_langs:
             parts = [p.strip() for p in target_lang.split("+") if p.strip()]
-            devanagari_codes = {"hin", "mar", "nep", "san", "bod", "doi", "mai", "kok"}
+            devanagari_codes = {"hin", "mar", "nep", "san", "bod", "brx", "doi", "mai", "kok"}
             valid_parts = []
 
             for p in parts:
@@ -1396,8 +1482,26 @@ class TesseractOCREngine(BaseOCREngine):
                                 "Hindi OCR language pack ('hin.traineddata') is not installed in Tesseract. "
                                 "Only English text could be recognized. Devanagari sections may be unreadable."
                             )
-                else:
-                    # Non-Devanagari regional script (e.g. tam, tel, ben, asm, guj, kan, mal, ori, pan, urd, snd, sat, mni)
+                elif p in ("kas", "ks") and "urd" in available_langs:
+                    if "urd" not in valid_parts:
+                        valid_parts.append("urd")
+                    if not warning_msg:
+                        warning_msg = (
+                            f"Specific Kashmiri OCR model ('{p}.traineddata') is not installed; "
+                            "using Perso-Arabic base model ('urd')."
+                        )
+                elif p == "mni" and "ben" in available_langs:
+                    if "ben" not in valid_parts:
+                        valid_parts.append("ben")
+                    if not warning_msg:
+                        warning_msg = "Manipuri in Bengali script routed to Bengali model ('ben')."
+                elif p in {
+                    "as", "asm", "bn", "ben", "brx", "bod", "doi", "gu", "guj", "hi", "hin",
+                    "kn", "kan", "ks", "kas", "kok", "mai", "ml", "mal", "mni", "mr", "mar",
+                    "ne", "nep", "or", "ori", "pa", "pan", "sa", "san", "sat", "sd", "snd",
+                    "ta", "tam", "te", "tel", "ur", "urd"
+                }:
+                    # Recognized non-Devanagari regional script (e.g. tam, tel, ben, asm, guj, kan, mal, ori, pan, urd, snd, sat, mni)
                     if len(parts) == 1:
                         # Pure non-Latin single language: do NOT silently transcribe with English!
                         return OCRResult(

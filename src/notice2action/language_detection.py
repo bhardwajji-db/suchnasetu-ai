@@ -155,7 +155,8 @@ BENGALI_WORDS = {
 }
 
 # Perso-Arabic Disambiguation Markers
-SINDHI_SPECIFIC_CHARS = re.compile(r"[\u067B\u0684\u0683\u0691\u068F\u06BB\u067E\u0680\u068A\u068D\u06FD]")  # ٻ, ڄ, ڃ, ڱ, ڏ, ڻ
+# Sindhi unique characters: ٻ (\u067B), ڄ (\u0684), ڃ (\u0683), ڱ (\u06B1), ڏ (\u068F), ڻ (\u06BB), ٺ (\u067A), ٿ (\u067F), ڦ (\u06A6), ڪ (\u06AA), ڳ (\u06B3), ڌ (\u068F), ڊ (\u068D)
+SINDHI_SPECIFIC_CHARS = re.compile(r"[\u067B\u0684\u0683\u068F\u06BB\u0680\u068A\u068D\u06FD\u067A\u067F\u06A6\u06AA\u06B3\u06B1]")
 KASHMIRI_SPECIFIC_CHARS = re.compile(r"[\u065A\u065B\u0620\u0672\u06C6]")  # ٚ, ٛ, ؠ, ٲ, ۄ
 URDU_SPECIFIC_CHARS = re.compile(r"[ٹڈڑںہئےبھپھتھٹھجھچھکھگھ]")
 
@@ -476,6 +477,29 @@ def detect_image_language(image) -> LanguageDetectionResult:
 
     # 1. Quick OSD check for script classification
     osd_script = None
+    osd_to_lang = {
+        "devanagari": "hi",
+        "bengali": "bn",
+        "tamil": "ta",
+        "telugu": "te",
+        "kannada": "kn",
+        "malayalam": "ml",
+        "gujarati": "gu",
+        "gurmukhi": "pa",
+        "arabic": "ur",
+        "latin": "en",
+    }
+    osd_to_tess = {
+        "devanagari": "hin",
+        "bengali": "ben",
+        "tamil": "tam",
+        "telugu": "tel",
+        "kannada": "kan",
+        "malayalam": "mal",
+        "gujarati": "guj",
+        "gurmukhi": "pan",
+        "arabic": "urd",
+    }
     try:
         w, h = image.size
         scale = min(1.0, 1000.0 / max(w, h))
@@ -489,14 +513,28 @@ def detect_image_language(image) -> LanguageDetectionResult:
 
     # 2. Fast sampling text extraction
     sample_text = ""
-    # If OSD detected Devanagari, prioritize Tesseract hin+eng because standard RapidOCR
-    # is trained on Latin/Chinese and will misclassify Devanagari by only reading English headings.
-    if osd_script == "devanagari":
+    # If OSD detected a recognized Indic script, prioritize Tesseract with that script + English
+    if osd_script and osd_script in osd_to_tess:
         try:
             w, h = image.size
             scale = min(1.0, 1400.0 / max(w, h))
             sample_img = image.resize((int(w * scale), int(h * scale)), PILImage.Resampling.BILINEAR) if scale < 1.0 else image
-            sample_text = pytesseract.image_to_string(sample_img, lang="hin+eng")
+            sample_text = pytesseract.image_to_string(sample_img, lang=f"{osd_to_tess[osd_script]}+eng")
+        except Exception:
+            pass
+
+    if not sample_text:
+        try:
+            # Fast multi-script sampling pass using installed Indic models + English
+            from notice2action.ocr import get_available_tesseract_languages
+            avail = get_available_tesseract_languages()
+            sample_candidates = ["eng", "hin", "ben", "tam", "tel", "guj", "kan", "mal", "ori", "pan"]
+            installed_sample = [c for c in sample_candidates if c in avail]
+            if installed_sample:
+                w, h = image.size
+                scale = min(1.0, 1200.0 / max(w, h))
+                sample_img = image.resize((int(w * scale), int(h * scale)), PILImage.Resampling.BILINEAR) if scale < 1.0 else image
+                sample_text = pytesseract.image_to_string(sample_img, lang="+".join(installed_sample))
         except Exception:
             pass
 
@@ -522,22 +560,23 @@ def detect_image_language(image) -> LanguageDetectionResult:
     # 3. Analyze sample text distribution
     if sample_text and sample_text.strip():
         det = detect_document_language(sample_text)
-        if osd_script == "devanagari" and det.detected_language == "en":
-            det.detected_language = "hi"
+        if osd_script and osd_script in osd_to_lang and osd_script != "latin" and det.detected_language == "en":
+            det.detected_language = osd_to_lang[osd_script]
             det.is_mixed = True
         return det
 
     # 4. If text extraction produced no characters, fall back to OSD script or English
-    if osd_script == "devanagari":
-        meta = LANGUAGE_REGISTRY["hi"]
+    if osd_script and osd_script in osd_to_lang:
+        lang_code = osd_to_lang[osd_script]
+        meta = LANGUAGE_REGISTRY.get(lang_code, LANGUAGE_REGISTRY["en"])
         return LanguageDetectionResult(
-            detected_language="hi",
+            detected_language=lang_code,
             language_name=meta.name,
             native_name=meta.native_name,
             confidence=0.75,
-            script="Devanagari",
+            script=meta.script,
             is_mixed=False,
-            script_distribution={"devanagari": 1.0},
+            script_distribution={osd_script: 1.0},
             detection_method="tesseract_osd",
         )
 

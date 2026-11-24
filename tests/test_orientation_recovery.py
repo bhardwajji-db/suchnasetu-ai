@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import pytest
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -22,9 +23,15 @@ def sample_hindi_notice():
     """Generates a 3-line Hindi public notice image."""
     img = Image.new("RGB", (1600, 500), color="white")
     d = ImageDraw.Draw(img)
-    try:
-        font = ImageFont.truetype("mangal.ttf", 36)
-    except Exception:
+    font = None
+    for fp in ["C:/Windows/Fonts/Nirmala.ttc", "C:/Windows/Fonts/mangal.ttf", "mangal.ttf"]:
+        if Path(fp).is_file():
+            try:
+                font = ImageFont.truetype(fp, 36)
+                break
+            except Exception:
+                pass
+    if font is None:
         font = ImageFont.load_default()
     d.text((100, 100), "जिलाधिकारी कार्यालय अधिसूचना", font=font, fill="black")
     d.text((100, 200), "सर्वसाधारण को सूचित किया जाता है छात्रवृत्ति आवेदन", font=font, fill="black")
